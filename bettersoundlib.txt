@@ -1,0 +1,81 @@
+@name bettersoundlib
+@inputs 
+@outputs 
+@persist Sounds:table
+@trigger
+
+#[                                                ]#
+##    E2 Library: bettersoundlib                  ##
+##                                                ##
+##    Helps in cases where your e2 sounds fail    ##
+##    to play for seemingly no reason.
+##                                                ##
+##    Manages sound IDs for you and explicitly    ##
+##    stops them after they're done playing.      ##
+##                                                ##
+##    Behaves similarly to betterhololib.         ##
+#[                                                ]#
+
+if( first() ){
+    
+        
+    ###############
+    ## 
+    #   Entity:betterSoundPlay( Sound:string, Duration )
+    #     Plays the provided Sound on a given Entity 
+    #     Provide shorter durations for better performance
+    #     Provide 0 duration to play forever (if the sound loops)
+    #
+    #     Returns the Sound's ID for use in things like soundPitch(), soundVolume(), ect...
+    #   
+    function number entity:betterSoundPlay(Sound:string, Duration){
+        
+        for(T=Sounds:count(),1,-1){
+            if(!Sounds[T,table]["playing",number]){
+                if(Sounds[T,table]["path",string] == Sound){
+                    This:soundPlay(T,Duration,Sound)
+                    Sounds[T,table]["playing",number] = 1
+                    if(Duration){
+                        timer("sound_freeup_"+T,Duration*1000)
+                    }
+                    return T
+                }
+                
+            }
+        }
+        
+        local T = Sounds:count() + 1
+        
+        NewSoundHandler = table()
+        NewSoundHandler["path",string] = Sound
+        NewSoundHandler["playing",number] = 1
+        Sounds:pushTable(NewSoundHandler)
+        This:soundPlay(T,Duration,Sound)
+        
+        if(Duration){
+            timer("sound_freeup_"+T,Duration*1000)
+        }
+        
+        return T                
+        
+    }
+    
+    ###############
+    ## 
+    #   <BetterSound>:betterSoundStop( )
+    #     Stops a sound but leaves it cached internally.
+    #     Good for sounds played with zero duration
+    #  
+    function number:betterSoundStop(){
+        soundStop(This)
+        Sounds[This,table]["playing",number] = 0
+    }
+    
+}
+
+for( I=1, Sounds:count() ){
+    if(clk("sound_freeup_"+I)){
+        soundStop(I)
+        Sounds[I,table]["playing",number] = 0
+    } 
+}

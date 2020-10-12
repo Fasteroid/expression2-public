@@ -1,0 +1,59 @@
+@name betterhololib
+@inputs 
+@outputs 
+@persist HOLOLIB_INDEXES:array
+@trigger
+
+#[                                        ]#
+##    E2 Library: bettersoundlib          ##
+##                                        ##
+##    Manages hologram IDs for you.       ##
+##    Call holoAlloc() to get started.    ##
+#[                                        ]#
+
+if( first() ){
+    
+    ### INTERNAL ##
+    ## 
+    #   nextHoloID()
+    #     Returns the next available hologram ID for use.
+    #
+    function number nextHoloID(){
+        local Test = HOLOLIB_INDEXES:getIndex(0)
+        if(Test){
+            return Test
+        }
+        else{
+            return HOLOLIB_INDEXES:count() + 1
+        }
+    }
+    
+    ###############
+    ## 
+    #   allocHolo( Pos:vector = entity():pos() )
+    #     Creates a new BetterHolo and returns its index.
+    #     Optionally takes in a position to spawn the holo at.
+    #
+    function number holoAlloc(){
+        local Next = nextHoloID()
+        HOLOLIB_INDEXES[Next,number] = 1
+        holoCreate(Next)
+        return Next
+    }
+    function number holoAlloc(Pos:vector){
+        local Next = nextHoloID()
+        HOLOLIB_INDEXES[Next,number] = 1
+        holoCreate(Next,Pos)
+        return Next
+    }
+    
+    ###############
+    ## 
+    #   <BetterHolo>:destroy( )
+    #     Destroys the BetterHolo it's called on
+    #
+    function number:destroy(){
+        holoDelete(This)
+        HOLOLIB_INDEXES[This,number] = 0
+    }
+}

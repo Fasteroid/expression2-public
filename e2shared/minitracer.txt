@@ -1,0 +1,64 @@
+@name Minitracer
+@inputs DS:wirelink
+@outputs 
+@persist X Y RES CPU LIGHT:entity
+@trigger 
+
+runOnTick(1)
+
+if(first()){
+    propSpawnUndo(0)
+    LIGHT = propSpawn("models/maxofs2d/lamp_flashlight.mdl",entity():pos()+vec(0,0,50),ang(45),1)
+    
+    RES = 128
+    CPU = 10000
+    
+    # dumbass cheat function I stole
+    function wirelink:initScreen(Resolution){
+        This[1048574]=0 #Reset Screen and whatever was on it will be cleared.
+        This[1048569]=2 #Set color mode to 3
+        This[1048575]=1 #Apply changes
+        This[1048572]=Resolution #Set new resolution on Y (Height)
+        This[1048573]=Resolution #Set new resolution on X (Width)
+        This["PixelG",number] = 999
+    }
+    
+
+    
+}   
+
+
+if(changed(DS)){ DS:initScreen(RES) }
+
+
+while( opcounter()<softQuota() & cpuUsage()<CPU*10^-6 ){
+    
+    
+    #
+    ##   loop through all pixels
+    ###
+        X=X+1
+        if(X>RES){
+            X=1
+            Y=Y+1
+            if(Y>RES){
+                Y=1
+            }
+        }
+    ###
+    ##   loop through all pixels
+    #
+    
+    Fwd = (vec(RES/2,X-RES/2,RES/2-Y)):normalized():rotate(entity():angles())
+    
+    Ranger = rangerOffset( 65536, entity():pos(), Fwd )
+    
+    
+    Color = vec(100+Ranger:distance()*0.01) + vec(120,100,100)*Ranger:hitNormal():dot(-LIGHT:forward())
+    
+    
+    DS[(RES-X)+(Y)*RES]= rgb2digi( clamp(Color,vec(0),vec(255)) ,2)
+    
+}
+
+

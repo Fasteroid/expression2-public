@@ -1,0 +1,90 @@
+@name hologramAntiCringeLib
+@inputs 
+@outputs 
+@persist 
+@trigger
+
+#[                                                     ]#
+##    E2 Library: hologramAntiCringeLib                ##
+##                                                     ##
+##    Take back control of your holoModelAny holos     ##
+##    with weird and nonsensical coordinate centers!   ##
+##                                                     ##
+##    WARNING:                                         ##
+##    Extended holograms will break if moved without   ##
+##    the library's knowledge!  Don't parent them!     ##
+#[                                                     ]#
+
+if( first() ){
+    
+    ###############
+    ## 
+    #   antiCringeExtend( HoloID ) OR <BetterHolo>:antiCringeExtend( )
+    #     Extends the provided hologram to work with the anticringe functions.
+    #     Call one of these on your hologram BEFORE you use the other functions in this library.
+    #   
+    function number:antiCringeExtend(){
+        local Ent = holoEntity(This)
+        Ent["ang",angle] = Ent:angles()
+        Ent["pos",vector] = Ent:pos()        
+        Ent["scl",vector] = holoScale(This)
+        Ent["c",vector] = Ent:boxCenter()        
+    }
+    function antiCringeExtend(This){
+        local Ent = holoEntity(This)
+        Ent["ang",angle] = Ent:angles()
+        Ent["pos",vector] = Ent:pos()        
+        Ent["scl",vector] = holoScale(This)
+        Ent["c",vector] = Ent:boxCenter()     
+    }    
+    
+    ###############
+    ## 
+    #   holoSetCenter( Id, Center:vector )
+    #     Use this to set the "true center" of an antiCringeExtended hologram
+    #     NOTE: Center is local to the hologram, and not to the world
+    #      
+    function holoSetCenter( Id, Center:vector ){
+        local Ent = holoEntity(Id)
+        Ent["c",vector] = -Center        
+    }
+    
+    ###############
+    ## 
+    #   holoAngExt( Id, A:angle )
+    #     Use this where you would normally use holoAng on a normal hologram.
+    #   
+    function holoAngExt( Id, A:angle ){
+        local Ent = holoEntity(Id)
+        Ent["ang",angle] = A  
+        holoAng(Id,A)
+        holoPos(Id, Ent["pos",vector] + (Ent["c",vector]*Ent["scl",vector]):rotate(A) )
+    }
+    
+    ###############
+    ## 
+    #   holoPosExt( Id, A:vector )
+    #     Use this where you would normally use holoPos on a normal hologram.
+    #  
+    function holoPosExt( Id, P:vector ){
+        local Ent = holoEntity(Id)
+        Ent["pos",vector] = P  
+        holoPos(Id, P + (Ent["c",vector]*Ent["scl",vector]):rotate(Ent["ang",angle]) )
+    }
+    
+    ###############
+    ## 
+    #   holoScaleExt( Id, S:vector )
+    #     Use this where you would normally use holoScale on a normal hologram.
+    #  
+    function holoScaleExt( Id, S:vector ){
+        local Ent = holoEntity(Id)
+        Ent["scl",vector] = S  
+        holoPos(Id, Ent["pos",vector] + (Ent["c",vector]*S):rotate(Ent["ang",angle]) )   
+        holoScale(Id, S)   
+    }
+    
+    # see hologramanticringelib_demo.txt for a demo of what this library does and how to use it
+    
+}
+

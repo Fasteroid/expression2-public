@@ -1,0 +1,26 @@
+@name hologramAntiCringeLib demo
+@inputs 
+@outputs 
+@persist 
+@trigger
+
+#include "hologramanticringelib"
+
+if( first() ){
+    runOnTick(1)
+    
+    holoCreate(1,entity():pos())
+    holoAng(1,ang())
+    antiCringeExtend(1) # make sure you call this first before you try to use the other anticringe functions
+    
+    holoModel(1,"models/props_combine/combine_bridge_b.mdl")
+    holoEntity(1):setTrails(100, 0, 1, "trails/laser", vec(255,0,0), 255, 0, 0) # display where the coordinate center really is using a trail
+    holoSetCenter(1,holoEntity(1):boxCenter()-vec(170,0,-30)) # set the true center - even the boxCenter is a bit off on this model
+    holoPosExt(1,entity():pos())
+    holoScaleExt(1,vec(0.2,0.5,0.3))
+    
+}
+
+# spin a model with a horrible coordinate center to show what this library fixes
+holoAngExt(1,ang(curtime()*60,cos(curtime()*100)*80,sin(curtime()*150)*40))
+holoPosExt(1,entity():toWorld(vec(0,0,50)))

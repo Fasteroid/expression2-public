@@ -1,0 +1,61 @@
+@name boof oop example
+@inputs 
+@outputs 
+@persist Objs:table
+@trigger
+
+#[                                                 ]#
+##    E2 Example: boof oop example                 ##
+##                                                 ##
+##    Small object-oriented programming example    ##
+##    for expression 2.                            ##
+##                                                 ##
+##    Press E to spawn bubbles at your aimpos.     ##
+#[                                                 ]#
+
+# github users: make sure you download these too:
+#include "betterhololib"
+#include "bettersoundlib"
+
+if( first() ){
+    runOnTick(1)
+    
+    function boof(Pos:vector){
+        local Holo = holoAlloc(Pos) # allocate a holo for this boof object
+        Sound = holoEntity(Holo):betterSoundPlay("ambient/water/drip"+randint(1,4)+".wav",1) # play a sound
+        holoMaterial(Holo,"phoenix_storms/pack2/glass")
+        soundPitch(Sound,random(40,60))
+        holoModel(Holo,"hq_icosphere")
+        Boof = table(
+            "time" = 10,
+            "scale" = 0,
+            "scale_vel" = 0,
+            "holo" = Holo,
+            "maxscale" = random(4,10)
+        )
+        Objs:pushTable(Boof) # push our boof object into our table of objects
+    }
+    
+}
+
+if(changed(owner():keyUse()) & owner():keyUse()){
+    boof(owner():aimPos()) # spawn a boof
+}
+
+for(I=Objs:count(),1,-1){ # iterate over all objects, but backwards so we don't skip any when we delete them
+    
+    local Boof = Objs[I,table] # get our object
+    
+    Boof["time",number] = Boof["time",number] - 0.1 # decrease this object's "time" every tick
+    Boof["scale_vel",number] = Boof["scale_vel",number]*0.7 + ( Boof["maxscale",number]*(Boof["time",number]>2) - Boof["scale",number] )*0.2
+    Boof["scale",number] = Boof["scale",number] + Boof["scale_vel",number]
+    
+    if( Boof["time",number] < 0 ){    # time to delete this object
+        Boof["holo",number]:destroy() # free up this holo
+        Objs:remove(I)                # remove table entry
+        continue                      # nothing else to do here
+    }
+    
+    holoScale(Boof["holo",number],vec(Boof["scale",number])) # scale this object's holo according its time
+    
+}
