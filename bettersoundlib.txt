@@ -1,14 +1,12 @@
 @name bettersoundlib
-@inputs 
-@outputs 
 @persist Sounds:table
-@trigger
+@model models/bull/gates/microcontroller1.mdl
 
 #[                                                ]#
 ##    E2 Library: bettersoundlib                  ##
 ##                                                ##
 ##    Helps in cases where your e2 sounds fail    ##
-##    to play for seemingly no reason.
+##    to play for seemingly no reason.            ##
 ##                                                ##
 ##    Manages sound IDs for you and explicitly    ##
 ##    stops them after they're done playing.      ##
@@ -17,8 +15,7 @@
 #[                                                ]#
 
 if( first() ){
-    
-        
+      
     ###############
     ## 
     #   Entity:betterSoundPlay( Sound:string, Duration )
@@ -69,6 +66,11 @@ if( first() ){
     function number:betterSoundStop(){
         soundStop(This)
         Sounds[This,table]["playing",number] = 0
+    }
+    
+    if(entity():model() == "models/bull/gates/microcontroller1.mdl"){
+        selfDestruct()
+        error("This is a library; #include it in something.")
     }
     
 }

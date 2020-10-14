@@ -1,8 +1,5 @@
-@name hologramAntiCringeLib
-@inputs 
-@outputs 
-@persist 
-@trigger
+@name hologramanticringelib
+@model models/bull/gates/microcontroller1.mdl
 
 #[                                                     ]#
 ##    E2 Library: hologramAntiCringeLib                ##
@@ -82,6 +79,11 @@ if( first() ){
         Ent["scl",vector] = S  
         holoPos(Id, Ent["pos",vector] + (Ent["c",vector]*S):rotate(Ent["ang",angle]) )   
         holoScale(Id, S)   
+    }
+    
+    if(entity():model() == "models/bull/gates/microcontroller1.mdl"){
+        selfDestruct()
+        error("This is a library; #include it in something.")
     }
     
     # see hologramanticringelib_demo.txt for a demo of what this library does and how to use it

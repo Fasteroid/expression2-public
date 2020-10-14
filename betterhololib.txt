@@ -1,8 +1,6 @@
 @name betterhololib
-@inputs 
-@outputs 
 @persist HOLOLIB_INDEXES:array
-@trigger
+@model models/bull/gates/microcontroller1.mdl
 
 #[                                        ]#
 ##    E2 Library: bettersoundlib          ##
@@ -56,4 +54,10 @@ if( first() ){
         holoDelete(This)
         HOLOLIB_INDEXES[This,number] = 0
     }
+    
+    if(entity():model() == "models/bull/gates/microcontroller1.mdl"){
+        selfDestruct()
+        error("This is a library; #include it in something.")
+    }
+    
 }
