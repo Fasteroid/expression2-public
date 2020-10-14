@@ -3,7 +3,7 @@
 @model models/bull/gates/microcontroller1.mdl
 
 #[                                        ]#
-##    E2 Library: bettersoundlib          ##
+##    E2 Library: betterhololib           ##
 ##                                        ##
 ##    Manages hologram IDs for you.       ##
 ##    Call holoAlloc() to get started.    ##
