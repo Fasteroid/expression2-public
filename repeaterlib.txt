@@ -1,0 +1,54 @@
+@name repeaterlib
+@persist RepeaterLib_Repeaters:table
+@model models/bull/gates/microcontroller1.mdl
+
+#[                                       ]#
+##    E2 Library: RepeaterLib            ##
+##                                       ##
+##    Implements easy looping timers.    ##
+#[                                       ]#
+
+if(first()){
+    
+    ###############
+    ## 
+    #   repeater( ID:string, Time )
+    #     Creates a new repeating timer and starts it
+    #
+    function repeater(ID:string,Time){
+        RepeaterLib_Repeaters[ID,number] = Time
+        timer("RepeaterLib_"+ID,Time)
+    }
+
+    ###############
+    ## 
+    #   repeaterClk( ID:string )
+    #     Use this for repeaters where you'd normally use clk() for timers
+    #
+    function number repeaterClk(ID:string){
+        return clk("RepeaterLib_"+ID) 
+    }
+    
+    ###############
+    ## 
+    #   repeaterRemove( ID:string )
+    #     Removes a repeating timer
+    #
+    function repeaterRemove(ID:string){
+        RepeaterLib_Repeaters:remove(ID)
+    }
+    
+    if(entity():model() == "models/bull/gates/microcontroller1.mdl"){
+        selfDestruct()
+        error("This is a library; #include it in something.")
+    }
+    
+}
+
+foreach(ID:string,Time:number=RepeaterLib_Repeaters){
+    if(clk("RepeaterLib_"+ID)){
+        timer("RepeaterLib_"+ID,Time)        
+    } 
+}
+
+
