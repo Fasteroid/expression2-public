@@ -67,6 +67,10 @@ if( first() ){
         soundStop(This)
         Sounds[This,table]["playing",number] = 0
     }
+    function betterSoundStop(This){
+        soundStop(This)
+        Sounds[This,table]["playing",number] = 0
+    }
     
     if(entity():model() == "models/bull/gates/microcontroller1.mdl"){
         selfDestruct()
