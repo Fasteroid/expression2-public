@@ -59,7 +59,7 @@ if( first() ){
     
     ###############
     ## 
-    #   <BetterSound>:betterSoundStop( )
+    #   <BetterSound>:betterSoundStop( )  OR  betterSoundStop( BetterSound )
     #     Stops a sound but leaves it cached internally.
     #     Good for sounds played with zero duration
     #  
