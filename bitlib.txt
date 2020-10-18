@@ -1,0 +1,77 @@
+@name bitlib
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+#[                                                ]#
+##    E2 Library: BitLib                          ##
+##                                                ##
+##    Implements 'bitstrings' (binary strings)    ##
+##    along with various methods to manipulate    ##
+##    and read them.  For advanced users only!    ##
+#[                                                ]#
+
+if( first() ){
+    
+    function string toStringByte(N){
+        local Result = toString(N,2)
+        return "0":repeat(8-Result:length()) + Result
+    }
+    
+    ###############
+    ## 
+    #   String:getBits( StartBit = 1, EndBit = 1 )
+    #     no arguments:  returns the entire bitString of String
+    #     one argument:  returns a partial bitstring, starting at StartBit and going to the end of String
+    #     two arguments: returns a partial bitstring, starting at StartBit and going to EndBit
+    #
+    function string string:getBits(){
+        local Bits = ""
+        for( N=1, This:length() ){
+            Bits = Bits + toStringByte( toByte(This,N) )
+        }
+        return Bits
+    }
+    function string string:getBits(StartBit){
+        local Bits = ""
+        for( N=ceil(StartBit/8), This:length() ){
+            Bits = Bits + toStringByte( toByte(This,N) )
+        }
+        Bits = Bits:sub((StartBit+1)%8-1)
+        return Bits
+    }
+    function string string:getBits(StartBit,EndBit){
+        local Bits = ""
+        for( N=ceil(StartBit/8), ceil(EndBit/8) ){
+            Bits = Bits + toStringByte( toByte(This,N) )
+        }
+        local BitStart = (StartBit)%8
+        local BitEnd = BitStart + EndBit - StartBit
+        Bits = Bits:sub(BitStart,BitEnd)
+        return Bits
+    }
+    
+    ###############
+    ## 
+    #   BitString:parseBits( )
+    #     Parses BitString into a normal string; adds padding if BitString is partial
+    #
+    function string string:parseBits(){
+        local String = ""
+        local Test = This:length()%8
+        if(Test){
+            This = This + "1":repeat(8-Test) # create padding
+        }
+        #print(This)
+        for( N=0, ceil(This:length()/8) - 1 ){
+            local Byte = This:sub(1 + N*8, 8 + N*8)
+            String = String + toChar( Byte:toNumber(2) )
+        }
+        return String
+    } 
+    
+}
+
+
+

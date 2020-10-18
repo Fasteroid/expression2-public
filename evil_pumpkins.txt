@@ -1,0 +1,173 @@
+@name evil pumpkins
+@persist N J [Colors,Positions,Angles,Models,Scales,Props,Sounds,Fullbright]:array NUMBER_OF_PUMPKINS_TO_SPAWN
+# this TOTALLY isn't a failcake e2, okay?
+if(first()){
+
+    NUMBER_OF_PUMPKINS_TO_SPAWN = 4
+
+    timer("spawn",500)
+    runOnTick(1)
+    propSpawnUndo(0)
+    Models = array(
+        "hq_icosphere",
+        "hq_icosphere",
+        "hq_icosphere",
+        "hq_icosphere",
+        "hq_icosphere",
+        "hq_icosphere",
+        "rcylinder",
+        "rcylinder",
+        "tetra",
+        "tetra",
+        "tetra",
+        "hq_cylinder",
+        "hq_cylinder",
+        "hq_cylinder",
+        "hq_cylinder",
+        "hq_cylinder",
+        "hq_cylinder",
+        "hq_cylinder",
+        "hq_cylinder"
+    )
+    Fullbright = array(0,0,0,0,0,0,0,0,1,1,1)
+    Positions = array(
+        vec(-3.18,-0.05,-2.03),
+        vec(-3.18,-0.05,-2.03),
+        vec(-2.72,-0.17,-2.03),
+        vec(-3.18,-0.05,-2.03),
+        vec(-3.18,-0.05,-2.03),
+        vec(-3.18,-0.05,-2.03),
+        vec(-3.18,-0.05,2.47),
+        vec(-3.18,0.95,5.47),
+        vec(-0.18,-1.05,0.47),
+        vec(-0.18,0.95,0.47),
+        vec(1.82,-0.05,-1.53),
+        vec(-3.18,4.95,-1.53),
+        vec(-3.18,-6.05,-1.53),
+        vec(1.82,-10.05,0.47),
+        vec(7.82,-9.05,2.47),
+        vec(7.82,-11.05,2.47),
+        vec(5.82,11.95,1.47),
+        vec(5.82,8.95,1.47),
+        vec(0.82,9.95,-0.53)
+    )
+    
+    Angles = array(
+        ang(0,-165,0),
+        ang(0,-135,0),
+        ang(0,-105,0),
+        ang(0,-75,0),
+        ang(0,-45,0),
+        ang(0,-15,0),
+        ang(0,-165,15),
+        ang(0,-180,45),
+        ang(-30,120,-165),
+        ang(-45,-120,165),
+        ang(-60,180,180),
+        ang(30,0,90),
+        ang(30,-150,105),
+        ang(0,-90,105),
+        ang(-45,-60,105),
+        ang(-15,-120,105),
+        ang(-45,-60,105),
+        ang(-30,-135,105),
+        ang(60,75,-120)
+    )
+    
+    Scales = array(
+        vec(14.2,5.9556,11.1992),
+        vec(14.2,5.9556,11.1992),
+        vec(14.2,4.9905,11.1992),
+        vec(14.2,5.9556,11.1992),
+        vec(14.2,5.9556,11.1992),
+        vec(14.2,5.9556,11.1992),
+        vec(2.2002,2.2007,5.1992),
+        vec(2.2002,2.2012,2.8867),
+        vec(1.7832,4.2002,4.1992),
+        vec(1.7832,4.2002,4.1992),
+        vec(1.7832,6.2002,4.1992),
+        vec(1.2002,1.1992,9.2002),
+        vec(1.2002,1.1992,9.2002),
+        vec(1.2002,1.1992,9.2002),
+        vec(1.2002,1.1992,4.9438),
+        vec(1.2002,1.1992,4.9438),
+        vec(1.2002,1.1992,4.9438),
+        vec(1.2002,1.1992,4.9438),
+        vec(1.2002,1.1992,7.7385)
+    )
+    
+    Colors = array(
+        vec(255,127,0),
+        vec(255,127,0),
+        vec(255,127,0),
+        vec(255,127,0),
+        vec(255,127,0),
+        vec(255,127,0),
+        vec(0,51,17),
+        vec(0,51,17),
+        vec(255,255,50),
+        vec(255,255,50),
+        vec(255,255,50),
+        vec(0,51,17),
+        vec(0,51,17),
+        vec(0,51,17),
+        vec(0,51,17),
+        vec(0,51,17),
+        vec(0,51,17),
+        vec(0,51,17),
+        vec(0,51,17)
+    )
+    Sounds = array(
+        "npc/fast_zombie/wake1.wav",
+        "npc/fast_zombie/leap1.wav"
+    )
+}
+
+if(J<NUMBER_OF_PUMPKINS_TO_SPAWN & clk("spawn")){
+    timer("spawn",500)
+    Pos = entity():pos() + randvec():setZ(4)*128
+    E = propSpawn("models/maxofs2d/hover_classic.mdl",Pos,0)
+    E:setAlpha(0)
+    Props:pushEntity(E)
+    for(I=1,Models:count()){
+        N++
+        holoCreate(N,Positions[I,vector] + Pos)
+        holoModel(N,Models[I,string])
+        holoAng(N,Angles[I,angle])
+        holoScaleUnits(N,Scales[I,vector])
+        holoColor(N,Colors[I,vector])
+        holoParent(N,E)
+        holoDisableShading(N,Fullbright[I,number])
+    }
+    J++    
+    rangerFilter(Props)  
+    rangerPersist(1)
+}
+foreach(N,K:entity=Props){
+    
+    Ply = noentity()
+    Dist = 8192
+    foreach(I,Pl:entity = players()){
+        Direc = Pl:shootPos() - K:pos()
+        TDist = Direc:length()
+        R = rangerOffset(TDist,K:pos(),Direc)
+        TDist = TDist*2 - R:distance()
+        TDist =  TDist * (1+0.4*Pl:inNoclip()) * (1+0.6*!Pl:isAlive())
+        if(TDist<Dist){
+            Dist = TDist
+            Ply = Pl
+        }
+    }
+    if(Ply:isValid()){
+        if( rangerOffset(20,K:pos(),vec(0,0,-1)):hit() ){
+            Lunge = randint(0,100)>99
+            if(Lunge){
+                K:soundPlay( N, 0, Sounds[N%2+1,string] )
+                soundPitch( N, randint(90,110))
+            }
+            K:applyForce( (Ply:pos() - K:pos()):setZ(0):normalized()*50*(1+Lunge*70) - K:vel():setZ(0)*0.1 + vec(0,0,800*randint(1,4)*Lunge) )
+        }
+    }
+    
+}
+
