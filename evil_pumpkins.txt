@@ -1,9 +1,9 @@
 @name evil pumpkins
 @persist N J [Colors,Positions,Angles,Models,Scales,Props,Sounds,Fullbright]:array NUMBER_OF_PUMPKINS_TO_SPAWN
-# this TOTALLY isn't a failcake e2, okay?
+# TOTALLY NOT A FAILCAKE E2 I SWEAR
 if(first()){
 
-    NUMBER_OF_PUMPKINS_TO_SPAWN = 4
+    NUMBER_OF_PUMPKINS_TO_SPAWN = 8
 
     timer("spawn",500)
     runOnTick(1)
