@@ -1,0 +1,241 @@
+@name Hex Elytra
+@inputs 
+@outputs 
+@persist Jumps CollisionVel:vector Deployed Gibs:entity SHOW_WINGS
+@trigger 
+
+if(first()){
+    
+    ###########################
+    #                         #
+    #      E2 Hex Elytra      #
+    #      by: Fasteroid      #
+    #                         #
+       SHOW_WINGS    =    0
+    #                         #
+    #  Remove this to become  #
+    #   inf() gay instantly   #
+    #                         #
+    ###########################
+
+
+    owner():soundPlay(1,0,"ambient/wind/wind1.wav")
+    soundVolume(1,0)
+    soundPitch(1,120)
+    
+    runOnTick(1)
+    
+    function elytraWinglet(ID,Origin:vector,Polarity){
+        O = Origin
+        Child = ID
+        holoCreate(ID,O)
+        holoScale(ID,vec(0.5,0.5,0.15))
+        holoModel(ID,"hq_cylinder")
+        holoMaterial(ID,"lights/white")
+        holoColor(ID,vec(255))
+        Child++
+        holoCreate(Child,O)
+        holoModel(Child,"hexagon")
+        holoScale(Child,vec(1,1,0.1))
+        holoParent(Child,ID)
+        Child++
+        holoCreate(Child,O+vec(1,Polarity,1)*vec(sin(30),cos(30),0)*10.4)
+        holoModel(Child,"hexagon")
+        holoScale(Child,vec(1,1,0.1))
+        holoParent(Child,ID)
+        Child++
+        holoCreate(Child,O+vec(1,Polarity,1)*vec(sin(30)*(-1/2),cos(30)*(1/2),0)*10.4)
+        holoModel(Child,"hexagon")
+        holoScale(Child,vec(1/2,1/2,0.05))
+        holoParent(Child,ID)
+        Child++
+        holoCreate(Child,O+vec(1,Polarity,1)*vec(0,cos(30),0)*10.4)
+        holoModel(Child,"hexagon")
+        holoScale(Child,vec(1/2,1/2,0.05))
+        holoParent(Child,ID)
+        Child++
+        holoCreate(Child,O+vec(1,Polarity,1)*vec(sin(30)*2,0,0)*10.4)
+        holoModel(Child,"hexagon")
+        holoScale(Child,vec(1,1,0.1))
+        holoParent(Child,ID)
+        Child++
+        holoCreate(Child,O+vec(1,Polarity,1)*vec(sin(30)*3,cos(30),0)*10.4)
+        holoModel(Child,"hexagon")
+        holoScale(Child,vec(1,1,0.1))
+        holoParent(Child,ID)
+        Child++
+        holoCreate(Child,O+vec(1,Polarity,1)*vec(sin(30)*4,0,0)*10.4)
+        holoModel(Child,"hexagon")
+        holoScale(Child,vec(1,1,0.1))
+        holoParent(Child,ID)
+        Child++
+        holoCreate(Child,O+vec(1,Polarity,1)*vec(sin(30)*6,0,0)*10.4)
+        holoModel(Child,"hexagon")
+        holoScale(Child,vec(1,1,0.1))
+        holoParent(Child,ID)
+        Child++
+        holoCreate(Child,O+vec(1,Polarity,1)*vec(sin(30)*(9/2),cos(30)*(1/2),0)*10.4)
+        holoModel(Child,"hexagon")
+        holoScale(Child,vec(1/2,1/2,0.05))
+        holoParent(Child,ID)
+        Child++
+        holoCreate(Child,O+vec(1,Polarity,1)*vec(sin(30)*(21/3),0,0)*10.4)
+        holoModel(Child,"hexagon")
+        holoScale(Child,vec(1/2,1/2,0.05))
+        holoParent(Child,ID)
+        Child++
+        holoCreate(Child,O+vec(1,Polarity,1)*vec(sin(30)*(11/2),cos(30)*(1/2),0)*10.4)
+        holoModel(Child,"hexagon")
+        holoScale(Child,vec(1/2,1/2,0.05))
+        holoParent(Child,ID)
+        Child++
+        holoCreate(Child,O+vec(1,Polarity,1)*vec(sin(30)*(12/3),cos(30)*(1),0)*10.4)
+        holoModel(Child,"hexagon")
+        holoScale(Child,vec(1/2,1/2,0.05))
+        holoParent(Child,ID)
+        for(N=ID+1,Child){
+            holoColor(N,vec(randint(100,120)))
+        }
+        for(N=ID,Child){
+            holoVisible(N,owner(),SHOW_WINGS)
+        }
+    }
+    
+    
+    elytraWinglet(1,entity():pos(),1)
+    elytraWinglet(14,entity():pos(),-1)
+    
+    AttachAng = owner():attachmentAng("chest")
+    
+    holoPos(1,owner():attachmentPos("chest") + AttachAng:forward()*-8 + AttachAng:right()*5 )
+    holoAng(1,owner():attachmentAng("chest"))
+    holoParentAttachment(1,owner(),"chest")
+    
+    holoPos(14,owner():attachmentPos("chest") + AttachAng:forward()*-8 + AttachAng:right()*-5 )
+    holoAng(14,owner():attachmentAng("chest"))
+    holoParentAttachment(14,owner(),"chest")
+    
+    function vector vector:pitch(N){
+        Y=ang(0,This:toAngle():yaw(),0)
+        return This:rotate(-Y):rotate(ang(N,0,0)):rotate(Y)
+    }
+    
+}
+
+
+
+### 
+##   Deployment Detection
+#
+    Space = owner():keyJump()
+    
+    if( owner():isOnGround() | owner():inNoclip() ){
+        if(Jumps > 0){
+            owner():setModelAngle(ang(0))     
+        }
+        Jumps = 0
+        soundVolume(1,0)
+    }
+    
+    if( ( changed(Space)&Space | owner():vel():length() > 2000 ) & Jumps<2 & owner():vel():dot(owner():eye()) > 0.7 ){
+        Jumps++
+    }
+# 
+##   Deployment Detection
+###
+
+
+
+
+if( Jumps==2 ){
+
+    ### 
+    ##   Tweaked Elytra Source Code 
+    #
+        ANG = owner():eyeAngles()
+        ANG = ANG + ang(-15*(1-ANG[1]/89),90,0)
+        VEL = owner():vel()*vec(0.02,0.02,0.1)
+        
+        FORCE = vec()
+    
+    		  Yawcos = cos(-ANG:yaw())
+    		  Yawsin = sin(-ANG:yaw())
+    		  Pitchcos = cos(ANG:pitch())
+    		  Pitchsin = sin(ANG:pitch())
+    		
+    	 	 LookX = Yawsin * -Pitchcos
+    	 	 LookY = -Pitchsin
+    	 	 LookZ = Yawcos * -Pitchcos
+    		
+    		  Hvel = sqrt(VEL:x()^2 + VEL:y()^2)
+    		  Hlook = Pitchcos
+    		  Sqrpitchcos = Pitchcos^2
+    		
+    		  #code is identical to the code found in net.minecraft.entity.EntityLivingBase.moveEntityWithHeading(float, float) or rq.g(float, float) in obfuscated 15w41b
+    		  FORCE:setZ(-10 + Sqrpitchcos * 0.1)
+    		
+    		  if (VEL:z()< 0 & Hlook > 0){
+    			   Yacc = VEL:z() * -0.01 * Sqrpitchcos
+    			   FORCE = FORCE + vec(LookX * Yacc / Hlook,LookZ * Yacc / Hlook,Yacc)
+    		  }
+    		  if (ANG:pitch() < 0){
+    			   Yacc = Hvel * -Pitchsin * 0.005
+    			   FORCE = FORCE + vec(-LookX * Yacc * 1.5 / Hlook,-LookZ * Yacc * 1.5 / Hlook,Yacc*6 )
+    		  }
+    		  if (Hlook > 0){
+          FORCE = FORCE + vec(LookX / Hlook * Hvel - VEL:x(),LookZ / Hlook * Hvel - VEL:y(),0)*vec(0.6,0.6,0.3)
+		  }
+    		  
+        owner():plyApplyForce(FORCE*40 - VEL*vec(0.3,0.3,0)) # apply forces
+    #
+    ##   Tweaked Elytra Source Code 
+    ###
+    
+    
+    soundVolume(1,owner():vel():length()/8000)
+    
+    Deployed = clamp(Deployed+0.05,0,1)
+    
+    owner():setModelAngle( owner():vel():toAngle():setYaw(0) + ang(40,0,0) )  # apply visual angles to look epic in flight
+    
+    
+    ###
+    ##   Collision Damage
+    #
+    Eye = owner():eyeTrace()
+    if( owner():vel():distance(CollisionVel)>1000 & !first() & Eye:distance()<200 ){
+
+        owner():soundPlay(2,1,"player/pl_fallpain"+(randint(1,0)*2+1)+".wav")
+        owner():soundPlay(3,1,"physics/body/body_medium_impact_hard"+randint(1,6)+".wav")     
+        owner():streamStart(1,"https://www.myinstants.com/media/sounds/classic_hurt.mp3",1)    
+        Gibs = propSpawn("models/props_combine/breenbust.mdl",owner():pos()-CollisionVel:normalized()*50,0)
+        Gibs:applyForce(CollisionVel*10)
+        
+    }
+    #
+    ##   Collision Damage
+    ###
+    
+}
+else{
+    Deployed = clamp(Deployed-0.1,0,1)
+}
+    CollisionVel = owner():vel()
+holoAng(1,ang( 90+Deployed*60,owner():angles():yaw()+90,-90 ))
+holoAng(14,ang( 90-Deployed*60,owner():angles():yaw()+90,-90 ))
+
+
+###
+##   Break Concrete Gibs
+#
+if(Gibs){
+    Gibs["age",number] = Gibs["age",number] + 1
+    if(Gibs["age",number] > 4){
+        Gibs["age",number] = 0
+        Gibs:propBreak()
+    }
+    
+}
+#
+##   Break Concrete Gibs
+###
