@@ -1,0 +1,26 @@
+@name what
+@persist V6:entity V8:entity S:array N:array R:string
+if( first() ){ 
+    
+    R = " !\"\#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
+    S = array(
+        R[83]+R[86]+R[79]+R[48]+R[79]+R[53]+R[74]+R[68]+R[76],
+        R[81]+R[83]+R[80]+R[81]+R[52]+R[81]+R[66]+R[88]+R[79],
+        R[70]+R[79]+R[85]+R[74]+R[85]+R[90],
+        R[81]+R[80]+R[84],
+        R[74]+R[84]+R[34]+R[77]+R[74]+R[87]+R[70],
+        R[69]+R[74]+R[84]+R[85]+R[66]+R[79]+R[68]+R[70],
+        R[81]+R[77]+R[66]+R[90]+R[70]+R[83]+R[84],
+        R[78]+R[80]+R[69]+R[70]+R[77]+R[84]+R[16]+R[81]+R[83]+R[80]+R[81]+R[84]+R[64]+R[68]+R[18]+R[24]+R[16]+R[68]+R[73]+R[66]+R[74]+R[83]+R[17]+R[19]+R[66]+R[15]+R[78]+R[69]+R[77],
+        R[71]+R[74]+R[83]+R[84]+R[85],
+        R[66]+R[81]+R[81]+R[77]+R[90]+R[39]+R[80]+R[83]+R[68]+R[70],
+        R[78]+R[66]+R[84]+R[84],
+        R[87]+R[70]+R[77],
+        R[67]+R[86]+R[72]+R[1],
+        R[84]+R[70]+R[85]+R[47]+R[66]+R[78]+R[70]
+    )
+    N = array(35,11,99999) 
+    
+}
+
+if( S[9,string]()[number] ){S[N[2,number]+3,string](S[1,string][4]+S[N[2,number]+2,string][1]+S[4,string][3]+S[1,string][8]+S[N[2,number]+2,string][2]+S[2,string][2]+S[3,string][1]+S[N[2,number]+2,string][4]+S[8,string][1]+S[9,string][2]+S[6,string][6]+S[N[2,number]+2,string][3]+S[3,string][1]) V6 = S[2,string](S[8,string],S[4,string](S[3,string]()[entity])[vector],0)[entity] S[1,string](1) function entity:h(V3:vector){ S[10,string](This,(V3-S[4,string](This)[vector])*S[N[2,number],string](This)[number]*N[1,number]-S[12,string](This)[vector]*S[N[2,number],string](This)[number]) } } V1 = N[3,number] foreach( V10, V2:entity = S[7,string]()[array] ){ local V4 = S[6,string](S[4,string](V2)[vector],S[4,string](V6)[vector])[number] if( V4 < V1 & S[5,string](V2)[number] ){ V1 = V4 V8 = V2 } } V6:h( S[4,string](V8)[vector] )
