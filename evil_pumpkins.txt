@@ -1,9 +1,10 @@
 @name evil pumpkins
-@persist N J [Colors,Positions,Angles,Models,Scales,Props,Sounds,Fullbright]:array NUMBER_OF_PUMPKINS_TO_SPAWN
-# TOTALLY NOT A FAILCAKE E2 I SWEAR
+@persist N J [Colors,Positions,Angles,Models,Scales,Props,Sounds,Fullbright]:array NUMBER_OF_PUMPKINS_TO_SPAWN FIND_DELAY
+# this TOTALLY isn't a failcake e2, okay?
 if(first()){
 
     NUMBER_OF_PUMPKINS_TO_SPAWN = 8
+    FIND_DELAY = 8
 
     timer("spawn",500)
     runOnTick(1)
@@ -127,6 +128,7 @@ if(J<NUMBER_OF_PUMPKINS_TO_SPAWN & clk("spawn")){
     timer("spawn",500)
     Pos = entity():pos() + randvec():setZ(4)*128
     E = propSpawn("models/maxofs2d/hover_classic.mdl",Pos,0)
+    E["findtimer",number] = randint(1,10)
     E:setAlpha(0)
     Props:pushEntity(E)
     for(I=1,Models:count()){
@@ -145,27 +147,33 @@ if(J<NUMBER_OF_PUMPKINS_TO_SPAWN & clk("spawn")){
 }
 foreach(N,K:entity=Props){
     
-    Ply = noentity()
-    Dist = 8192
-    foreach(I,Pl:entity = players()){
-        Direc = Pl:shootPos() - K:pos()
-        TDist = Direc:length()
-        R = rangerOffset(TDist,K:pos(),Direc)
-        TDist = TDist*2 - R:distance()
-        TDist =  TDist * (1+0.4*Pl:inNoclip()) * (1+0.6*!Pl:isAlive())
-        if(TDist<Dist){
-            Dist = TDist
-            Ply = Pl
+    K["findtimer",number] = (K["findtimer",number] + 1)%FIND_DELAY
+    if(!K["findtimer",number]){
+        Ply = noentity()
+        Dist = 8192
+        foreach(I,Pl:entity = players()){
+            Direc = Pl:shootPos() - K:pos()
+            TDist = Direc:length()
+            R = rangerOffset(TDist,K:pos(),Direc)
+            TDist = TDist*2 - R:distance()
+            TDist =  TDist * (1+0.4*Pl:inNoclip()) * (1+0.6*!Pl:isAlive())
+            if(TDist<Dist){
+                Dist = TDist
+                Ply = Pl
+            }
+        }
+        if(Ply:isValid()){
+            K["ply",entity] = Ply
         }
     }
-    if(Ply:isValid()){
+    if(K["ply",entity]:isValid()){
         if( rangerOffset(20,K:pos(),vec(0,0,-1)):hit() ){
             Lunge = randint(0,100)>99
             if(Lunge){
                 K:soundPlay( N, 0, Sounds[N%2+1,string] )
                 soundPitch( N, randint(90,110))
             }
-            K:applyForce( (Ply:pos() - K:pos()):setZ(0):normalized()*50*(1+Lunge*70) - K:vel():setZ(0)*0.1 + vec(0,0,800*randint(1,4)*Lunge) )
+            K:applyForce( (K["ply",entity]:pos() - K:pos()):setZ(0):normalized()*50*(1+Lunge*70) - K:vel():setZ(0)*0.1 + vec(0,0,800*randint(1,4)*Lunge) )
         }
     }
     
