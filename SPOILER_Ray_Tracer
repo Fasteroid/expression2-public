@@ -1,0 +1,288 @@
+@name Ray Tracer
+@inputs DS:wirelink Mem 
+@persist A X Y Res O N Overclock Avg Mul Osc Mats:table Ready Light:entity E:entity
+@outputs X Y G
+@model models/dav0r/camera.mdl
+
+
+#ifdef spawnProcessor(vector,angle)
+for(I = 1, 15)
+{
+local Meme = spawnProcessor(vec(0), E:angles())
+Meme:propFreeze(1)
+Meme:setAlpha(0)
+}
+#endif
+
+if(first()){
+    propSpawnUndo(0)
+    timer("lmaolight",750)
+    timer("matinit",2000)
+    timer("lmaoholos",1250)
+    
+    E = entity()
+    rangerPersist(1)
+    rangerHitWater(1)
+    rangerFilter(players())
+    
+    E:soundPlay(1,1,"buttons/button18.wav")
+    
+    function string cleanupTexture(Tex:string){
+        #check if we even need to do this
+        if(Tex:sub(1,3)=="map"){
+            #flip that shit around
+            Tex = Tex:reverse()
+            #clip it at the third underscore
+            Point=0
+            for(N=1,3){
+                Point = Tex:find("_",Point+1)
+            }
+            Tex = Tex:sub(Point+1)
+            return Tex:reverse()   
+        }
+        else{return Tex}
+    }
+    
+    
+    function table gen(Trace:ranger){
+        local Material = Trace:hitTexture()
+        
+        
+        
+        if(Material:find("*")){
+            Material = Trace:matType()
+        }
+        else
+        {
+            Material = cleanupTexture(Material)
+        }
+        
+       if(!Mats:exists(Material)){concmd("echo ERROR: Missing texture '"+Material+"'!")
+        
+        Main = table()
+        Main["color",vector] = vec(512,0,512)
+        Main["shiny",number] = 0
+        
+        return Main
+        }
+        else{
+    
+    
+            local Mater = Mats[Material,table]
+            local Color = Mater["Color",vector]
+            local Noise = Mater["Noise",vector]
+            local Vector = vec(0)
+            local Main = table()
+            
+            if( (Noise[1]==Noise[2]) & (Noise[2]==Noise[3]) ){
+                Vector = Color + vec(randint(-Noise[1],Noise[1]))
+            }
+            else
+            {
+                local Noi = randint(-1,1)
+                Vector = Color + vec(Noi*Noise[1],Noi*Noise[2],Noi*Noise[3])
+            }
+            
+            Vector = clamp(Vector,vec(0),vec(255))
+            Main["color",vector] = Vector
+            Main["shiny",number] = Mater["Shiny",number]
+            return Main
+        }
+        
+    }
+    
+    R1=noranger()
+    Normal = vec(0)
+    
+        function table raytrace(B){
+            
+            ### MATERIAL TRACE ###
+                holoPos(1,R1:position()-vec(0,0,1))
+                Pos = R1:position()
+            
+            ### MATERIAL ACQUISITION ###
+                C = R1:hitNormal()
+                Material = gen(R1)
+                Mat = Material["color",vector]
+                Refl = Material["shiny",number]
+            
+            ### SHADOW CONSTRUCTION ###
+                Dir = (Light:pos()-Pos):normalized()
+                rangerFilter(Light)
+                RL = rangerOffset(65536,Light:pos(),-Dir)
+                holoPos(3,RL:position()*!Osc+Light:pos()*Osc)
+                Dist = RL:distance() + B
+                LightLevel = clamp(0.95/((Dist/3200)^2)+0.25,0,1)
+                if(RL:position():distance(Pos)<1){
+                Shadow=LightLevel
+                }else{Shadow=clamp(LightLevel-0.5,0.1,1)}
+                
+                
+                Nrm = 0.7 + Dir:normalized():dot(C)*0.3
+                
+            ### FINALIZE
+                MAIN = table()
+                MAIN["color",vector] = Mat*Shadow*Nrm
+                MAIN["shiny",number] = Refl
+                MAIN["dist",number] = Dist
+                if(R1:entity():isValid()){
+                    MAIN["mod",vector] = 0.00392155 * R1:entity():getColor()
+                }
+                else
+                {
+                    MAIN["mod",vector] = MAIN["color",vector]:normalized()
+                }
+                
+                return MAIN
+        }
+    
+    
+    fileLoad(">e2shared/roidmats.txt")
+
+        ### PARAMETERS ####
+        Res = 128
+
+
+    ### INTERNAL CONVENIENCE VARIABLES
+    N = Res/2
+    O = 1/Res
+
+        
+    function wirelink:initScreen(Resolution){
+        This[1048574]=0 #Reset Screen and whatever was on it will be cleared.
+        This[1048569]=3 #Set color mode to 3
+        This[1048575]=1 #Apply changes
+        This[1048572]=Resolution #Set new resolution on Y (Height)
+        This[1048573]=Resolution #Set new resolution on X (Width)
+        This["PixelG",number] = 999
+
+}   
+    }
+    
+    if(changed(DS)){DS:initScreen(Res)}
+runOnTick(1)
+
+
+while(opcounter()<softQuota() & Ready){
+Osc=!Osc
+#XY Spammer#
+perf()
+if(X<Res){X=X+1}else{X=0
+if(Y<Res){Y=Y+1}else{Y=0 Clk = 1}
+}
+    
+### TRACE ###
+    Normal = -E:pos()+E:toWorld(vec(Res,X-Res/2,Res/2-Y))
+    R1 = rangerOffset(65536,E:pos()+E:up(),Normal)
+    Data = raytrace(0)
+    Ref = Data["shiny",number]
+    Bounce = 0
+### REFLECTIVITY CALCULATION ##
+    while(Ref>0 & Bounce<5){
+        Normal = -Normal:toAngle():rotateAroundAxis(R1:hitNormal(),180):forward()
+        R1 = rangerOffset(65536,R1:position()+R1:hitNormal()*0.1,Normal)
+        holoPos(2,R1:position())
+        Data2 = raytrace(Data["dist",number])
+        #yprintTable(Data2)
+        Data["color",vector] = mix(Data["color",vector],Data2["color",vector],Ref)
+        Data["dist",number] = Data2["dist",number]
+        Data["mod",vector] = Data["mod",vector] * Data2["mod",vector]
+        Ref = Data2["shiny",number]?:0
+        Bounce++
+    }
+
+#no reflec = Mat * Shadow * Nrm
+#max reflec = other side entirely
+
+    COLOR = Data["color",vector]*Data["mod",vector]
+    DS[(Res-X)+(Y)*Res]= rgb2digi(clamp(COLOR,vec(0),vec(255)),3)
+    
+}
+
+
+
+
+
+
+
+### Deprofessionalize ###
+runOnChat(1)
+if( changed(owner():lastSaidWhen()) & owner():lastSaid() == ".save"){
+timer("matwait",2000)
+}
+if(clk("matwait")){
+    fileLoad(">e2shared/roidmats.txt")
+    print("Updating materials...")
+    timer("matinit",2000)
+}
+
+if(changed(E:pos())|clk("matinit")){
+    
+    Preview = -E:pos()+E:toWorld(vec(1,-1,-1))
+    P1 = rangerOffset(65536,E:pos()+E:up(),Preview)
+    holoPos(4,P1:position())
+    
+    Preview = -E:pos()+E:toWorld(vec(1,1,-1))
+    P1 = rangerOffset(65536,E:pos()+E:up(),Preview)
+    holoPos(5,P1:position())
+    
+    Preview = -E:pos()+E:toWorld(vec(1,-1,1))
+    P1 = rangerOffset(65536,E:pos()+E:up(),Preview)
+    holoPos(6,P1:position())
+    
+    Preview = -E:pos()+E:toWorld(vec(1,1,1))
+    P1 = rangerOffset(65536,E:pos()+E:up(),Preview)
+    holoPos(7,P1:position())
+    
+}
+
+if(clk("matinit")){
+    Ready=1
+    Mats = vonDecodeTable(fileRead())
+    soundPlay(4,1,"buttons/button1.wav")
+}
+
+if(clk("lmaolight")){
+    Light = propSpawn("models/maxofs2d/light_tubular.mdl",E:pos(),0)
+    Xd = randvec()
+    Light:applyForce( (vec(Xd:x(),Xd:y(),6)) * 30)
+    Light:applyOffsetForce((vec(Xd:x(),Xd:y(),6)) * 30, Light:pos()+vec(0,0,-8))
+    Light:soundPlay(2,1,"weapons/iceaxe/iceaxe_swing1.wav")
+    E:soundPlay(5,1,"buttons/button24.wav")
+    rangerPersist(1)
+    rangerFilter(array(E,Light,players()))
+}
+
+if(clk("lmaoholos")){
+    holoCreate(8)
+    holoModel(8,"hq_icosphere")
+    holoScale(8,-vec(5))
+    holoMaterial(8,"lights/white")
+    holoColor(8,vec(255,100,0))
+    holoParent(8,entity())
+    
+    holoCreate(9,Light:pos())
+    holoModel(9,"hq_icosphere")
+    holoScale(9,-vec(5))
+    holoMaterial(9,"lights/white")
+    holoColor(9,vec(255,255,0))
+    holoParent(9,Light)
+    
+    holoCreate(1)
+    holoCreate(2)
+    holoCreate(3)
+    holoColor(1,vec(255,0,0))
+    holoColor(2,vec(0,255,0))
+    holoColor(3,vec(255,255,0))
+    holoEntity(1):setTrails(20,0,0.05,"trails/laser",vec(255,0,0),255)
+    holoEntity(2):setTrails(20,0,0.05,"trails/laser",vec(0,255,0),255)
+    holoEntity(3):setTrails(20,0,0.05,"trails/laser",vec(255,255,0),50)
+    soundPlay(3,1,"buttons/combine_button1.wav")
+    
+    for(I=1,4){
+        holoCreate(I+3)
+        holoModel(I+3,"hq_icosphere")
+        holoScale(I+3,vec(1))
+        holoColor(I+3,vec(0,255,255))
+    }
+}
