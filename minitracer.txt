@@ -1,7 +1,7 @@
 @name Minitracer
 @inputs DS:wirelink
 @outputs 
-@persist X Y RES CPU LIGHT:entity  Bruh_Points:array Bruh_Count Drop_Size R_MIN TexCache:table Done VHolos HoloPositions:array HoloColors:array
+@persist X Y RES CPU LIGHT:entity TexCache:table Done VHolos HoloPositions:array HoloColors:array
 @trigger 
 
 #[                                       ]#
@@ -100,18 +100,19 @@ if(first()){ # initialize on first tick
         else{
             local Length = 0
             local ColorID = 0
-            Tex = This:hitTexture()
-            for(N=1,Tex:length()){
-                ColorID = ColorID + toByte(Tex,N)
-            }            
-            ColorID = 360*ColorID/Tex:length()
+            Tex = This:hitTexture()      
+            for(I=1,Tex:length()){
+                ColorID = ColorID + toByte(Tex[I])
+            }
+            ColorID = ColorID*360/128
             
             local TexturePos = round( This:getTexturePos() * 0.01 ) # make the checkerboard squares bigger
-            Modifier = (( TexturePos[2] ) % 2) # add checkerboard pattern
+            Modifier = (( TexturePos[2]+TexturePos[3] ) % 2) # add checkerboard pattern
             
             local Color = hsv2rgb( vec(ColorID,1,0.5+Modifier*0.2) )
+            Color = Color + 40 * ( This:hitNormal():dot( vec(0.57735026918963,0.57735026918963,0.57735026918963) ) ) # add dot-product shading
             
-            return Color
+            return Color # return end result
         }
         
     }

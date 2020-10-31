@@ -38,6 +38,28 @@ if(first()){
         RepeaterLib_Repeaters:remove(ID)
     }
     
+    ###############
+    ## 
+    #   repeaterStop( ID:string )
+    #     Stops a repeating timer
+    #
+    function repeaterStop(ID:string){
+        #ifdef stoptimer(string)
+            stoptimer("RepeaterLib_"+ID)   
+        #else
+            timer("RepeaterLib_"+ID,inf())
+        #endif
+    }
+    
+    ###############
+    ## 
+    #   repeaterStart( ID:string )
+    #     Restarts a repeating timer
+    #
+    function repeaterStart(ID:string){
+        timer("RepeaterLib_"+ID,RepeaterLib_Repeaters[ID,number])   
+    }
+    
     if(entity():model() == "models/bull/gates/microcontroller1.mdl"){
         selfDestruct()
         error("This is a library; #include it in something.")
