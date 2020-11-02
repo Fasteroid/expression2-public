@@ -1,8 +1,5 @@
 @name bitlib
-@inputs 
-@outputs 
-@persist 
-@trigger 
+@model models/bull/gates/microcontroller1.mdl
 
 #[                                                ]#
 ##    E2 Library: BitLib                          ##
@@ -54,7 +51,7 @@ if( first() ){
     
     ###############
     ## 
-    #   BitString:parseBits( )
+    #   BitString:parseBits()
     #     Parses BitString into a normal string; adds padding if BitString is partial
     #
     function string string:parseBits(){
@@ -70,6 +67,11 @@ if( first() ){
         }
         return String
     } 
+    
+    if(entity():model() == "models/bull/gates/microcontroller1.mdl"){
+        selfDestruct()
+        error("This is a library; #include it in something.")
+    }
     
 }
 

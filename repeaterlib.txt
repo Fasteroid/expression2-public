@@ -2,11 +2,11 @@
 @persist RepeaterLib_Repeaters:table
 @model models/bull/gates/microcontroller1.mdl
 
-#[                                       ]#
-##    E2 Library: RepeaterLib            ##
-##                                       ##
-##    Implements easy looping timers.    ##
-#[                                       ]#
+#[                                         ]#
+##    E2 Library: RepeaterLib              ##
+##                                         ##
+##    Implements easy repeating timers.    ##
+#[                                         ]#
 
 if(first()){
     
