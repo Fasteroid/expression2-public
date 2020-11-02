@@ -1,0 +1,31 @@
+@name async files demo
+@inputs 
+@outputs 
+@persist Dat:string FileToLoad:string
+@trigger
+
+#include "asyncfileslib"
+# remember to grab e2shared/asyncfile.txt fro
+
+if( first() ){
+    # remember to pick a file in e2shared that actually exists
+    FileToLoad = "asyncfile.txt"
+    runOnTick(1)
+    timer("load",1000)
+}
+
+if(clk("load")){
+    function onLoad(Data:string,Name:string){ # do this when the file loads
+        print("upload of "+Name+" complete!")
+        Dat = Data
+    }
+    fileLoadASync(FileToLoad,"onLoad") # queue up the file with its callback 'onLoad' attached
+    print("starting file upload...")
+}
+
+# show progress data in the e2 name
+Name = "currently loading: " + 
+"\n" + ASYNCFILES_CURRENT_UPLOAD +
+"\nloaded data: " + 
+"\n" + Dat
+setName(Name)
