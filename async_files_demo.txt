@@ -5,7 +5,7 @@
 @trigger
 
 #include "asyncfileslib"
-# remember to grab e2shared/asyncfile.txt fro
+# remember to grab e2shared/asyncfile.txt from the repo too!
 
 if( first() ){
     # remember to pick a file in e2shared that actually exists
