@@ -1,0 +1,45 @@
+@name legit_antiaim.hack
+@inputs 
+@outputs 
+@persist Props:array Queue:table
+@trigger
+
+if( first() ){
+    runOnTick(1)
+    propSpawnUndo(0)
+}
+
+foreach(N,K:entity = players()){
+    
+    if(K==owner()){ continue }
+    
+    if( !K["shield",entity]:isValid() & !Queue:exists(K:steamID()) ){
+        Queue[K:steamID(),entity] = K
+    }
+    else{
+        local Dir = (owner():shootPos() - K:shootPos()):normalized()
+        K["shield",entity]:setPos( owner():shootPos() - Dir * 100 )
+        K["shield",entity]:setAng( Dir:toAngle()+ang(90,0,90) )
+    }
+    
+}
+
+while( Queue:count() & propCanCreate() ){
+    foreach(N,K:entity = Queue){
+        H = propSpawn("models/props_c17/streetsign004f.mdl",entity():pos(),1)
+        H:setMaterial("lights/white")
+        H:setColor(vec(50,100,255),100)
+        H["ply",entity] = K
+        K["shield",entity] = H
+        Props:pushEntity(H)
+        Queue:remove(N)
+    }
+}
+
+for(I=Props:count(),1,-1){
+    if(!Props[I,entity]:isValid()){
+        Props:remove(I)    
+    }    
+}
+
+
