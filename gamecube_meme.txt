@@ -1,0 +1,45 @@
+@name gamecube meme
+@inputs 
+@outputs 
+@persist Up:vector Pos:vector T
+@trigger 
+entity():setAng(ang())
+if(first()){
+
+  
+    Pos = entity():pos()
+    runOnTick(1)
+    holoCreate(0,entity():pos()+vec(0,0,10))  
+    holoColor(0,vec(102, 102, 255),0)
+    T = -7.6
+    
+    function number f(X){
+        return cosh(mod(X,1.762745)-0.881373587)
+    }
+    entity():streamStart(1,"https://www.myinstants.com/media/sounds/gamecube-startup.mp3",1)
+    entity():setAlpha(0)
+    
+
+}
+
+
+T+=0.2
+if(T==-1){
+    holoAlpha(0,255)  
+}
+
+I=min(max(T,0),46)
+holoPos(0, Pos + vec(0,-I*7.18,sqrt(2)*6 - f(I)*6 + 6)  )
+holoAng(0, ang(0,0,160*I/pi()) )
+entity():setPos(holoEntity(0):pos()-vec(0,0,6))
+
+if(T>50.2){
+    entity():setAlpha(255)
+    streamStop(1)
+    soundPlay(1,1,"buttons/button10.wav")
+    entity():setColor(vec(255,0,0))
+    runOnTick(0)
+    holoDelete(0)
+    setName("gamecube meme
+(script error)")
+}
