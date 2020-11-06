@@ -1,0 +1,47 @@
+@name Bugbait Bomb
+@inputs 
+@outputs 
+@persist BugbaitEntity:entity BugbaitLastSeenAt:vector Thrown # remember these between ticks
+@trigger
+
+if( first() ){
+    runOnTick(1) # run the code every tick
+}
+
+
+if( changed( owner():keyAttack1() ) & !owner():keyAttack1() ){ # when you release the mouse...
+    
+    timer( "findbugbait", 250 ) # delay the find because bugbait is cringe and doesn't spawn right away
+
+}
+
+if( clk( "findbugbait" ) ){ # when the timer above goes off...
+
+    # try to find a bugbait
+    
+    findByClass("npc_grenade_bugbait")
+    findSortByDistance( owner():pos() )
+    
+    BugbaitEntity = findResult(1)  # BugbaitEntity stores the find
+    
+    if( BugbaitEntity:isValid() ){ # did we find anything?
+        
+        Color = vec(255, 0, 0) # use this to change the trail color if you want to
+        
+        BugbaitEntity:setTrails(100, 1, 1, "trails/laser", Color, 255, 0, 0) # stick a trail on it
+        
+        Thrown = 1 # set the thrown status to 1
+        
+    }
+    
+}
+
+if( Thrown & !BugbaitEntity:isValid() ){ # if the bugbait suddenly stops existing and we last saw it in the air...
+    
+    Boof = propSpawn("models/props_c17/oildrum001_explosive.mdl", BugbaitLastSeenAt, 1) # spawn a barrel
+    Boof:propBreak() # detonate the barrel!
+    Thrown = 0 # eagle has landed
+    
+}
+
+BugbaitLastSeenAt = BugbaitEntity:pos() # update this after we've used it above, since the bugbait might have disappeared this tick
