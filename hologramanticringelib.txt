@@ -52,7 +52,6 @@ if( first() ){
     function holoOrient( Id, Default:angle ){
         local Ent = holoEntity(Id)
         Ent["o",angle] = Default
-        print(Ent["o",angle])
     }
     
     ###############
