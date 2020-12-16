@@ -26,13 +26,10 @@ if( first() ){
         Ent["pos",vector] = Ent:pos()        
         Ent["scl",vector] = holoScale(This)
         Ent["c",vector] = Ent:boxCenter()        
+        Ent["o",angle] = ang(0)
     }
     function antiCringeExtend(This){
-        local Ent = holoEntity(This)
-        Ent["ang",angle] = Ent:angles()
-        Ent["pos",vector] = Ent:pos()        
-        Ent["scl",vector] = holoScale(This)
-        Ent["c",vector] = Ent:boxCenter()     
+        This:antiCringeExtend()
     }    
     
     ###############
@@ -48,14 +45,26 @@ if( first() ){
     
     ###############
     ## 
+    #   holoOrient( Id, Default:angle )
+    #     Use this to set the "default angles" of an antiCringeExtended hologram
+    #     NOTE: Center is local to the hologram, and not to the world 
+    #      
+    function holoOrient( Id, Default:angle ){
+        local Ent = holoEntity(Id)
+        Ent["o",angle] = Default
+        print(Ent["o",angle])
+    }
+    
+    ###############
+    ## 
     #   holoAngExt( Id, A:angle )
     #     Use this where you would normally use holoAng on a normal hologram.
     #   
     function holoAngExt( Id, A:angle ){
         local Ent = holoEntity(Id)
-        Ent["ang",angle] = A  
-        holoAng(Id,A)
-        holoPos(Id, Ent["pos",vector] + (Ent["c",vector]*Ent["scl",vector]):rotate(A) )
+        Ent["ang",angle] = toWorldAng(vec(),Ent["o",angle],vec(),A)
+        holoAng(Id, Ent["ang",angle])
+        holoPos(Id, Ent["pos",vector] + (Ent["c",vector]*Ent["scl",vector]):rotate(Ent["ang",angle]) )
     }
     
     ###############
