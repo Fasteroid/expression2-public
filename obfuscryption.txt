@@ -1,0 +1,63 @@
+@name obfuscryption
+@inputs 
+@outputs 
+@persist E:entity
+@trigger
+
+@persist K:array L
+#[]#
+#[    I don't care if you take this library
+#[    It's public anyway, lol
+#[]#
+#[]#  #include "asyncfileslib"
+#[]#
+
+function second(){} # function prototype
+
+if( first() ){
+    
+    # this is all you're getting
+    # good luck!
+    runOnTick(1)
+    function onLoad(Data:string,Name:string){
+        print("expression decrypted, good luck.")
+        K = vonDecode(Data)
+        L = 1
+        second()
+    }
+    fileLoadASync("private_key.txt","onLoad")
+    
+}
+
+function second(){ # equivalent to first() but for the protected code
+    E = K[1,string](K[2,string],K[4,string](K[3,string]()[entity])[vector]+K[5,string](0,0,30)[vector],0)[entity]
+    K[6,string](1)
+}
+
+if( L ){ # everything else goes in here
+    K[7,string](E,(K[4,string](K[3,string]()[entity])[vector]+K[5,string](0,0,30)[vector]-K[4,string](E)[vector])*(K[8,string](E)[number]*10)-K[9,string](E)[vector]*K[8,string](E)[number]*0.1)
+}
+
+# This should roughly explain how to craft private keys for this system.
+# Just take the function names and put them in here, then obsfucate the actual functions in the e2.
+# If you wanted to you could even do multiple layers of private keys to obsfucate the name of the real private key.
+
+# Have fun!  -Fast
+
+#[
+if(first()){
+    Keys = array(
+        "propSpawn",
+        "models/dav0r/hoverball.mdl",
+        "entity",
+        "pos",
+        "vec",
+        "runOnTick",
+        "applyForce",
+        "mass",
+        "vel"
+    )
+    fileWriteASync("private_key.txt",vonEncode(Keys))
+    runOnTick(1)
+}
+]#
