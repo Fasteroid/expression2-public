@@ -20,7 +20,7 @@ if( first() ){
     # good luck!
     runOnTick(1)
     function onLoad(Data:string,Name:string){
-        print("expression decrypted, good luck.")
+        print("expression decrypted, hope you had the key!")
         K = vonDecode(Data)
         L = 1
         second()
@@ -37,6 +37,7 @@ function second(){ # equivalent to first() but for the protected code
 if( L ){ # everything else goes in here
     K[7,string](E,(K[4,string](K[3,string]()[entity])[vector]+K[5,string](0,0,30)[vector]-K[4,string](E)[vector])*(K[8,string](E)[number]*10)-K[9,string](E)[vector]*K[8,string](E)[number]*0.1)
 }
+
 
 # This should roughly explain how to craft private keys for this system.
 # Just take the function names and put them in here, then obsfucate the actual functions in the e2.
