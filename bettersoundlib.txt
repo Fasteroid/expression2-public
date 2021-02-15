@@ -1,5 +1,5 @@
 @name bettersoundlib
-@persist Sounds:table
+@persist Sounds:table Antispam:table
 @model models/bull/gates/microcontroller1.mdl
 
 #[                                                ]#
@@ -59,6 +59,24 @@ if( first() ){
     
     ###############
     ## 
+    #   Entity:antispamSoundPlay( Identifier:string, Sound:string, Duration )
+    #     Plays the provided Sound on a given Entity if said sound isn't already playing
+    #     Returns the Sound's ID for use in things like soundPitch(), soundVolume(), ect...
+    #   
+    function string entity:antispamSoundPlay(Identifier:string, Sound:string, Duration){
+        
+        local SoundID = Identifier+This:id()
+        if( !Antispam[SoundID,number] ){
+            This:soundPlay(SoundID,Duration,Sound)
+            Antispam[SoundID,number] = 1
+            timer("sound_antispam_"+SoundID,Duration*1000)
+        }
+        return SoundID
+        
+    }
+    
+    ###############
+    ## 
     #   <BetterSound>:betterSoundStop( )  OR  betterSoundStop( BetterSound )
     #     Stops a sound but leaves it cached internally.
     #     Good for sounds played with zero duration
@@ -84,4 +102,10 @@ for( I=1, Sounds:count() ){
         soundStop(I)
         Sounds[I,table]["playing",number] = 0
     } 
+}
+foreach( SoundID:string, Bool:normal = Antispam ){
+    if(clk("sound_antispam_"+SoundID)){
+        soundStop(SoundID)
+        Antispam[SoundID,number] = 0
+    }     
 }
