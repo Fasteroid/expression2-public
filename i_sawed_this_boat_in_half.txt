@@ -1,0 +1,185 @@
+@name I SAWED THIS BOAT IN HALF
+@inputs 
+@outputs 
+@persist Boat OtherBoat Saw Mode DebriSpam Saw_Progress Saw_Spin Boat_Splitting SoundFunnyThing StartPos:vector EndPos:vector
+@persist Debris:table DebriModels:array
+
+##########################
+###  
+##   betterhololib.txt
+## pre-packaged for you <3
+##
+@persist HOLOLIB_INDEXES:array
+    if( first() ){
+        ###############
+        ## 
+        #   nextHoloID()
+        #     gets the next available hologram id for use
+        #
+        function number nextHoloID(){
+            local Test = HOLOLIB_INDEXES:getIndex(0)
+            if(Test){
+                return Test
+            }
+            else{
+                return HOLOLIB_INDEXES:count() + 1
+            }
+        }
+        
+        ###############
+        ## 
+        #   allocHolo( Pos:vector = entity():pos() )
+        #     creates a new BetterHolo and returns its index
+        #     optionally takes in a position to spawn the holo at
+        #
+        function number holoAlloc(){
+            local Next = nextHoloID()
+            HOLOLIB_INDEXES[Next,number] = 1
+            holoCreate(Next)
+            return Next
+        }
+        function number holoAlloc(Pos:vector){
+            local Next = nextHoloID()
+            HOLOLIB_INDEXES[Next,number] = 1
+            holoCreate(Next,Pos)
+            return Next
+        }
+        
+        ###############
+        ## 
+        #   <BetterHolo>:destroy( )
+        #     destroys the BetterHolo it's called on
+        #
+        function number:destroy(){
+            holoDelete(This)
+            HOLOLIB_INDEXES[This,number] = 0
+        }
+    }
+##
+##   betterhololib.txt
+###
+##########################
+
+
+if( first() ){
+    
+    runOnTick(1)
+    Boat = holoAlloc(entity():pos()+vec(0,0,20))
+    holoAng(Boat,ang(0))
+    holoModel(Boat,"models/props_canal/boat002b.mdl")
+    
+    timer("init",1500)
+    
+    DebriModels = array(
+        "models/gibs/wood_gib01a.mdl",
+        "models/gibs/wood_gib01b.mdl",
+        "models/gibs/wood_gib01c.mdl",
+        "models/gibs/wood_gib01d.mdl",       
+        "models/gibs/wood_gib01e.mdl"
+    )
+    
+}
+
+if(clk("init")){
+    StartPos = entity():pos()+vec(-100,0,20)
+    EndPos = entity():pos()+vec(80,0,20)
+    Saw = holoAlloc(StartPos)
+    holoAng(Saw,ang(0,0,90))
+    holoModel(Saw,"models/props_junk/sawblade001a.mdl")
+    holoEntity(Saw):soundPlay("pop",1,"garrysmod/balloon_pop_cute.wav")
+    holoEntity(Saw):soundPlay("sawloop",0,"ambient/sawblade.wav")
+    soundVolume("sawloop",0)
+    timer("sawstart",1500)
+    timer("debris",2000)
+    timer("debristop",4400)
+    timer("split",6500)
+}
+
+if(clk("sawstart")){
+    Mode = 1
+    entity():streamStart(1,"https://www.myinstants.com/media/sounds/i-sawed.mp3",2)
+}
+if(clk("debris")){
+    DebriSpam = 1    
+}
+if(clk("debristop")){
+    DebriSpam = 0 
+}
+
+if(Mode==1){
+    Saw_Progress = Saw_Progress + 1/(2^8)
+    holoPos(Saw,mix(EndPos,StartPos,Saw_Progress))
+    if(Saw_Progress>=1){ Mode = 2 }
+}
+
+if(Mode<3){
+    SoundFunnyThing = clamp(SoundFunnyThing*0.999-0.01 + (abs(Saw_Progress-0.45)-0.45<0)*0.05*(1+1*(Saw_Progress<0.1))*(Mode==1),0,1)
+    Saw_Spin = Saw_Spin + SoundFunnyThing*30
+    holoAng(Saw,ang(Saw_Spin,0,90))
+    soundVolume("sawloop",SoundFunnyThing)
+    soundPitch("sawloop",SoundFunnyThing*100)
+}
+
+if(DebriSpam){
+    
+    for(J=1,1){
+    SpawnPos = mix(EndPos,StartPos,Saw_Progress)+vec(12,0,4)
+    Holo = holoAlloc(SpawnPos)
+    holoModel(Holo,DebriModels[randint(1,DebriModels:count()),string])
+    holoScale(Holo,positive(randvec())*0.2+vec(0.2))
+    Deb = table(
+        "id" = Holo,
+        "vel" = (randvec()+vec(0.1,0,0.5))*4,
+        "ent" = holoEntity(Holo),
+        "avel" = ang(0.5-random(),0.5-random(),0)*10,
+        "alive" = 1
+    )
+    Debris:pushTable(Deb)
+    }
+    
+}
+
+for( I=Debris:count(), 1, -1 ){
+    
+    local Deb = Debris[I,table]
+    if(Deb["alive",number]){
+        local Grnd = rangerOffset(3,Deb["ent",entity]:pos(),vec(0,0,-1))
+        Deb["vel",vector] = Deb["vel",vector] - vec(0,0,0.2)
+        Deb["avel",angle] = Deb["avel",angle] * ang(0.9,0.8,0.6)
+        if(Grnd:hit()){ 
+            Deb["vel",vector] = Deb["vel",vector] * vec(0.6,0.6,-0.7)    
+            if(abs(Deb["vel",vector]:length2())<2 & (0.5<Deb["ent",entity]:angles():up():dot(vec(0,0,1)))){
+                Debris:remove(I)
+            } 
+        }
+        holoPos(Deb["id",number],Deb["ent",entity]:pos()+Deb["vel",vector])
+        holoAng(Deb["id",number],Deb["ent",entity]:angles()+Deb["avel",angle])
+    }
+    
+}
+
+if(clk("split")){
+    Mode = 3
+    StartPos = holoEntity(Boat):pos()
+    OtherBoat = holoAlloc(StartPos)
+    Saw_Progress = 0
+    holoModel(OtherBoat,"models/props_canal/boat002b.mdl")
+    holoClip(Boat,1,vec(),vec(0,-1,0),0)
+    holoClipEnabled(Boat,1,1)
+    holoClip(OtherBoat,1,vec(),vec(0,1,0),0)
+    holoClipEnabled(OtherBoat,1,1)
+}
+
+if(Mode>=3){
+    Saw_Progress = min(Saw_Progress + 0.1,30)
+    holoPos(Boat,StartPos+vec(0,-Saw_Progress,0))
+    holoPos(OtherBoat,StartPos+vec(0,Saw_Progress,0))
+    if(Saw_Progress>10){ Mode = 4 }
+}
+
+if( Mode == 4 ){
+    Saw_Progress = min(Saw_Progress + 0.4,30)
+    holoAng(Boat,ang(0,0,Saw_Progress-10))
+    holoAng(OtherBoat,-ang(0,0,Saw_Progress-10))
+}
+

@@ -7,11 +7,11 @@
 runOnTick(1)
 
 if(first()){
-    propSpawnUndo(0)
-    LIGHT = propSpawn("models/maxofs2d/lamp_flashlight.mdl",entity():pos()+vec(0,0,50),ang(45),1)
     
-    RES = 128
-    CPU = 10000
+    propSpawnUndo(0)
+    
+    RES = 32
+    CPU = 5000
     
     # dumbass cheat function I stole
     function wirelink:initScreen(Resolution){
@@ -20,10 +20,7 @@ if(first()){
         This[1048575]=1 #Apply changes
         This[1048572]=Resolution #Set new resolution on Y (Height)
         This[1048573]=Resolution #Set new resolution on X (Width)
-        This["PixelG",number] = 999
     }
-    
-
     
 }   
 
