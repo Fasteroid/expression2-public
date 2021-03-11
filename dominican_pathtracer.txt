@@ -7,17 +7,17 @@
 @trigger  
 @model models/dav0r/camera.mdl
 
-#include "asyncfiles"
+#include "asyncfileslib"
 #include "bmplib2"
 
 if(first()){
     
     SunColor = vec(255,247,196) * 3
     
-    Res = 54
-    Samp = 2
-    Bounces = 4
-    Passes = 16
+    Res = 64
+    Samp = 4
+    Bounces = 3
+    Passes = 32
     
     bmpSetSize( Res, Res )
     
@@ -61,14 +61,8 @@ if(first()){
         
     }
     
-    fileLoadASync("materials/bigcity.txt","ready")
-    
-    function ready(FileData:string, FileName:string){
-        Materials = vonDecodeTable(FileData)
-        entity():soundPlay(36,1,"buttons/combine_button1.wav")
-        Ready = 1
-    }
-    
+
+ Ready = 1
     
     function string cleanupTexture(Tex:string){
         #check if we even need to do this
@@ -109,46 +103,31 @@ if(first()){
 
     function vector ranger:getColor(Depth,Normal:vector){
         
-
-        CurMat = This:hitTexture()
-        CurMat = cleanupTexture(CurMat)
+        if( !This:entity():isValid() ){ return vec(0.1) }
+        CurMat = This:entity():getMaterial()
         
-        if(CurMat=="**studio**"){
-            CurMat = This:entity():getMaterials():string(1)
-        }
-        
-        Col = vec(0)
+        Col = vec()
         
         if(!Depth){
-            DSTextures[ X, array ][ Y, string ] = CurMat + This:hitNormal()
+            DSTextures[ X, array ][ Y, string ] = CurMat + round(This:hitNormal()*8)
         }
         
-        if(This:hitSky()){
-            if(Depth){
-                return SunColor
-            }
-            else{
-                return vec(100,150,255)
-            }
+        if(CurMat=="lights/white"){
+            return vec(1)
         }
         
         if(Depth<Bounces){
 
-            Col = Col + CurMat:mat2color()*0.7
-                
-            Normal = cosineSphere(1):rotate(This:hitNormal():toAngle())
+            Col = (This:entity():getColor()*0.95*max(Normal:dot(-This:hitNormal()),0))/256
+            Normal = Normal - 2 * This:hitNormal():dot(Normal) * This:hitNormal() + randvec()*0.4     
             Sample = rangerOffset(65536,This:position(),Normal)
 
-            Col = Col*0.2 + Sample:getColor(Depth+1,Normal)*0.6
+            Col = Col * Sample:getColor(Depth+1,Normal)
 
         }
         else{
             
-            Sun = rangerOffset(99999,This:position()+This:hitNormal()*0.01,-L:forward())
-            
-            if(Sun:hitSky()){
-                return Col + CurMat:mat2color()  #terminate the ray
-            }                
+            return vec()           
             
         }
         
@@ -167,18 +146,17 @@ if(first()){
     
     function pathtrace(){
         Fwd = vec(0.6,-X/Res+0.5,-Y/Res+0.5):rotate(entity():angles())
-        
+        Color = vec()
         rangerHitWater(1)
-        R = rangerOffset(65536,entity():pos(),Fwd)
-        holoPos(1,R:pos())
-        Color = vec(0)
         for(I=1,Samp){
+            R = rangerOffset(65536,entity():pos(),Fwd)
+            holoPos(1,R:pos())
             Color = Color + R:getColor(0,Fwd)
         }
-        Color = Color / Samp
+        Color = Color*256/Samp
         
         DSColors[ X, array ][ Y, vector ] = DSColors[ X, array ][ Y, vector ] + Color
-        DS[X+(Y)*Res] = rgb2digi( clampImprovedA(DSColors[ X, array ][ Y, vector ] / (Z+1)) ,2)
+        DS[X+(Y)*Res] = rgb2digi( clamp(DSColors[ X, array ][ Y, vector ] / (Z+1),vec(),vec(255)) ,2)
     }
     
     function denoise(){
@@ -203,6 +181,7 @@ if(first()){
         NewColor = NewColor / C
         DSColors2[ X, array ][ Y, vector ] = NewColor
         Col = NewColor / (Z+1)
+        Col = clamp(Col,vec(),vec(255))
         bmpWritePixel(X+1,Y+1,round(Col))
         DS[X+(Y)*Res] = rgb2digi(Col ,2)
         
@@ -213,7 +192,7 @@ if(first()){
 }
 
 if(Render & Ready){
-    while( opcounter()<softQuota() & (cpuUsage()/timeQuota() < 0.15) ){
+    while( opcounter()<softQuota() & (cpuUsage()/timeQuota() < 0.4) ){
         Do()
         X = (X+1)%Res
         if(X==0){
