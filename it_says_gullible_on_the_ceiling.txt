@@ -1,0 +1,45 @@
+@name it says gullible on the ceiling
+@inputs 
+@outputs 
+@persist 
+@trigger
+
+# sprops recommended
+
+if( first() ){
+    concmd("ulx csay it says gullible on the ceiling")
+    
+    findByClass("sky_camera")
+    Xd = findResult(1)
+    
+    runOnTick(1)
+    I = 0
+    function h( M:string ){
+        I++
+        holoCreate(I,Xd:pos() + vec(150-I*50,0,0))
+        holoModel(I,M)
+        holoScale(I,vec(3))
+        holoAng(I,ang(0,0,-90))
+    }
+    h("models/sprops/misc/alphanum/alphanum_g.mdl")
+    h("models/sprops/misc/alphanum/alphanum_u.mdl")
+    h("models/sprops/misc/alphanum/alphanum_l.mdl")
+    h("models/sprops/misc/alphanum/alphanum_l.mdl")
+    h("models/sprops/misc/alphanum/alphanum_i.mdl")
+    h("models/sprops/misc/alphanum/alphanum_b.mdl")
+    h("models/sprops/misc/alphanum/alphanum_l.mdl")
+    h("models/sprops/misc/alphanum/alphanum_e.mdl")
+    
+}
+
+foreach(N,K:entity=players()){
+    
+    if(K:eye():dot(vec(0,0,1)) > 0.8){
+        if(K:isAlive()){
+            K:plyGod(0)
+            Bruh = propSpawn("models/props_c17/oildrum001_explosive.mdl",K:pos(),1)
+            Bruh:propBreak()
+        }
+    }
+    
+}
