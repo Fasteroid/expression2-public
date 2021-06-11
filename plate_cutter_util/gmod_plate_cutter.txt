@@ -1,0 +1,268 @@
+@name Gmod Hunter Plate Cutter v2.0 (BETA)
+@inputs 
+@outputs 
+@persist Ang Busy Mask:table RemoveThis:entity Entity:entity Mode:string Owner:entity ChangedMode Modes:table
+@model models/hunter/blocks/cube025x025x025.mdl
+
+#[
+    Note for Fasteroid/expression2-public Github browsers: 
+    
+    This chip won't work without its #includes and supporting database.
+    
+    The includes can all be found in plate_cutter_util/*.txt
+    Just install them under the same directory tree this repo uses.
+    
+    Additionally, you'll need to pick up a copy of hunterplates_sorted.txt from my e2shared directory.  Link coming soon!
+]#
+
+#include "plate_cutter_util/gmod_plate_database_sorted"
+#include "plate_cutter_util/queuepropspawn"
+
+if( first() ){
+    
+    Owner = owner()
+    Mode  = "cut"
+    Modes = table("cut"=1, "hole"=1)
+    
+    print("[Prop Cutter]: Right click with the crowbar to change the cutting direction, and left click to perform cuts.")
+    
+    function null(E:entity){}
+    
+    function err(Reason:string){
+        holoEntity(0):soundPlay(2,1,"common/wpn_denyselect.wav")
+        Busy = 0        
+        print("[Prop Cutter]: "+Reason)
+    }
+    
+    propSpawnUndo(1)
+    holoCreate(0)
+    holoColor(0,vec(255,200,0),0)
+    holoAng(0,ang())
+    holoMaterial(0,"lights/white")
+    
+    #holoCreate(3)
+    #holoModel(3,"models/sprops/misc/origin.mdl")
+    
+    holoCreate(1,entity():toWorld(vec()))
+    holoModel(1,"plane")
+    holoAng(1,ang(0,0,90))
+    holoScaleUnits(1,vec(100,100,100))
+    holoMaterial(1,"lights/white")
+    holoColor(1,vec(255),0)
+    holoEntity(1):setRenderMode(9)
+
+    holoCreate(2)
+    holoModel(2,"plane")
+    holoAng(2,ang(0,0,-90))
+    holoScaleUnits(2,vec(100,100,100))
+    holoMaterial(2,"lights/white")
+    holoColor(2,vec(60),0)
+    holoEntity(2):setRenderMode(9)
+    
+    holoParent(1,0)
+    holoParent(2,0)
+    
+    holoCreate(3)
+    holoColor(3,vec(255,0,0),100)
+    holoMaterial(3,"lights/white")
+
+    #holoModel(1,"models/maxofs2d/cube_tool.mdl")
+    #holoColor(1,vec(255,0,0),100)
+    runOnTick(1)
+    #holoScale(1,vec(10,0.01,10))
+    
+    
+    #########################
+    ## 
+    #  build( XSize:numbner, YSize:number, Corner:vector, Options:optionsTable )
+    #     Spawns a plate of XSize by YSize.   
+    #
+    #  optionsTable extends table:
+    #   | "origin" = World position of corner
+    #   | "angles" = World angles of corner
+    #   | "format" = Function to format spawned props with
+    #   | "delete" = Prop to remove upon completion; may be left blank
+    #
+    function build(XSize,YSize,Corner:vector,Options:table){
+        
+        PlateObj = getClosestFit(XSize,YSize)
+        local LTX = LTY = 0
+        local XReal = PlateObj["x",number]
+        local YReal = PlateObj["y",number]
+        local RotationAng = ang(0,PlateObj["angle",number],0)
+        
+        local World = toWorldPosAng( 
+            (Corner)*UNIT_SIZE, # local pos
+            RotationAng,                                  # local ang
+            Options["origin",vector],                     # world pos
+            Options["angles",angle]                       # world ang
+        )
+        
+        queuePropSpawn(
+            PlateObj["model",string],
+            World[1,vector] + PlateObj["offset",vector]:rotate(Options["angles",angle]) * UNIT_SIZE,
+            World[2,angle]
+        )
+        
+        if( XReal < XSize ){
+            build(XSize-XReal,YReal,Corner+vec(XReal,0,0),Options)    
+            LTX = 1
+        }
+        if( YReal < YSize ){
+            build(XReal,YSize-YReal,Corner+vec(0,YReal,0),Options)
+            LTY = 1
+        }
+        if( LTX & LTY ){ # degenerate case
+            build(XSize-XReal,YSize-YReal,Corner+vec(XReal,YReal,0),Options)
+        }  
+    }
+    
+    # ------------ Mode Functions ------------ #
+    
+    #########################
+    ## 
+    #  cut( Init:boolean )
+    #     Cutting mode.  Pass 1 to enable.
+    #
+    function cut(Init){
+        
+        if(Init){
+            holoAlpha(1,100)
+            holoAlpha(2,200)
+            holoAlpha(0,0)
+            return
+        }
+        
+        if(changed(Entity)){
+            holoPos(3,Entity:boxCenterW())
+            holoAng(3,Entity:angles())
+            holoScaleUnits(3,Entity:boxSize())    
+            holoParent(3,Entity)
+        }
+        
+        FlatMin = Entity:boxMin():setZ(0)
+        FlatSize = round( Entity:boxSize():setZ(0) / UNIT_SIZE )
+        Origin = Entity:toWorld(FlatMin)
+        
+        #holoPos(3,Origin)
+        #holoAng(3,Entity:angles())
+        
+        Forward = Owner:aimNormal()
+        Up      = Entity:right()
+        
+        AngContext = quat(Forward,Up)
+        holoAng(0,AngContext:toAngle():rotateAroundAxis(Forward,Ang))   
+        
+        LocalPos = Entity:toLocal( Owner:aimPos() ) + FlatMin
+        LocalPos = round( LocalPos / UNIT_SIZE )
+        holoPos(0,Entity:toWorld(LocalPos * UNIT_SIZE - FlatMin) + vec(0.5,0.5,0))
+        LocalPos = round( LocalPos - 2 * Entity:boxCenter() / UNIT_SIZE )
+        LocalPos = round( Entity:boxSize():setZ(0) / UNIT_SIZE ) + LocalPos
+        
+       #print(LocalPos,FlatSize)
+
+        if(changed(Owner:keyAttack1()) & Owner:keyAttack1()){
+            Busy = 1
+            if(Ang == 0 | Ang == 180){
+                if( !LocalPos[1] | !(FlatSize[1]-LocalPos[1]) | !(FlatSize[2]) ){
+                    err("Nothing to cut here")
+                    return
+                }
+                build(LocalPos[1],FlatSize[2],vec(),table(
+                    "origin" = Origin,
+                    "angles" = Entity:angles(),
+                    "delete" = Entity
+                ))
+    
+                build(FlatSize[1]-LocalPos[1],FlatSize[2],vec(),table(
+                    "origin" = Entity:toWorld(FlatMin+vec(LocalPos[1],0,0)*UNIT_SIZE),
+                    "angles" = Entity:angles(),
+                    "delete" = Entity
+                ))
+            }
+            elseif(Ang == 90 | Ang == 270){
+                
+                if( !FlatSize[1] | !(FlatSize[2]-LocalPos[2]) | !(LocalPos[2]) ){
+                    err("Nothing to cut here")
+                    return
+                }
+                function format(E:entity){
+                    E:setColor(vec(127))
+                }
+                build(FlatSize[1],LocalPos[2],vec(),table(
+                    "origin" = Origin,
+                    "angles" = Entity:angles(),
+                    "delete" = Entity
+                ))
+    
+                build(FlatSize[1],FlatSize[2]-LocalPos[2],vec(),table(
+                    "origin" = Entity:toWorld(FlatMin+vec(0,LocalPos[2],0)*UNIT_SIZE),
+                    "angles" = Entity:angles(),
+                    "delete" = Entity
+                ))
+            } 
+            holoEntity(0):soundPlay(1,1,"buttons/weapon_confirm.wav")
+            soundPitch(1,180)
+            return
+        }
+    }
+    
+    #########################
+    ## 
+    #  hole( Init:boolean )
+    #     Hole cutter mode.  Pass 1 to enable.  WIP.
+    #
+    function hole(Init){
+        
+        if(Init){
+            holoAlpha(1,0)
+            holoAlpha(2,0)
+            holoAlpha(0,150)
+            return
+        }
+        
+    }
+    
+}
+
+Owner = owner()
+Active = (Owner:weapon():type() == "weapon_crowbar")
+DoneBusy = !Queue:count() & Busy
+
+if(changed(Mode) | first()){
+    print("init")
+    Mode(1)
+}
+
+if(DoneBusy){
+    Busy = 0
+    Entity:propDelete()    
+}
+
+if(Active & !Busy){
+    
+    if(changed(Owner:keyAttack2()) & Owner:keyAttack2()){
+        Ang = (Ang + 90)%360
+    }
+    
+    Entity = Owner:aimEntity()
+    
+    if(Entity){    
+        Mode(0)
+    }
+    
+    if(changed(Owner:lastSaidWhen())){
+        Chat = Owner:lastSaid():explode(" ")
+        if(Chat[1,string]=="/mode"){
+            if(Modes[Chat[2,string],number]){
+                Mode = Chat[2,string]    
+            }
+            else{
+                err("Invalid mode")
+            }
+        }
+    }
+
+}
+
+

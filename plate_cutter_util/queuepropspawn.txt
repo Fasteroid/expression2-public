@@ -1,0 +1,118 @@
+@name queuepropspawn
+@inputs 
+@outputs 
+@persist Queue:table QueueTimer SpawningFinishedHook
+@trigger 
+
+#[                                       ]#
+##    E2 Library: QueuePropSpawn         ##
+##                                       ##
+##    Adds asynchronous prop spawning    ##
+##    with function callbacks.           ##
+#[                                       ]#             
+
+if( first() ){
+    
+    ###############
+    ## 
+    #   queuePropSpawn( MDL:string, POS:vector, ANG:angle )
+    #     Queues a prop spawn for a frozen prop with the provided model, position, and angle.
+    #
+    function queuePropSpawn(MDL:string,POS:vector,ANG:angle){
+        
+        local MiniTable = table()
+        MiniTable["model",string] = MDL
+        MiniTable["pos",vector] = POS
+        MiniTable["ang",angle] = ANG
+        
+        Queue:pushTable(MiniTable)
+    
+    }
+    
+    ###############
+    ## 
+    #   queuePropSpawn( MDL:string, POS:vector, ANG:angle, CALLBACK:function = "onPropSpawn" )
+    #     Queues a prop spawn for a frozen prop with the provided model, position, and angle.
+    #     Calls the provided callback with the spawned entity when the prop spawns.
+    #
+    function queuePropSpawn(MDL:string,POS:vector,ANG:angle,CALLBACK:string){
+        
+        if(CALLBACK==""){ CALLBACK = "onPropSpawn" }
+        
+        local MiniTable = table()
+        MiniTable["model",string] = MDL
+        MiniTable["pos",vector] = POS
+        MiniTable["ang",angle] = ANG
+        MiniTable["func",string] = CALLBACK
+        
+        Queue:pushTable(MiniTable)
+    
+    }
+    ##
+    #  Callback Example
+    #    Prop is the newly spawned prop
+    ##
+    function onPropSpawn( Prop:entity ){
+        print("Prop spawned: " + Prop:toString())
+    }
+    
+    ###############
+    ## 
+    #   queuePropSpawn( MDL:string, POS:vector, ANG:angle, CALLBACK:function = "onPropSpawnData", DATA:table )
+    #     Queues a prop spawn for a frozen prop with the provided model, position, and angle.
+    #     Calls the provided callback with the spawned entity and provided DATA when the prop spawns.
+    #
+    #     DATA is used to pass additional properties into the callback function where needed, such as colors.
+    #
+    function queuePropSpawn(MDL:string,POS:vector,ANG:angle,CALLBACK:string,DATA:table){
+        
+        if(CALLBACK==""){ CALLBACK = "onPropSpawnData" }
+        local MiniTable = table()
+        MiniTable["model",string] = MDL
+        MiniTable["pos",vector] = POS
+        MiniTable["ang",angle] = ANG
+        MiniTable["func",string] = CALLBACK
+        MiniTable["data",table] = DATA      
+        Queue:pushTable(MiniTable)
+    
+    }
+    ##
+    #  Callback Example
+    #    Prop is the newly spawned prop
+    #    Data is the earlier provided DATA:table from when queuePropSpawn was called
+    ##
+    function onPropSpawnData( Prop:entity, Data:table ){
+        print("Prop spawned: " + Prop:toString() + " with the following extra data:")
+        printTable(Data)
+    } 
+
+
+    ### INTERNAL ##
+    ## 
+    #   queueRead()
+    #     Processes queued prop spawns
+    #
+    function queueRead(){
+        if(propCanCreate()){
+
+                local Read = Queue[1,table]
+                
+                TMP = propSpawn(Read["model",string],Read["pos",vector],Read["ang",angle],1)
+                if(Read:exists("func")){
+                    if(Read:exists("data")){
+                        Read["func",string](TMP,Read["data",table])
+                    }
+                    else{
+                        Read["func",string](TMP)
+                    }
+                }
+                
+                Queue:remove(1)
+                    
+        }
+    }
+}
+
+if(Queue:exists(1)){
+    queueRead()
+}
