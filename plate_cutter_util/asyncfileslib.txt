@@ -1,0 +1,108 @@
+@name asyncfileslib
+@persist ASYNCFILES_QUEUE_UP:table ASYNCFILES_CURRENT_UPLOAD:string ASYNCFILES_QUEUE_DOWN:table ASYNCFILES_ISLOADING ASYNCFILES_ROOT:string
+@model models/bull/gates/microcontroller1.mdl
+
+#[                                              ]#
+##    E2 Library: ASyncFileLib                  ##
+##                                              ##
+##    Adds asynchronous reading and writing.    ##
+##    Prints debug info to console!             ##
+##                                              ##
+##    Simply put, you won't have to work with   ##
+##    E2's sucky file I/O anymore.              ##
+#[                                              ]#
+
+if( first() ){
+
+    runOnFile(1) 
+
+    ####  Public Global Variables
+    #[]#
+    #[]#  ASYNCFILES_ROOT           = ">e2shared/"   # default root directory
+    #[]#  ASYNCFILES_CURRENT_UPLOAD = "none"         # name of file currently uploading
+    ####  
+     
+    ###############
+    ## 
+    #   fileLoadASync( Filepath:string, Callback:function = "onFileLoaded" )
+    #     Queues reading of a Filepath in ASYNCFILES_ROOT.
+    #     Runs the set callback function when it finishes loading.
+    #
+    function fileLoadASync(Filepath:string,Callback:string){
+        if(Callback==""){ Callback = "onFileLoaded" }
+        Call = table(
+            "file" = ASYNCFILES_ROOT+Filepath,
+            "callback" = Callback
+        )
+        ASYNCFILES_QUEUE_UP:pushTable(Call)
+    }
+    ##
+    #  Callback Example
+    #    FileData is the data from the file
+    #    FileName is the name of the file loaded
+    ##
+    function onFileLoaded( FileData:string, FileName:string ){
+        print("Default async load callback: "+FileName+" successfully loaded!")
+    }
+    
+    ###############
+    ## 
+    #   fileWriteASync( Filepath:string, Data:string )
+    #     Queues Data to be written to a Filepath in ASYNCFILES_ROOT.
+    #    
+    function fileWriteASync(Filepath:string,Data:string){
+        Call = table(
+            "file" = ASYNCFILES_ROOT+Filepath,
+            "data" = Data
+        )
+        ASYNCFILES_QUEUE_DOWN:pushTable(Call)
+    } 
+    
+    ### INTERNAL ##
+    ## 
+    #   fileProcessLoad()
+    #     Processes current upload list and runs attached callbacks
+    #
+    function fileProcessLoad(){
+        if(fileClk()){
+            if(fileStatus()!=_FILE_OK){
+                print(_HUD_PRINTCONSOLE,"WARNING: file '"+ASYNCFILES_QUEUE_UP[1,table]["file",string]+"' failed to upload!")
+            }
+            else{
+                print(_HUD_PRINTCONSOLE,"File '"+ASYNCFILES_QUEUE_UP[1,table]["file",string]+"' successfully uploaded!")                
+            }
+            ASYNCFILES_QUEUE_UP:removeTable(1)["callback",string](fileRead(),ASYNCFILES_CURRENT_UPLOAD) # execute the callback :D
+            ASYNCFILES_ISLOADING = 0 # ready up
+            ASYNCFILES_CURRENT_UPLOAD = "none"
+        }
+        elseif(fileCanLoad() & ASYNCFILES_QUEUE_UP:count() & !ASYNCFILES_ISLOADING){
+            print(_HUD_PRINTCONSOLE,"Starting file upload: '"+ASYNCFILES_QUEUE_UP[1,table]["file",string]+"'")
+            fileLoad(ASYNCFILES_QUEUE_UP[1,table]["file",string])
+            ASYNCFILES_ISLOADING = 1
+            ASYNCFILES_CURRENT_UPLOAD = ASYNCFILES_QUEUE_UP[1,table]["file",string]:replace(ASYNCFILES_ROOT,"")
+        }
+    }
+    
+    ### INTERNAL ##
+    ## 
+    #   fileProcessWrite()
+    #     Processes current download list
+    #
+    function fileProcessWrite(){
+        if(fileCanWrite() & ASYNCFILES_QUEUE_DOWN:count()){
+            print(_HUD_PRINTCONSOLE,"Starting file download: '"+ASYNCFILES_QUEUE_DOWN[1,table]["file",string]+"'")
+            fileWrite(ASYNCFILES_QUEUE_DOWN[1,table]["file",string],ASYNCFILES_QUEUE_DOWN[1,table]["data",string])
+            ASYNCFILES_QUEUE_DOWN:remove(1) # remove it from the list
+        }
+    }
+    
+    if(entity():model() == "models/bull/gates/microcontroller1.mdl"){
+        selfDestruct()
+        error("This is a library; #include it in something.")
+    }
+                
+}
+fileProcessLoad()
+fileProcessWrite()
+
+
