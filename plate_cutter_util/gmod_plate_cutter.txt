@@ -9,10 +9,12 @@
     
     This chip won't work without its #includes and supporting database.
     
-    The includes can all be found in plate_cutter_util/*.txt
-    Just install them under the same directory tree this repo uses.
+    The includes can all be found alongside this file in plate_cutter_util/*.txt
+    Just install them under the same location in your E2 folder and you should be good to go.
     
-    Additionally, you'll need to pick up a copy of hunterplates_sorted.txt from my e2shared directory.  Link coming soon!
+    Additionally, you'll need to pick up a copy of hunterplates_sorted.txt from my e2shared directory:
+    https://github.com/Fasteroid/expression2-public/blob/master/e2shared/hunterplates_sorted.txt
+    
 ]#
 
 #include "plate_cutter_util/gmod_plate_database_sorted"
