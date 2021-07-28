@@ -1,4 +1,4 @@
-@name Minitracer
+@name Minitracer_old
 @inputs DS:wirelink
 @outputs 
 @persist X Y RES CPU LIGHT:entity
