@@ -1,7 +1,7 @@
 @name Minitracer_old
 @inputs DS:wirelink
 @outputs 
-@persist X Y RES CPU LIGHT:entity
+@persist X Y RES CPU SUN:vector
 @trigger 
 
 runOnTick(1)
@@ -21,6 +21,8 @@ if(first()){
         This[1048572]=Resolution #Set new resolution on Y (Height)
         This[1048573]=Resolution #Set new resolution on X (Width)
     }
+    
+    SUN = vec(1,1,0.5):normalized()
     
 }   
 
@@ -51,7 +53,7 @@ while( opcounter()<softQuota() & cpuUsage()<CPU*10^-6 ){
     Ranger = rangerOffset( 65536, entity():pos(), Fwd )
     
     
-    Color = vec(100+Ranger:distance()*0.01) + vec(120,100,100)*Ranger:hitNormal():dot(-LIGHT:forward())
+    Color = vec(100+Ranger:distance()*0.01) + vec(120,100,100)*Ranger:hitNormal():dot(SUN)
     
     
     DS[(RES-X)+(Y)*RES]= rgb2digi( clamp(Color,vec(0),vec(255)) ,2)
