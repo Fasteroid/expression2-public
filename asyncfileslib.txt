@@ -28,7 +28,7 @@ if( first() ){
     #     Queues reading of a Filepath in ASYNCFILES_ROOT.
     #     Runs the set callback function when it finishes loading.
     #
-    function fileLoadASync(Filepath:string,Callback:string){
+    function fileLoadASync( Filepath:string,Callback:string ){
         if(Callback==""){ Callback = "onFileLoaded" }
         Call = table(
             "file" = ASYNCFILES_ROOT+Filepath,
