@@ -1,0 +1,58 @@
+@name use-pickup detection
+@persist
+
+# Ever tried to detect when someone picks up or drops an entity with use?
+# This chip may prove useful if so:
+
+if( first() ){
+    runOnTick(1)
+    
+    # When a prop is picked up by a player, do the following with it:
+    function onPropPickup(Prop:entity,Player:entity){
+        print(Player:name() + " picked up " + Prop:toString())
+    }
+    
+    # When a prop is dropped by a player, do the following with it:
+    function onPropDropped(Prop:entity,Player:entity){
+        print(Player:name() + " dropped " + Prop:toString())
+    }
+    
+}
+
+foreach( N, Ply:entity = players() ){
+
+    local Use = Ply:keyAttack2()
+    
+    if( Ply["use",number] != Use ){ # if( changed(Use) )
+        
+        Ply["use",number] = Use
+        if(!Use){ continue } # if they were letting go of E, abort.
+        
+        rangerFilter(Ply)
+        local Trace = rangerOffsetHull(60,Ply:shootPos(),Ply:eye(),vec(-8),vec(8))    
+        
+        local Ent = Trace:entity()
+        
+        if( !Ent:isValid() ){
+            Trace = rangerOffset(60,Ply:shootPos(),Ply:eye())    
+            Ent = Trace:entity()
+        }
+        
+        if( !Ent:isPlayerHolding() ){ continue } # entity didn't actually get picked up; abort
+        
+        Ply["held",entity] = Ent # update held entity
+        
+        onPropPickup(Ent, Ply)
+        
+    }
+    
+    local Ent = Ply["held",entity]
+    
+    if( !Ent:isValid() ){ continue } # they're already not holding anything; they have nothing to drop
+    if( Ent:isPlayerHolding() ){ continue } # if still holding the prop, don't run dropped event
+        
+    Ply["held",entity] = noentity() # update held entity
+    
+    onPropDropped(Ent,Ply)
+
+}
