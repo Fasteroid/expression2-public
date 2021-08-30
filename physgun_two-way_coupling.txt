@@ -47,7 +47,7 @@ if( first() ){
     }
     function entity:perfectAngForce(Ang:angle){
         local Torque = This:toLocalAxis(rotationVector(quat(Ang)/quat(This)))
-        This:applyTorque((Torque*30-This:angVelVector()*3)*This:inertia())
+        This:applyTorque((Torque*30-This:angVelVector()*3)*This:inertia()* (This:mass()/min(This:mass(),500)))
     }
     
 }
@@ -96,14 +96,14 @@ if( Owner:weapon():type() == "weapon_physgun" ) {
     
         Force      = Owner:shootPos() + Owner:eye() * BeamLength - BeamEndPos # initial force
         Force     -= HeldEntity:pointVel( HeldLocalPos ) * 0.1
-        Force     *= HeldEntity:mass() # amplify
+        Force     *= clamp(HeldEntity:mass(),0,1000) # amplify
         
         TargetAng = HeldLocalAng:rotateAroundAxis( vec(0,0,1), Owner:eyeAngles()[2] )
         HeldEntity:perfectAngForce( TargetAng )
         
         HeldEntity:applyOffsetForce( Force, BeamEndPos )    
         
-        Owner:plyApplyForce( -Force / PLAYER_MASS - Owner:vel() * 0.00005 * clamp(HeldEntity:mass(),0,5000) )
+        Owner:plyApplyForce( -Force / PLAYER_MASS - Owner:vel() * 0.0001 * clamp(HeldEntity:mass(),0,1000) )
         
     }
     elseif(Attack1){
