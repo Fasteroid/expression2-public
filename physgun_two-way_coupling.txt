@@ -95,8 +95,8 @@ if( Owner:weapon():type() == "weapon_physgun" ) {
         BeamEndPos = HeldEntity:toWorld( HeldLocalPos )
     
         Force      = Owner:shootPos() + Owner:eye() * BeamLength - BeamEndPos # initial force
+        Force     -= HeldEntity:pointVel( HeldLocalPos ) * 0.1
         Force     *= HeldEntity:mass() # amplify
-        Force     -= HeldEntity:pointVel( HeldLocalPos ) * 0.05 / HeldEntity:mass()  # damping
         
         TargetAng = HeldLocalAng:rotateAroundAxis( vec(0,0,1), Owner:eyeAngles()[2] )
         HeldEntity:perfectAngForce( TargetAng )
