@@ -1,0 +1,121 @@
+@name Physgun Two-Way Coupling (part 2)
+@inputs 
+@outputs 
+@persist BeamLength HeldEntity:entity HeldLocalPos:vector HeldLocalAng:angle Holding PLAYER_MASS
+@persist OwnerEyeAng:angle Attack1
+@persist [Chip,Owner]:entity TickInterval
+@trigger
+@model models/hunter/misc/sphere025x025.mdl
+
+###############################
+#                             #
+#   Two-Way Coupled Physgun   #
+#        by: Fasteroid        #
+#                             #
+###############################
+
+#[
+    Author's Note:
+     This thing is STUPIDLY cool... I still can't get
+     over how easy this was to make. Basically ANYTHING
+     your intuition tells you will just work because
+     physics is just so FUCKING COOL!
+    
+     Hope you enjoy this if you've come across it.
+    - Fast
+    
+    Discovered mechanics:
+     + Flinging yourself with the inertia of heavy props
+     + Using the mouse wheel to turn props into grappling hooks
+     + Friction-wedging yourself between walls?
+]#
+
+
+if( first() ){
+    
+    runOnTick(1)
+    PLAYER_MASS = 100
+    Chip = entity()
+    Owner = owner()
+    Chip:setAlpha(0)
+    TickInterval = tickInterval()
+    runOnKeys(Owner,1)
+    
+    function vector entity:pointVel(LocalPos:vector){
+        local AngVel = This:angVelVector()
+        return This:vel() + ( This:toWorldAxis( AngVel:normalized():cross(LocalPos) * AngVel:length() * _PI/180 ) )    
+    }
+    function entity:perfectAngForce(Ang:angle){
+        local Torque = This:toLocalAxis(rotationVector(quat(Ang)/quat(This)))
+        This:applyTorque((Torque*30-This:angVelVector()*3)*This:inertia())
+    }
+    
+}
+
+if( keyClk() ){
+    Key = keyClkPressed()
+    if( Key == "mouse_wheel_up" ){
+        BeamLength = clamp( BeamLength + 5, 40, 4096 )
+    }
+    if( Key == "mouse_wheel_down" ){
+        BeamLength = clamp( BeamLength - 5, 40, 4096 )  
+    }
+    exit()
+}
+
+if( Owner:weapon():type() == "weapon_physgun" ) {
+
+    Attack1 = Owner:keyAttack1()
+    
+    rangerFilter( array(Owner,Chip) )
+    EyeTrace = rangerOffset( 8192, Owner:shootPos() + Owner:vel() * TickInterval * 1.5, Owner:eye() )
+    
+    
+    ###  Detect entity holding / dropping
+    ##
+        if( changed( Attack1 ) | !Holding ){
+            if( Attack1 ){
+                HeldEntity = EyeTrace:entity()
+                if( HeldEntity:owner() == owner() ){
+                    Holding = 1
+                    HeldLocalPos = HeldEntity:toLocal( EyeTrace:pos() )
+                    HeldLocalAng = HeldEntity:angles():rotateAroundAxis(vec(0,0,1),-Owner:eyeAngles()[2])
+                    BeamLength = EyeTrace:distance()
+                }
+            }
+            else{
+                Holding = 0    
+            }
+        }
+    ##
+    ###
+    
+    if( Holding ){
+        
+        BeamEndPos = HeldEntity:toWorld( HeldLocalPos )
+    
+        Force      = Owner:shootPos() + Owner:eye() * BeamLength - BeamEndPos # initial force
+        Force     *= HeldEntity:mass() # amplify
+        Force     -= HeldEntity:pointVel( HeldLocalPos ) * 0.05 / HeldEntity:mass()  # damping
+        
+        TargetAng = HeldLocalAng:rotateAroundAxis( vec(0,0,1), Owner:eyeAngles()[2] )
+        HeldEntity:perfectAngForce( TargetAng )
+        
+        HeldEntity:applyOffsetForce( Force, BeamEndPos )    
+        
+        Owner:plyApplyForce( -Force / PLAYER_MASS - Owner:vel() * 0.00005 * clamp(HeldEntity:mass(),0,5000) )
+        
+    }
+    elseif(Attack1){
+        BeamEndPos = EyeTrace:pos()
+    }
+    else{
+        BeamEndPos = Owner:shootPos() + Owner:vel() * TickInterval * 2
+    }
+    
+    
+    Chip:setPos( BeamEndPos )
+
+}
+
+Chip:propFreeze(1)
