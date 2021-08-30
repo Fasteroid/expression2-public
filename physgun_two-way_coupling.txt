@@ -1,7 +1,7 @@
 @name Physgun Two-Way Coupling (part 2)
 @inputs 
 @outputs 
-@persist BeamLength HeldEntity:entity HeldLocalPos:vector HeldLocalAng:angle Holding PLAYER_MASS
+@persist BeamLength HeldEntity:entity HeldLocalPos:vector InitialGrabYaw InitialGrabAng:angle InitialGrabQuat:quaternion Holding PLAYER_MASS
 @persist OwnerEyeAng:angle Attack1
 @persist [Chip,Owner]:entity TickInterval
 @trigger
@@ -28,6 +28,7 @@
      + Flinging yourself with the inertia of heavy props
      + Using the mouse wheel to turn props into grappling hooks
      + Friction-wedging yourself between walls?
+     + Rotating props under you to "walk" across surfaces
 ]#
 
 
@@ -47,7 +48,7 @@ if( first() ){
     }
     function entity:perfectAngForce(Ang:angle){
         local Torque = This:toLocalAxis(rotationVector(quat(Ang)/quat(This)))
-        This:applyTorque((Torque*30-This:angVelVector()*3)*This:inertia()* (This:mass()/min(This:mass(),500)))
+        This:applyTorque((Torque*100-This:angVelVector()*10)*This:inertia()* (This:mass()/min(This:mass(),500)))
     }
     
 }
@@ -79,7 +80,9 @@ if( Owner:weapon():type() == "weapon_physgun" ) {
                 if( HeldEntity:owner() == owner() ){
                     Holding = 1
                     HeldLocalPos = HeldEntity:toLocal( EyeTrace:pos() )
-                    HeldLocalAng = HeldEntity:angles():rotateAroundAxis(vec(0,0,1),-Owner:eyeAngles()[2])
+                    InitialGrabQuat = quat( Chip:angles() )
+                    InitialGrabYaw  = Owner:angles()[2]
+                    InitialGrabAng  = HeldEntity:angles()
                     BeamLength = EyeTrace:distance()
                 }
             }
@@ -98,7 +101,10 @@ if( Owner:weapon():type() == "weapon_physgun" ) {
         Force     -= HeldEntity:pointVel( HeldLocalPos ) * 0.1
         Force     *= clamp(HeldEntity:mass(),0,1000) # amplify
         
-        TargetAng = HeldLocalAng:rotateAroundAxis( vec(0,0,1), Owner:eyeAngles()[2] )
+        TargetAng = InitialGrabAng
+        CursedQuatThing = quat( Chip:angles():rotateAroundAxis( vec(0,0,1), Owner:angles()[2] - InitialGrabYaw ) ) / InitialGrabQuat
+        TargetAng = TargetAng:rotateAroundAxis( rotationAxis(CursedQuatThing), rotationAngle(CursedQuatThing) )
+        
         HeldEntity:perfectAngForce( TargetAng )
         
         HeldEntity:applyOffsetForce( Force, BeamEndPos )    
@@ -113,9 +119,15 @@ if( Owner:weapon():type() == "weapon_physgun" ) {
         BeamEndPos = Owner:shootPos() + Owner:vel() * TickInterval * 2
     }
     
+    IsRotating = Holding & Owner:keyUse()
+    Chip:propFreeze( !IsRotating )        
+    
+    if(IsRotating){
+        InitialGrabYaw = Owner:angles()[2]
+    }
     
     Chip:setPos( BeamEndPos )
 
 }
 
-Chip:propFreeze(1)
+
