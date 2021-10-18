@@ -67,9 +67,11 @@ if(first()){
     
 }
 
-foreach(ID:string,Time:number=RepeaterLib_Repeaters){
-    if(clk("RepeaterLib_"+ID)){
-        timer("RepeaterLib_"+ID,Time)        
+Keys = RepeaterLib_Repeaters:keys()
+foreach(ID,Key:string=Keys){
+    local Time = RepeaterLib_Repeaters[Key,number]
+    if(clk("RepeaterLib_"+Key)){
+        timer("RepeaterLib_"+Key,Time)        
     } 
 }
 

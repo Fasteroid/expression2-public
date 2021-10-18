@@ -35,7 +35,7 @@
 if( first() ){
     
     runOnTick(1)
-    PLAYER_MASS = 100
+    PLAYER_MASS = 150
     Chip = entity()
     Owner = owner()
     Chip:setAlpha(0)
@@ -67,6 +67,7 @@ if( keyClk() ){
 if( Owner:weapon():type() == "weapon_physgun" ) {
 
     Attack1 = Owner:keyAttack1()
+    Attack2 = Owner:keyAttack2()
     
     rangerFilter( array(Owner,Chip) )
     EyeTrace = rangerOffset( 8192, Owner:shootPos() + Owner:vel() * TickInterval * 1.5, Owner:eye() )
@@ -74,11 +75,18 @@ if( Owner:weapon():type() == "weapon_physgun" ) {
     
     ###  Detect entity holding / dropping
     ##
+        if( changed( Attack2 ) & Attack2 ){
+            if(Holding){
+                HeldEntity:propFreeze(1)    
+            }
+            Holding = 0    
+        }
         if( changed( Attack1 ) | !Holding ){
             if( Attack1 ){
                 HeldEntity = EyeTrace:entity()
                 if( HeldEntity:owner() == owner() ){
                     Holding = 1
+                    HeldEntity:propFreeze(0)
                     HeldLocalPos = HeldEntity:toLocal( EyeTrace:pos() )
                     InitialGrabQuat = quat( Chip:angles() )
                     InitialGrabYaw  = Owner:angles()[2]
