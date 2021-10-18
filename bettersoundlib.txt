@@ -103,7 +103,8 @@ for( I=1, Sounds:count() ){
         Sounds[I,table]["playing",number] = 0
     } 
 }
-foreach( SoundID:string, Bool:normal = Antispam ){
+foreach( N, SoundID:string = Antispam:keys() ){
+    local Bool = Antispam[SoundID,number]
     if(clk("sound_antispam_"+SoundID)){
         soundStop(SoundID)
         Antispam[SoundID,number] = 0
