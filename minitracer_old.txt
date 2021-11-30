@@ -8,9 +8,11 @@ runOnTick(1)
 
 if(first()){
     
+    #include "turbocolormap"
+    
     propSpawnUndo(0)
     
-    RES = 32
+    RES = 512
     CPU = 5000
     
     # dumbass cheat function I stole
@@ -52,11 +54,7 @@ while( opcounter()<softQuota() & cpuUsage()<CPU*10^-6 ){
     
     Ranger = rangerOffset( 65536, entity():pos(), Fwd )
     
-    
-    Color = vec(100+Ranger:distance()*0.01) + vec(120,100,100)*Ranger:hitNormal():dot(SUN)
-    
-    
-    DS[(RES-X)+(Y)*RES]= rgb2digi( clamp(Color,vec(0),vec(255)) ,2)
+    DS[(RES-X)+(Y)*RES]= rgb2digi( turbomap(Ranger:distance()/8192)*255,2)
     
 }
 

@@ -25,7 +25,7 @@ if( first() ){
         Ent["ang",angle] = Ent:angles()
         Ent["pos",vector] = Ent:pos()        
         Ent["scl",vector] = holoScale(This)
-        Ent["c",vector] = Ent:boxCenter()        
+        Ent["c",vector] = -Ent:boxCenter()        
         Ent["o",angle] = ang(0)
     }
     function antiCringeExtend(This){
