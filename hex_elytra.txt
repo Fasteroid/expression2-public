@@ -185,8 +185,8 @@ if( Jumps==2 ){
     		  if (Hlook > 0){
           FORCE = FORCE + vec(LookX / Hlook * Hvel - VEL:x(),LookZ / Hlook * Hvel - VEL:y(),0)*vec(0.6,0.6,0.3)
 		  }
-    		  
-        owner():plyApplyForce(FORCE*40 - VEL*vec(0.3,0.3,0)) # apply forces
+    		  FORCE[3] = min(FORCE[3],15) - max(VEL[3],0) * 0.006
+        owner():plyApplyForce(FORCE*35 - VEL*vec(0.1,0.1,0)) # apply forces
     #
     ##   Tweaked Elytra Source Code 
     ###
@@ -206,8 +206,8 @@ if( Jumps==2 ){
     if( owner():vel():distance(CollisionVel)>1000 & !first() & Eye:distance()<200 ){
 
         owner():soundPlay(2,1,"player/pl_fallpain"+(randint(1,0)*2+1)+".wav")
-        owner():soundPlay(3,1,"physics/body/body_medium_impact_hard"+randint(1,6)+".wav")     
-        owner():streamStart(1,"https://www.myinstants.com/media/sounds/classic_hurt.mp3",1)    
+        #owner():soundPlay(3,1,"physics/body/body_medium_impact_hard"+randint(1,6)+".wav")     
+        #owner():streamStart(1,"https://www.myinstants.com/media/sounds/classic_hurt.mp3",1)    
         Gibs = propSpawn("models/props_combine/breenbust.mdl",owner():pos()-CollisionVel:normalized()*50,0)
         Gibs:applyForce(CollisionVel*10)
         
