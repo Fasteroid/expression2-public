@@ -1,36 +1,15 @@
-@name Physgun Two-Way Coupling (part 2)
+@name F=MA Compliant Physgun
 @inputs 
 @outputs 
 @persist BeamLength HeldEntity:entity HeldLocalPos:vector InitialGrabYaw InitialGrabAng:angle InitialGrabQuat:quaternion Holding PLAYER_MASS
 @persist OwnerEyeAng:angle Attack1
 @persist [Chip,Owner]:entity TickInterval
-@trigger
 @model models/hunter/misc/sphere025x025.mdl
 
-###############################
-#                             #
-#   Two-Way Coupled Physgun   #
-#        by: Fasteroid        #
-#                             #
-###############################
-
-#[
-    Author's Note:
-     This thing is STUPIDLY cool... I still can't get
-     over how easy this was to make. Basically ANYTHING
-     your intuition tells you will just work because
-     physics is incredibly predictable.
-    
-     Hope you enjoy this if you've come across it.
-    - Fast
-    
-    Discovered mechanics:
-     + Flinging yourself with the inertia of heavy props
-     + Using the mouse wheel to turn props into grappling hooks
-     + Friction-wedging yourself between walls?
-     + Rotating props under you to "walk" across surfaces
-]#
-
+    ##############################
+    #   F=MA Compliant Physgun   #
+    #       by: Fasteroid        #
+    ##############################
 
 if( first() ){
     
@@ -53,7 +32,7 @@ if( first() ){
     
 }
 
-if( keyClk() ){
+if( keyClk() ){ # default wheel speed is 5
     Key = keyClkPressed()
     if( Key == "mouse_wheel_up" ){
         BeamLength = clamp( BeamLength + 5, 40, 4096 )
@@ -65,7 +44,8 @@ if( keyClk() ){
 }
 
 if( Owner:weapon():type() == "weapon_physgun" ) {
-
+    
+    Chip:propNotSolid(Attack1)
     Attack1 = Owner:keyAttack1()
     Attack2 = Owner:keyAttack2()
     
@@ -100,9 +80,7 @@ if( Owner:weapon():type() == "weapon_physgun" ) {
         }
     ##
     ###
-    
     if( Holding ){
-        
         BeamEndPos = HeldEntity:toWorld( HeldLocalPos )
     
         Force      = Owner:shootPos() + Owner:eye() * BeamLength - BeamEndPos # initial force
@@ -137,5 +115,3 @@ if( Owner:weapon():type() == "weapon_physgun" ) {
     Chip:setPos( BeamEndPos )
 
 }
-
-
