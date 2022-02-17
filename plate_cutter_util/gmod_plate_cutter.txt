@@ -67,24 +67,6 @@ if( first() ){
     holoCreate(3)
     holoColor(3,vec(255,0,0),100)
     holoMaterial(3,"lights/white")
-    
-    for(I=4,7){
-        holoCreate(I)
-        holoModel(I,"hq_icosphere")
-        holoScale(I,vec(0.5))
-        holoColor(I,vec(0,0,255),100)
-        holoMaterial(I,"lights/white")
-        holoEntity(I):setRenderMode(9)
-    }
-    
-    for(I=8,12){
-        holoCreate(I)
-        holoModel(I,"hq_icosphere")
-        holoScale(I,vec(0.5))
-        holoColor(I,vec(0,255,0),100)
-        holoMaterial(I,"lights/white")
-        holoEntity(I):setRenderMode(9)
-    }
 
     #holoModel(1,"models/maxofs2d/cube_tool.mdl")
     #holoColor(1,vec(255,0,0),100)
