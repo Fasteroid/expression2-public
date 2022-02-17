@@ -1,7 +1,7 @@
-@name Gmod Hunter Plate Cutter v2.0 (BETA)
+@name Gmod Hunter Plate Cutter v2.1
 @inputs 
 @outputs 
-@persist Ang Busy Mask:table RemoveThis:entity Entity:entity Mode:string Owner:entity ChangedMode Modes:table
+@persist Ang Busy Mask:table RemoveThis:entity Entity:entity Mode:string Owner:entity ChangedMode Modes:table HoleModeState HoleData:table
 @model models/hunter/blocks/cube025x025x025.mdl
 
 #[
@@ -25,15 +25,14 @@ if( first() ){
     Owner = owner()
     Mode  = "cut"
     Modes = table("cut"=1, "hole"=1)
-    
-    print("[Prop Cutter]: Right click with the crowbar to change the cutting direction, and left click to perform cuts.")
+    HoleModeState = 0
     
     function null(E:entity){}
     
     function err(Reason:string){
         holoEntity(0):soundPlay(2,1,"common/wpn_denyselect.wav")
         Busy = 0        
-        print("[Prop Cutter]: "+Reason)
+        print("[Prop Cutter] "+Reason)
     }
     
     propSpawnUndo(1)
@@ -41,6 +40,7 @@ if( first() ){
     holoColor(0,vec(255,200,0),0)
     holoAng(0,ang())
     holoMaterial(0,"lights/white")
+    holoEntity(0):setRenderMode(9)
     
     #holoCreate(3)
     #holoModel(3,"models/sprops/misc/origin.mdl")
@@ -67,6 +67,24 @@ if( first() ){
     holoCreate(3)
     holoColor(3,vec(255,0,0),100)
     holoMaterial(3,"lights/white")
+    
+    for(I=4,7){
+        holoCreate(I)
+        holoModel(I,"hq_icosphere")
+        holoScale(I,vec(0.5))
+        holoColor(I,vec(0,0,255),100)
+        holoMaterial(I,"lights/white")
+        holoEntity(I):setRenderMode(9)
+    }
+    
+    for(I=8,12){
+        holoCreate(I)
+        holoModel(I,"hq_icosphere")
+        holoScale(I,vec(0.5))
+        holoColor(I,vec(0,255,0),100)
+        holoMaterial(I,"lights/white")
+        holoEntity(I):setRenderMode(9)
+    }
 
     #holoModel(1,"models/maxofs2d/cube_tool.mdl")
     #holoColor(1,vec(255,0,0),100)
@@ -87,7 +105,7 @@ if( first() ){
     #
     function build(XSize,YSize,Corner:vector,Options:table){
         
-        PlateObj = getClosestFit(XSize,YSize)
+        PlateObj = getClosestFit(round(XSize),round(YSize))
         local LTX = LTY = 0
         local XReal = PlateObj["x",number]
         local YReal = PlateObj["y",number]
@@ -117,6 +135,31 @@ if( first() ){
         if( LTX & LTY ){ # degenerate case
             build(XSize-XReal,YSize-YReal,Corner+vec(XReal,YReal,0),Options)
         }  
+    }    
+    
+    #########################
+    ## 
+    #  computeSnapping( )
+    #     Predefines some variables.  Sorry they're global lol
+    #    
+    function computeSnapping(){
+        FlatMin = Entity:boxMin():setZ(0)
+        FlatSize = round( Entity:boxSize():setZ(0) / UNIT_SIZE )
+        Origin = Entity:toWorld(FlatMin)
+        
+        #holoPos(3,Origin)
+        #holoAng(3,Entity:angles())
+        
+        Forward = Owner:aimNormal()
+        Up      = Entity:right()
+        
+        AngContext = quat(Forward,Up)
+        TileAng = AngContext:toAngle()
+        
+        SpawnComplement = Entity:toLocal( Owner:aimPos() ) + FlatMin
+        SpawnComplement = round( SpawnComplement / UNIT_SIZE )
+        WorldPos = Entity:toWorld(SpawnComplement * UNIT_SIZE - FlatMin) 
+        SpawnPos = round( Entity:boxSize():setZ(0) / UNIT_SIZE + SpawnComplement - 2 * Entity:boxCenter() / UNIT_SIZE )
     }
     
     # ------------ Mode Functions ------------ #
@@ -142,63 +185,45 @@ if( first() ){
             holoParent(3,Entity)
         }
         
-        FlatMin = Entity:boxMin():setZ(0)
-        FlatSize = round( Entity:boxSize():setZ(0) / UNIT_SIZE )
-        Origin = Entity:toWorld(FlatMin)
-        
-        #holoPos(3,Origin)
-        #holoAng(3,Entity:angles())
-        
-        Forward = Owner:aimNormal()
-        Up      = Entity:right()
-        
-        AngContext = quat(Forward,Up)
-        holoAng(0,AngContext:toAngle():rotateAroundAxis(Forward,Ang))   
-        
-        LocalPos = Entity:toLocal( Owner:aimPos() ) + FlatMin
-        LocalPos = round( LocalPos / UNIT_SIZE )
-        holoPos(0,Entity:toWorld(LocalPos * UNIT_SIZE - FlatMin) + vec(0.5,0.5,0))
-        LocalPos = round( LocalPos - 2 * Entity:boxCenter() / UNIT_SIZE )
-        LocalPos = round( Entity:boxSize():setZ(0) / UNIT_SIZE ) + LocalPos
-        
-       #print(LocalPos,FlatSize)
+        holoPos(0,WorldPos)
+        holoAng(0,TileAng:rotateAroundAxis(Forward,Ang))   
+                
 
         if(changed(Owner:keyAttack1()) & Owner:keyAttack1()){
             Busy = 1
             if(Ang == 0 | Ang == 180){
-                if( !LocalPos[1] | !(FlatSize[1]-LocalPos[1]) | !(FlatSize[2]) ){
+                if( !SpawnPos[1] | !(FlatSize[1]-SpawnPos[1]) | !(FlatSize[2]) ){
                     err("Nothing to cut here")
                     return
                 }
-                build(LocalPos[1],FlatSize[2],vec(),table(
+                holoUnparent(3)
+                build(SpawnPos[1],FlatSize[2],vec(),table(
                     "origin" = Origin,
                     "angles" = Entity:angles(),
                     "delete" = Entity
                 ))
     
-                build(FlatSize[1]-LocalPos[1],FlatSize[2],vec(),table(
-                    "origin" = Entity:toWorld(FlatMin+vec(LocalPos[1],0,0)*UNIT_SIZE),
+                build(FlatSize[1]-SpawnPos[1],FlatSize[2],vec(),table(
+                    "origin" = Entity:toWorld(FlatMin+vec(SpawnPos[1],0,0)*UNIT_SIZE),
                     "angles" = Entity:angles(),
                     "delete" = Entity
                 ))
             }
             elseif(Ang == 90 | Ang == 270){
                 
-                if( !FlatSize[1] | !(FlatSize[2]-LocalPos[2]) | !(LocalPos[2]) ){
+                if( !FlatSize[1] | !(FlatSize[2]-SpawnPos[2]) | !(SpawnPos[2]) ){
                     err("Nothing to cut here")
                     return
                 }
-                function format(E:entity){
-                    E:setColor(vec(127))
-                }
-                build(FlatSize[1],LocalPos[2],vec(),table(
+                holoUnparent(3)
+                build(FlatSize[1],SpawnPos[2],vec(),table(
                     "origin" = Origin,
                     "angles" = Entity:angles(),
                     "delete" = Entity
                 ))
     
-                build(FlatSize[1],FlatSize[2]-LocalPos[2],vec(),table(
-                    "origin" = Entity:toWorld(FlatMin+vec(0,LocalPos[2],0)*UNIT_SIZE),
+                build(FlatSize[1],FlatSize[2]-SpawnPos[2],vec(),table(
+                    "origin" = Entity:toWorld(FlatMin+vec(0,SpawnPos[2],0)*UNIT_SIZE),
                     "angles" = Entity:angles(),
                     "delete" = Entity
                 ))
@@ -220,7 +245,113 @@ if( first() ){
             holoAlpha(1,0)
             holoAlpha(2,0)
             holoAlpha(0,150)
+            holoScaleUnits(0,vec(5))
+            HoleModeState = 0
             return
+        }
+    
+        KeyAttack1 = changed(Owner:keyAttack1()) & Owner:keyAttack1()
+    
+        if( HoleModeState == 0 ){
+            
+            local EntChange = changed(Entity) 
+            
+            if( EntChange ){
+                holoPos(3,Entity:boxCenterW())
+                holoAng(3,Entity:angles())
+                holoScaleUnits(3,Entity:boxSize())    
+                holoParent(3,Entity)
+            }
+            
+            if( EntChange | changed(SpawnComplement) ){
+                holoPos(0,WorldPos+Entity:toWorldAxis(vec(2)))
+                holoAng(0,TileAng)
+                HoleData["pos",vector] = SpawnPos
+                HoleData["complement",vector] = SpawnComplement
+                HoleData["world",vector] = WorldPos
+                HoleData["ent",entity] = Entity
+                HoleData["entpos",vector] = Entity:pos()
+            }
+            
+            if(KeyAttack1){
+                HoleModeState++
+                print("1")
+                holoEntity(0):soundPlay(3,1,"buttons/lightswitch2.wav")
+            }
+            
+        }
+        else{
+            
+            if( HoleData["ent",entity] != Entity ){
+                return
+            }
+            
+            if( HoleData["ent",entity]:pos() != HoleData["entpos",vector] ){    
+                HoleModeState = 0
+                holoScaleUnits(0,vec(UNIT_SIZE/2))
+                print("Entity moved, hole aborted.")
+                owner():soundPlay(404,1,"buttons/button10.wav")
+                return
+            }
+            
+            if( changed(SpawnComplement) ){
+                holoPos(0,(HoleData["world",vector]+WorldPos)/2)
+                holoScaleUnits(0,( positive(SpawnPos-HoleData["pos",vector]):rotate(ang(0,90,90)) + vec(1,0,0)) * UNIT_SIZE)
+                holoAng(0,TileAng)
+            }       
+            
+            if(changed(Owner:keyAttack2()) & Owner:keyAttack2()){
+                HoleModeState = 0
+                holoScaleUnits(0,vec(UNIT_SIZE/2))
+                return
+            }
+            
+            if(KeyAttack1){
+                
+                holoUnparent(3)
+                
+                HoleModeState = 0
+                holoScaleUnits(0,vec(UNIT_SIZE/2))
+                Busy = 1
+            
+                local MinCorner = minVec(HoleData["pos",vector],SpawnPos)
+                local MaxCorner = maxVec(HoleData["pos",vector],SpawnPos)
+                local MinComplement = minVec(HoleData["complement",vector],SpawnComplement)
+                local MaxComplement = maxVec(HoleData["complement",vector],SpawnComplement)
+                
+                local MinCorners = array(
+                    vec(),
+                    vec(MinCorner[1],0,0),
+                    vec(MinCorner[1],FlatSize[2]+MaxComplement[2],0),
+                    vec(MaxCorner[1],0,0)
+                )
+                
+                local Sizes = array(
+                    vec(MinCorner[1],FlatSize[2],0),
+                    vec(MaxCorner[1]-MinCorner[1],FlatSize[2]+MinComplement[2],0),
+                    vec(MaxCorner[1]-MinCorner[1],-MaxComplement[2],0),
+                    FlatSize - vec(MaxCorner[1],0,0)
+                )
+                
+                for(I=1, 4){
+                    local Origin = Entity:toWorld(FlatMin + MinCorners[I,vector]*UNIT_SIZE)
+                    local Size = Sizes[I,vector]
+                    if(Size[1] & Size[2]){
+                        build(Size[1],Size[2],vec(),table(
+                            "origin" = Origin,
+                            "angles" = Entity:angles(),
+                            "delete" = Entity
+                        ))
+                    }
+                }
+                
+                holoEntity(0):soundPlay(1,1,"buttons/weapon_confirm.wav")
+                soundPitch(1,180)
+                
+                return
+    
+            }            
+                     
         }
         
     }
@@ -250,6 +381,7 @@ if(Active & !Busy){
     Entity = Owner:aimEntity()
     
     if(Entity){    
+        computeSnapping()
         Mode(0)
     }
     
@@ -266,5 +398,4 @@ if(Active & !Busy){
     }
 
 }
-
 
