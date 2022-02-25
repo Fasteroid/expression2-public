@@ -1,4 +1,4 @@
-@name Gmod Hunter Plate Cutter v2.1
+@name Gmod Hunter Plate Cutter v2.2
 @inputs 
 @outputs 
 @persist Ang Busy Mask:table RemoveThis:entity Entity:entity Mode:string Owner:entity ChangedMode Modes:table HoleModeState HoleData:table
@@ -26,6 +26,12 @@ if( first() ){
     Mode  = "cut"
     Modes = table("cut"=1, "hole"=1)
     HoleModeState = 0
+    
+    print("--------------------------------\n- Fast's Hunter Plate Cutter -\n--------------------------------\n")
+    print("Supported modes:")
+    foreach(N,S:string = Modes:keys()){
+        print("/"+S)
+    }
     
     function null(E:entity){}
     
@@ -142,6 +148,7 @@ if( first() ){
         SpawnComplement = round( SpawnComplement / UNIT_SIZE )
         WorldPos = Entity:toWorld(SpawnComplement * UNIT_SIZE - FlatMin) 
         SpawnPos = round( Entity:boxSize():setZ(0) / UNIT_SIZE + SpawnComplement - 2 * Entity:boxCenter() / UNIT_SIZE )
+        Valid = Entity:model():find("models/hunter/plates") & !(Entity:model():find("tri")) & Entity:model():find("x")
     }
     
     # ------------ Mode Functions ------------ #
@@ -159,12 +166,17 @@ if( first() ){
             holoAlpha(0,0)
             return
         }
-        
+
         if(changed(Entity)){
-            holoPos(3,Entity:boxCenterW())
-            holoAng(3,Entity:angles())
-            holoScaleUnits(3,Entity:boxSize())    
-            holoParent(3,Entity)
+            if( Valid ){
+                holoPos(3,Entity:boxCenterW())
+                holoAng(3,Entity:angles())
+                holoScaleUnits(3,Entity:boxSize())    
+                holoParent(3,Entity)
+            }
+            else{
+                holoScale(3,vec(0))
+            }
         }
         
         holoPos(0,WorldPos)
@@ -172,6 +184,12 @@ if( first() ){
                 
 
         if(changed(Owner:keyAttack1()) & Owner:keyAttack1()){
+            
+            if(!Valid){
+                err("Sorry, that prop is not supported (yet)")
+                return
+            }
+            
             Busy = 1
             if(Ang == 0 | Ang == 180){
                 if( !SpawnPos[1] | !(FlatSize[1]-SpawnPos[1]) | !(FlatSize[2]) ){
@@ -219,7 +237,7 @@ if( first() ){
     #########################
     ## 
     #  hole( Init:boolean )
-    #     Hole cutter mode.  Pass 1 to enable.  WIP.
+    #     Hole cutter mode.  Pass 1 to enable.
     #
     function hole(Init){
         
@@ -239,14 +257,19 @@ if( first() ){
             local EntChange = changed(Entity) 
             
             if( EntChange ){
-                holoPos(3,Entity:boxCenterW())
-                holoAng(3,Entity:angles())
-                holoScaleUnits(3,Entity:boxSize())    
-                holoParent(3,Entity)
+                if( Valid ){
+                    holoPos(3,Entity:boxCenterW())
+                    holoAng(3,Entity:angles())
+                    holoScaleUnits(3,Entity:boxSize())    
+                    holoParent(3,Entity)
+                }
+                else{
+                    holoScale(3,vec(0))
+                }
             }
             
             if( EntChange | changed(SpawnComplement) ){
-                holoPos(0,WorldPos+Entity:toWorldAxis(vec(2)))
+                holoPos(0,WorldPos)
                 holoAng(0,TileAng)
                 HoleData["pos",vector] = SpawnPos
                 HoleData["complement",vector] = SpawnComplement
@@ -256,6 +279,10 @@ if( first() ){
             }
             
             if(KeyAttack1){
+                if(!Valid){
+                    err("Sorry, that prop is not supported (yet)")
+                    return
+                }
                 HoleModeState++
                 print("1")
                 holoEntity(0):soundPlay(3,1,"buttons/lightswitch2.wav")
@@ -345,7 +372,6 @@ Active = (Owner:weapon():type() == "weapon_crowbar")
 DoneBusy = !Queue:count() & Busy
 
 if(changed(Mode) | first()){
-    print("init")
     Mode(1)
 }
 
