@@ -1,7 +1,7 @@
-@name Gmod Hunter Plate Cutter v2.2
+@name Gmod Hunter Plate Cutter v2.3
 @inputs 
 @outputs 
-@persist Ang Busy Mask:table RemoveThis:entity Entity:entity Mode:string Owner:entity ChangedMode Modes:table HoleModeState HoleData:table
+@persist Ang Busy Mask:table RemoveThis:entity Entity:entity Mode:string Owner:entity ChangedMode Modes:table HoleModeState HoleData:table PropData:table
 @model models/hunter/blocks/cube025x025x025.mdl
 
 #[
@@ -109,7 +109,8 @@ if( first() ){
         queuePropSpawn(
             PlateObj["model",string],
             World[1,vector] + PlateObj["offset",vector]:rotate(Options["angles",angle]) * UNIT_SIZE,
-            World[2,angle]
+            World[2,angle],
+            Options["format",string]
         )
         
         if( XReal < XSize ){
@@ -131,12 +132,15 @@ if( first() ){
     #     Predefines some variables.  Sorry they're global lol
     #    
     function computeSnapping(){
+        
+        Valid = Entity:model():find("models/hunter/plates") & !(Entity:model():find("tri")) & Entity:model():find("x")
+        if(!Valid){
+            return
+        }
+        
         FlatMin = Entity:boxMin():setZ(0)
         FlatSize = round( Entity:boxSize():setZ(0) / UNIT_SIZE )
         Origin = Entity:toWorld(FlatMin)
-        
-        #holoPos(3,Origin)
-        #holoAng(3,Entity:angles())
         
         Forward = Owner:aimNormal()
         Up      = Entity:right()
@@ -148,7 +152,20 @@ if( first() ){
         SpawnComplement = round( SpawnComplement / UNIT_SIZE )
         WorldPos = Entity:toWorld(SpawnComplement * UNIT_SIZE - FlatMin) 
         SpawnPos = round( Entity:boxSize():setZ(0) / UNIT_SIZE + SpawnComplement - 2 * Entity:boxCenter() / UNIT_SIZE )
-        Valid = Entity:model():find("models/hunter/plates") & !(Entity:model():find("tri")) & Entity:model():find("x")
+        
+    }
+    
+    function storePropData(E:entity){
+        PropData["mat",string] = E:getMaterial()
+        PropData["color",vector] = E:getColor()
+        PropData["alpha",number] = E:getAlpha()
+        #PropData["render",number] = E:getRenderMode() BOOO, THERE'S NO FUNCTION FOR THIS!
+    }
+    
+    function applyPropData(E:entity){
+        E:setMaterial( PropData["mat",string] )
+        E:setColor( PropData["color",vector] )
+        E:setAlpha( PropData["alpha",number])
     }
     
     # ------------ Mode Functions ------------ #
@@ -191,6 +208,7 @@ if( first() ){
             }
             
             Busy = 1
+            storePropData(Entity)
             if(Ang == 0 | Ang == 180){
                 if( !SpawnPos[1] | !(FlatSize[1]-SpawnPos[1]) | !(FlatSize[2]) ){
                     err("Nothing to cut here")
@@ -200,13 +218,15 @@ if( first() ){
                 build(SpawnPos[1],FlatSize[2],vec(),table(
                     "origin" = Origin,
                     "angles" = Entity:angles(),
-                    "delete" = Entity
+                    "delete" = Entity,
+                    "format" = "applyPropData"
                 ))
     
                 build(FlatSize[1]-SpawnPos[1],FlatSize[2],vec(),table(
                     "origin" = Entity:toWorld(FlatMin+vec(SpawnPos[1],0,0)*UNIT_SIZE),
                     "angles" = Entity:angles(),
-                    "delete" = Entity
+                    "delete" = Entity,
+                    "format" = "applyPropData"
                 ))
             }
             elseif(Ang == 90 | Ang == 270){
@@ -219,13 +239,15 @@ if( first() ){
                 build(FlatSize[1],SpawnPos[2],vec(),table(
                     "origin" = Origin,
                     "angles" = Entity:angles(),
-                    "delete" = Entity
+                    "delete" = Entity,
+                    "format" = "applyPropData"
                 ))
     
                 build(FlatSize[1],FlatSize[2]-SpawnPos[2],vec(),table(
                     "origin" = Entity:toWorld(FlatMin+vec(0,SpawnPos[2],0)*UNIT_SIZE),
                     "angles" = Entity:angles(),
-                    "delete" = Entity
+                    "delete" = Entity,
+                    "format" = "applyPropData"
                 ))
             } 
             holoEntity(0):soundPlay(1,1,"buttons/weapon_confirm.wav")
@@ -322,6 +344,7 @@ if( first() ){
                 HoleModeState = 0
                 holoScaleUnits(0,vec(UNIT_SIZE/2))
                 Busy = 1
+                storePropData(Entity)
             
                 local MinCorner = minVec(HoleData["pos",vector],SpawnPos)
                 local MaxCorner = maxVec(HoleData["pos",vector],SpawnPos)
@@ -349,7 +372,8 @@ if( first() ){
                         build(Size[1],Size[2],vec(),table(
                             "origin" = Origin,
                             "angles" = Entity:angles(),
-                            "delete" = Entity
+                            "delete" = Entity,
+                            "format" = "applyPropData"
                         ))
                     }
                 }
