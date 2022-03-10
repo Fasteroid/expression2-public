@@ -1,7 +1,8 @@
-@name Gmod Hunter Plate Cutter v2.3
+@name Gmod Hunter Plate Cutter v2.4
 @inputs 
 @outputs 
 @persist Ang Busy Mask:table RemoveThis:entity Entity:entity Mode:string Owner:entity ChangedMode Modes:table HoleModeState HoleData:table PropData:table
+@persist [FlatMin,FlatSize,Origin,Forward,Up,SpawnComplement,WorldPos,SpawnPos]:vector
 @model models/hunter/blocks/cube025x025x025.mdl
 
 #[
@@ -23,8 +24,8 @@
 if( first() ){
     
     Owner = owner()
-    Mode  = "cut"
-    Modes = table("cut"=1, "hole"=1)
+    Mode  = "slice"
+    Modes = table("slice"=1, "hole"=1)
     HoleModeState = 0
     
     print("--------------------------------\n- Fast's Hunter Plate Cutter -\n--------------------------------\n")
@@ -32,6 +33,7 @@ if( first() ){
     foreach(N,S:string = Modes:keys()){
         print("/"+S)
     }
+    print("--------------------------------")
     
     function null(E:entity){}
     
@@ -43,10 +45,12 @@ if( first() ){
     
     propSpawnUndo(1)
     holoCreate(0)
-    holoColor(0,vec(255,200,0),0)
+    holoColor(0,vec(255,255,0),100)
     holoAng(0,ang())
+    holoScaleUnits(0,vec(5))
     holoMaterial(0,"lights/white")
     holoEntity(0):setRenderMode(9)
+    holoVisible(0,players(),0)
     
     #holoCreate(3)
     #holoModel(3,"models/sprops/misc/origin.mdl")
@@ -56,7 +60,7 @@ if( first() ){
     holoAng(1,ang(0,0,90))
     holoScaleUnits(1,vec(100,100,100))
     holoMaterial(1,"lights/white")
-    holoColor(1,vec(255),0)
+    holoColor(1,vec(255),100)
     holoEntity(1):setRenderMode(9)
 
     holoCreate(2)
@@ -64,7 +68,7 @@ if( first() ){
     holoAng(2,ang(0,0,-90))
     holoScaleUnits(2,vec(100,100,100))
     holoMaterial(2,"lights/white")
-    holoColor(2,vec(60),0)
+    holoColor(2,vec(60),200)
     holoEntity(2):setRenderMode(9)
     
     holoParent(1,0)
@@ -145,7 +149,7 @@ if( first() ){
         Forward = Owner:aimNormal()
         Up      = Entity:right()
         
-        AngContext = quat(Forward,Up)
+        local AngContext = quat(Forward,Up)
         TileAng = AngContext:toAngle()
         
         SpawnComplement = Entity:toLocal( Owner:aimPos() ) + FlatMin
@@ -172,17 +176,22 @@ if( first() ){
     
     #########################
     ## 
-    #  cut( Init:boolean )
-    #     Cutting mode.  Pass 1 to enable.
+    #  slice( Init:boolean )
+    #     Slicing mode.  Pass 1 to enable.
     #
-    function cut(Init){
+    function slice(Init){
         
         if(Init){
-            holoAlpha(1,100)
-            holoAlpha(2,200)
-            holoAlpha(0,0)
+            print("Mouse1 to slice along the cutting plane.\nMouse2 rotates the cutting plane.")
+            holoVisible(1,players(),1)
+            holoVisible(2,players(),1)
+            holoVisible(0,players(),0)
             return
         }
+        
+        computeSnapping()
+        
+        if(!Entity){ return }
 
         if(changed(Entity)){
             if( Valid ){
@@ -264,9 +273,10 @@ if( first() ){
     function hole(Init){
         
         if(Init){
-            holoAlpha(1,0)
-            holoAlpha(2,0)
-            holoAlpha(0,150)
+            print("Mouse1 to set corners.\nMouse2 will cancel a hole if the first corner is set.")
+            holoVisible(1,players(),0)
+            holoVisible(2,players(),0)
+            holoVisible(0,players(),1)
             holoScaleUnits(0,vec(5))
             HoleModeState = 0
             return
@@ -276,6 +286,8 @@ if( first() ){
     
         if( HoleModeState == 0 ){
             
+            computeSnapping()
+            if(!Entity){ return }
             local EntChange = changed(Entity) 
             
             if( EntChange ){
@@ -306,16 +318,16 @@ if( first() ){
                     return
                 }
                 HoleModeState++
-                print("1")
                 holoEntity(0):soundPlay(3,1,"buttons/lightswitch2.wav")
             }
             
         }
         else{
             
-            if( HoleData["ent",entity] != Entity ){
-                return
+            if( HoleData["ent",entity] == Entity ){
+                computeSnapping()
             }
+            Entity = HoleData["ent",entity]
             
             if( HoleData["ent",entity]:pos() != HoleData["entpos",vector] ){    
                 HoleModeState = 0
@@ -383,11 +395,9 @@ if( first() ){
                 
                 return
     
-            }            
-                     
+            }              
         }
-        
-    }
+    }    
     
 }
 
@@ -411,11 +421,8 @@ if(Active & !Busy){
     }
     
     Entity = Owner:aimEntity()
-    
-    if(Entity){    
-        computeSnapping()
-        Mode(0)
-    }
+     
+    Mode(0)
     
     if(changed(Owner:lastSaidWhen())){
         Chat = Owner:lastSaid():explode(" ")
