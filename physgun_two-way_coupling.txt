@@ -27,7 +27,7 @@ if( first() ){
     }
     function entity:perfectAngForce(Ang:angle){
         local Torque = This:toLocalAxis(rotationVector(quat(Ang)/quat(This)))
-        This:applyTorque((Torque*100-This:angVelVector()*10)*This:inertia()* (This:mass()/min(This:mass(),500)))
+        This:applyTorque((Torque*100-This:angVelVector()*10)*This:inertia())
     }
     
 }
