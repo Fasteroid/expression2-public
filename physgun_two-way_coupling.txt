@@ -52,6 +52,22 @@ if( Owner:weapon():type() == "weapon_physgun" ) {
     rangerFilter( array(Owner,Chip) )
     EyeTrace = rangerOffset( 8192, Owner:shootPos() + Owner:vel() * TickInterval * 1.5, Owner:eye() )
     
+    local SpawnedProp = EyeTrace:entity()
+    if( SpawnedProp:isValidPhysics() & (SpawnedProp:pos()-Owner:shootPos()==vec()) ){ # no chance a prop just got here by accident
+        local BoxSize = SpawnedProp:boxSize():rotate(SpawnedProp:angles())
+        
+        rangerPersist(1)
+        rangerFilter( array(SpawnedProp,Owner,Chip) )
+        local SpawnTrace = rangerOffset( 4096, Owner:shootPos() + Owner:vel() * TickInterval * 1.5, Owner:eye() )
+        local SpawnPos = SpawnTrace:position() + SpawnTrace:hitNormal()*BoxSize*0.5
+        local FloorTrace = rangerOffset( BoxSize:z(), SpawnPos + SpawnTrace:hitNormal(), vec(0,0,-1) )
+        local PropBottomOffset = SpawnedProp:boxMin():rotate(SpawnedProp:angles())*vec(0,0,1)
+        rangerPersist(0)
+        if(FloorTrace:hit()){ SpawnPos = FloorTrace:position() - PropBottomOffset }
+        
+        SpawnedProp:setPos( SpawnPos )
+    }
+    
     
     ###  Detect entity holding / dropping
     ##
