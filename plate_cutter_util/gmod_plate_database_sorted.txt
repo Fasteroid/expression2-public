@@ -9,7 +9,7 @@
 if( first() ){
     
     runOnTick(1)
-    UNIT_SIZE = 11.866406917572
+    UNIT_SIZE = 11.866406917572 * 0.9995
         
     function table getClosestFit(TX,TY){
         for(I=1,PLATES:count()){
