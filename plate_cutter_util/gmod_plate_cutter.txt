@@ -42,9 +42,6 @@ if( first() ){
         print("/mode "+S+"\t| "+Desc)
     }
     print(" \n")
-
-    
-    function null(E:entity){}
     
     function err(Reason:string){
         holoEntity(0):soundPlay(2,1,"common/wpn_denyselect.wav")
@@ -93,7 +90,7 @@ if( first() ){
     
     #########################
     ## 
-    #  fill( XSize:numbner, YSize:number, Corner:vector, Options:optionsTable )
+    #  build( XSize:numbner, YSize:number, Corner:vector, Options:optionsTable )
     #     Spawns a plate of XSize by YSize.   
     #
     #  optionsTable extends table:
