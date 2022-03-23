@@ -1,4 +1,4 @@
-@name Gmod Hunter Plate Cutter v2.5
+@name Gmod Hunter Plate Cutter v2.6
 @inputs 
 @outputs 
 @persist Ang Busy Mask:table RemoveThis:entity Entity:entity Mode:string Owner:entity ChangedMode Modes:table Helps:table
@@ -48,9 +48,19 @@ if( first() ){
         Busy = 0        
         print("[Prop Cutter] "+Reason)
     }
-    
+
     function prnt(String:string){ 
         print("[Prop Cutter] "+String)
+    }
+    
+    # this function is a bit mistleading; it actually checks for intersections from both sides
+    function vector rayPlaneIntersect([Start Dir Pos Normal]:vector){
+        A = Normal:dot(Dir)
+        B = Normal:dot(Pos-Start)
+        if(sign(A)==sign(B)){
+            return Start+Dir*(B/A)
+        }
+        return vec(0)
     }
     
     propSpawnUndo(1)
@@ -149,14 +159,16 @@ if( first() ){
         FlatMin = Entity:boxMin():setZ(0)
         FlatSize = round( Entity:boxSize():setZ(0) / UNIT_SIZE )
         
-        local LocalAim = Entity:toLocal( Owner:aimPos() + Entity:boxCenter() ) / UNIT_SIZE
-        Forward = Entity:up() * sign( LocalAim:z() )
+        AimPos = rayPlaneIntersect(Owner:shootPos(),Owner:eye(),Entity:pos(),Entity:up())
+        
+        local LocalAim = Entity:toLocal( AimPos + Entity:boxCenter() ) / UNIT_SIZE
+        Forward = Entity:up()
         Up      = Entity:right()
         
         local AngContext = quat(Forward,Up)
         TileAng = AngContext:toAngle()
         
-        SpawnComplement = Entity:toLocal( Owner:aimPos() ):setZ(0) + FlatMin
+        SpawnComplement = Entity:toLocal( AimPos ):setZ(0) + FlatMin
         SpawnComplement = round( SpawnComplement / UNIT_SIZE )
         WorldPos = Entity:toWorld(SpawnComplement * UNIT_SIZE - FlatMin + Entity:boxCenter()*vec(0,0,1)) 
         SpawnPos = round( Entity:boxSize():setZ(0) / UNIT_SIZE + SpawnComplement - 2 * Entity:boxCenter() / UNIT_SIZE + Entity:boxCenter()*vec(0,0,1) )
@@ -466,7 +478,7 @@ if( first() ){
     
         if( ModeState == 0 ){
             
-            computeSnapping()
+            computeExtension()
             if(!Entity){ return }
             local EntChange = changed(Entity) 
             
