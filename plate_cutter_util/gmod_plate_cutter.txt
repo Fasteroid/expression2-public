@@ -1,7 +1,7 @@
-@name Gmod Hunter Plate Cutter v2.6
+@name Gmod Hunter Plate Cutter v2.7
 @inputs 
 @outputs 
-@persist Ang Busy Mask:table RemoveThis:entity Entity:entity Mode:string Owner:entity ChangedMode Modes:table Helps:table
+@persist Ang Busy Mask:table RemoveThis:entity Entity:entity Mode:string Owner:entity ChangedMode Modes:table Helps:table GridEnabled
 @persist ModeState ModePersist:table PropData:table
 @persist ExtensionPlane:entity ShouldDelete
 @persist [FlatMin,FlatSize,Forward,Up,SpawnComplement,WorldPos,SpawnPos]:vector Valid TileAng:angle
@@ -21,6 +21,7 @@ if( first() ){
     
     Owner = owner()
     Mode  = "cut"
+    GridEnabled = 1
     
     Modes = table(
         "cut" = "Cut new geometry",
@@ -94,6 +95,19 @@ if( first() ){
     holoCreate(3)
     holoColor(3,vec(255,0,0),100)
     holoMaterial(3,"lights/white")
+    
+    if( holoModelAny() & GridEnabled ){
+        holoCreate(4)
+        holoVisible(4,players(),0)
+        holoModel(4,"models/hunter/plates/plate32x32.mdl")
+        holoScale(4,vec(4,4,1.5))
+        holoColor(4,vec(255),200)
+        holoClipEnabled(4,1,1)
+        holoClipEnabled(4,2,1)
+        holoDisableShading(4,1)
+        holoMaterial(4,"sprops/sprops_grid_12x12")
+        holoEntity(4):setRenderMode(9)
+    }
 
     runOnTick(1)
     
@@ -245,6 +259,7 @@ if( first() ){
             holoVisible(1,players(),1)
             holoVisible(2,players(),1)
             holoVisible(0,players(),0)
+            holoVisible(4,players(),0)
             ShouldDelete = 1
             return
         }
@@ -334,6 +349,7 @@ if( first() ){
             holoVisible(1,players(),0)
             holoVisible(2,players(),0)
             holoVisible(0,players(),1)
+            holoVisible(4,players(),0)
             holoScaleUnits(0,vec(5))
             holoScale(3,vec(0))
             ModeState = 0
@@ -375,13 +391,18 @@ if( first() ){
             if(KeyAttack1){
                 ModeState++
                 holoEntity(0):soundPlay(3,1,"buttons/lightswitch2.wav")
+                holoParent(4,Entity)
+                holoAng(4,Entity:angles())
             }
             
         }
         else{
             
-            if( Entity ){
+            if( Entity == ModePersist["ent",entity] ){
                 computeSnapping()
+            }
+            else{
+                return
             }
             Entity = ModePersist["ent",entity]
             
@@ -394,6 +415,14 @@ if( first() ){
             }
             
             if( changed(SpawnComplement) ){
+                holoVisible(4,players(),1)
+                local Quadrant = sign( SpawnComplement-ModePersist["complement",vector] + vec(1,1,0)*0.1 )
+                holoPos(4,Entity:toWorld((Quadrant * UNIT_SIZE * 32 * 8 + (ModePersist["pos",vector]) * UNIT_SIZE + FlatMin):setZ(0)))
+                
+                local ClipPos = (SpawnComplement)*UNIT_SIZE - FlatMin + Quadrant * UNIT_SIZE * 0
+                holoClip(4,1,ClipPos,-Quadrant:setX(0),Entity)
+                holoClip(4,2,ClipPos,-Quadrant:setY(0),Entity)
+                
                 holoPos(0,(ModePersist["world",vector]+WorldPos)/2)
                 holoScaleUnits(0,( positive(SpawnPos-ModePersist["pos",vector]):rotate(ang(0,90,90)) + vec(1,0,0)) * UNIT_SIZE)
                 holoAng(0,TileAng)
@@ -402,14 +431,17 @@ if( first() ){
             if(changed(Owner:keyAttack2()) & Owner:keyAttack2()){
                 ModeState = 0
                 holoScaleUnits(0,vec(UNIT_SIZE/2))
+                holoVisible(4,players(),0)
                 return
             }
             
             if(KeyAttack1){
                 
                 holoUnparent(3)
+                holoUnparent(4)
                 
                 ModeState = 0
+                holoVisible(4,players(),0)
                 holoScaleUnits(0,vec(UNIT_SIZE/2))
                 Busy = 1
                 storePropData(Entity)
@@ -466,6 +498,7 @@ if( first() ){
             holoVisible(1,players(),0)
             holoVisible(2,players(),0)
             holoVisible(0,players(),1)
+            holoVisible(4,players(),0)
             holoScale(3,vec(0))
             holoScaleUnits(0,vec(5))
             holoUnparent(3)
@@ -495,6 +528,8 @@ if( first() ){
             if(KeyAttack1){
                 ModeState++
                 ExtensionPlane = Entity
+                holoParent(4,Entity)
+                holoAng(4,Entity:angles())
                 holoEntity(0):soundPlay(3,1,"buttons/lightswitch2.wav")
             }
             
@@ -515,6 +550,14 @@ if( first() ){
             
             if( changed(SpawnComplement) ){
                 
+                holoVisible(4,players(),1)
+                local Quadrant = sign( SpawnComplement-ModePersist["local",vector] + vec(1,1,0)*0.1 )
+                holoPos(4,Entity:toWorld((Quadrant * UNIT_SIZE * 32 * 8 + (ModePersist["pos",vector]) * UNIT_SIZE + FlatMin):setZ(0)))
+                
+                local ClipPos = (SpawnComplement)*UNIT_SIZE - FlatMin + Quadrant * UNIT_SIZE * 0
+                holoClip(4,1,ClipPos,-Quadrant:setX(0),Entity)
+                holoClip(4,2,ClipPos,-Quadrant:setY(0),Entity)
+
                 holoPos(0,(ModePersist["world",vector]+WorldPos)/2)
                 holoScaleUnits(0,( positive(SpawnPos-ModePersist["pos",vector]):rotate(ang(0,90,90)) + vec(1,0,0)) * UNIT_SIZE)
                 holoAng(0,TileAng)
@@ -524,12 +567,14 @@ if( first() ){
             if(changed(Owner:keyAttack2()) & Owner:keyAttack2()){
                 ModeState = 0
                 holoScaleUnits(0,vec(UNIT_SIZE/2))
+                holoVisible(4,players(),0)
                 return
             }
             
             if(KeyAttack1){
                 
                 holoScaleUnits(0,vec(UNIT_SIZE/2))
+                holoVisible(4,players(),0)
                 storePropData(Entity)
             
             #SpawnComplement = LocalAim:setZ(0) + FlatMin
@@ -613,4 +658,19 @@ if( !holoEntity(3):isValid() ){
     holoCreate(3)
     holoColor(3,vec(255,0,0),100)
     holoMaterial(3,"lights/white")
+}
+
+if( holoModelAny() & GridEnabled ){
+    if( !holoEntity(4):isValid() ){
+        holoCreate(4)
+        holoVisible(4,players(),0)
+        holoModel(4,"models/hunter/plates/plate32x32.mdl")
+        holoScale(4,vec(4,4,1.5))
+        holoColor(4,vec(255),200)
+        holoClipEnabled(4,1,1)
+        holoClipEnabled(4,2,1)
+        holoDisableShading(4,1)
+        holoMaterial(4,"sprops/sprops_grid_12x12")
+        holoEntity(4):setRenderMode(9)
+    }
 }
