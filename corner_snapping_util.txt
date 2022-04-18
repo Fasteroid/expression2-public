@@ -1,0 +1,57 @@
+@name corner snapping util
+@inputs 
+@outputs 
+@persist Owner:entity STATE Target:entity Pos1:vector
+@trigger
+
+if( first() ){
+    holoCreate(1)
+    holoScale(1,vec(0.05))
+    runOnTick(1)
+    holoModel(1,"hq_icosphere")
+    holoMaterial(1,"lights/white")
+    holoEntity(1):setRenderMode(9)
+    holoAlpha(1,100)
+    holoCreate(2)
+    holoMaterial(2,"models/wireframe")
+    holoColor(2,vec(0,255,255))
+    Owner = owner()
+}
+
+if( Owner:weapon():type() == "weapon_crowbar" ){
+    
+    Ent = owner():aimEntity()
+    
+    if(changed(Ent)){
+        holoPos(2,Ent:boxCenterW())
+        holoScaleUnits(2,Ent:boxSize())
+        holoAng(2,Ent:angles())
+    }
+    
+    Aim = owner():aimPos()
+    Aim = round( (Ent:toLocal(Aim) - Ent:boxCenter()) * 2 / (Ent:boxSize()-vec(0.5)) )
+    Aim = Ent:toWorld( Aim * 0.5 * (Ent:boxSize()-vec(0.5)) + Ent:boxCenter() )
+    holoPos(1,Aim)
+
+    
+    if( changed( Owner:keyAttack1() ) & Owner:keyAttack1() ){
+        if(!STATE){
+            Target = Ent
+            Pos1 = Aim
+            holoColor(1,vec(100,100,255))
+            holoEntity(1):soundPlay("clk",1,"common/talk.wav")
+        }
+        else{
+            Target:setPos( Target:pos() + Aim - Pos1 )
+            holoEntity(1):soundPlay("clk",1,"buttons/button14.wav")      
+            holoColor(1,vec(255))
+        }
+        STATE = !STATE 
+    }
+    
+    if( changed( Owner:keyAttack2() ) & Owner:keyAttack2() ){
+        holoColor(1,vec(255))
+        STATE = 0
+    }
+    
+}
