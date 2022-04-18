@@ -203,7 +203,7 @@ if( Jumps==2 ){
     ##   Collision Damage
     #
     Eye = owner():eyeTrace()
-    if( owner():vel():distance(CollisionVel)>1000 & !first() & Eye:distance()<200 ){
+    if( (owner():vel():length()-CollisionVel:length()) < -1000 & !first() & Eye:distance()<200 ){
 
         owner():soundPlay(2,1,"player/pl_fallpain"+(randint(1,0)*2+1)+".wav")
         #owner():soundPlay(3,1,"physics/body/body_medium_impact_hard"+randint(1,6)+".wav")     
