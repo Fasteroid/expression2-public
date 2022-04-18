@@ -97,7 +97,7 @@ if(clk("init")){
 
 if(clk("sawstart")){
     Mode = 1
-    entity():streamStart(1,"https://www.myinstants.com/media/sounds/i-sawed.mp3",2)
+    entity():streamStart(1,"https://cdn.discordapp.com/attachments/642904079663890432/962267783993888768/i-sawed.mp3",2)
 }
 if(clk("debris")){
     DebriSpam = 1    
