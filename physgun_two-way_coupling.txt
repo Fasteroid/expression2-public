@@ -25,12 +25,12 @@ if( first() ){
     TickInterval = tickInterval()
     runOnKeys(Owner,1)
     
+    # Thanks to @Jacbo (https://discord.com/users/347893446897434624) for this function!
     function vector entity:pointVel(LocalPos:vector){
         local AngVel = This:angVelVector()
         return This:vel() + ( This:toWorldAxis( AngVel:normalized():cross(LocalPos) * AngVel:length() * _PI/180 ) )    
     }
     
-    # Thanks to @Jacbo (https://discord.com/users/347893446897434624) for this function!
     function entity:perfectAngForce(Ang:angle){
         local Torque = This:toLocalAxis(rotationVector(quat(Ang)/quat(This)))
         This:applyTorque((Torque*100-This:angVelVector()*10)*This:inertia()*min(3,500/This:mass()))
