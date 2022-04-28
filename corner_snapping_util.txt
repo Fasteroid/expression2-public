@@ -6,7 +6,7 @@
 
 if( first() ){
     holoCreate(1)
-    holoScale(1,vec(0.05))
+    holoScale(1,vec(0.2))
     runOnTick(1)
     holoModel(1,"hq_icosphere")
     holoMaterial(1,"lights/white")
@@ -18,7 +18,7 @@ if( first() ){
     Owner = owner()
 }
 
-if( Owner:weapon():type() == "weapon_crowbar" ){
+if( Owner:weapon():type() == "weapon_physcannon" ){
     
     Ent = owner():aimEntity()
     
