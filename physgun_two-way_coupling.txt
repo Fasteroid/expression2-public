@@ -1,7 +1,7 @@
 @name F=MA Compliant Physgun
 @inputs 
 @outputs 
-@persist BeamLength HeldEntity:entity HeldLocalPos:vector InitialGrabYaw InitialGrabAng:angle InitialGrabQuat:quaternion Holding PLAYER_MASS
+@persist BeamLength HeldEntity:entity HeldLocalPos:vector InitialGrabYaw InitialGrabAng:angle InitialGrabQuat:quaternion Holding PLAYER_MASS WORLD_MASS MASS_CLAMP
 @persist OwnerEyeAng:angle Attack1
 @persist [Chip,Owner]:entity TickInterval
 @model models/hunter/misc/sphere025x025.mdl
@@ -14,7 +14,11 @@
 if( first() ){
     
     runOnTick(1)
+    
     PLAYER_MASS = 150
+    WORLD_MASS = 1500
+    MASS_CLAMP = 1000
+    
     Chip = entity()
     Owner = owner()
     Chip:setAlpha(0)
@@ -52,6 +56,7 @@ if( Owner:weapon():type() == "weapon_physgun" ) {
     rangerFilter( array(Owner,Chip) )
     EyeTrace = rangerOffset( 8192, Owner:shootPos() + Owner:vel() * TickInterval * 1.5, Owner:eye() )
     
+    # try to fix prop spawning position since we have the e2 inside the player's head
     local SpawnedProp = EyeTrace:entity()
     if( SpawnedProp:isValidPhysics() & (SpawnedProp:pos()-Owner:shootPos()==vec()) ){ # no chance a prop just got here by accident
         local BoxSize = SpawnedProp:boxSize():rotate(SpawnedProp:angles())
@@ -80,14 +85,19 @@ if( Owner:weapon():type() == "weapon_physgun" ) {
         if( changed( Attack1 ) | !Holding ){
             if( Attack1 ){
                 HeldEntity = EyeTrace:entity()
-                if( HeldEntity:owner() == owner() ){
+                if( HeldEntity:isValid() & HeldEntity:owner():trusts(Owner) ){
                     Holding = 1
                     HeldEntity:propFreeze(0)
                     HeldLocalPos = HeldEntity:toLocal( EyeTrace:pos() )
                     InitialGrabQuat = quat( Chip:angles() )
                     InitialGrabYaw  = Owner:angles()[2]
                     InitialGrabAng  = HeldEntity:angles()
-                    BeamLength = EyeTrace:distance()
+                    BeamLength = EyeTrace:distance()      
+                }
+                elseif( HeldEntity == world() ){
+                    Holding = 2
+                    HeldLocalPos = EyeTrace:pos()
+                    BeamLength = EyeTrace:distance()              
                 }
             }
             else{
@@ -97,22 +107,36 @@ if( Owner:weapon():type() == "weapon_physgun" ) {
     ##
     ###
     if( Holding ){
-        BeamEndPos = HeldEntity:toWorld( HeldLocalPos )
-    
-        Force      = Owner:shootPos() + Owner:eye() * BeamLength - BeamEndPos # initial force
-        Force     -= HeldEntity:pointVel( HeldLocalPos ) * 0.1
-        Force     *= clamp(HeldEntity:mass(),0,1000) # amplify
-        
-        TargetAng = InitialGrabAng
-        CursedQuatThing = quat( Chip:angles():rotateAroundAxis( vec(0,0,1), Owner:angles()[2] - InitialGrabYaw ) ) / InitialGrabQuat
-        TargetAng = TargetAng:rotateAroundAxis( rotationAxis(CursedQuatThing), rotationAngle(CursedQuatThing) )
-        
-        HeldEntity:perfectAngForce( TargetAng )
-        
-        HeldEntity:applyOffsetForce( Force, BeamEndPos )    
-        
-        Owner:plyApplyForce( -Force / PLAYER_MASS - Owner:vel() * 0.0001 * clamp(HeldEntity:mass(),0,1000) )
-        
+        switch( Holding ){
+            case 1,
+                BeamEndPos = HeldEntity:toWorld( HeldLocalPos )
+            
+                Force      = Owner:shootPos() + Owner:eye() * BeamLength - BeamEndPos # initial force
+                Force     -= HeldEntity:pointVel( HeldLocalPos ) * 0.1
+                Force     -= HeldEntity:vel() * 0.05
+                Force     += Owner:vel()*0.05
+                Force     *= clamp(HeldEntity:mass(),0,1000)
+                
+                TargetAng = InitialGrabAng
+                CursedQuatThing = quat( Chip:angles():rotateAroundAxis( vec(0,0,1), Owner:angles()[2] - InitialGrabYaw ) ) / InitialGrabQuat
+                TargetAng = TargetAng:rotateAroundAxis( rotationAxis(CursedQuatThing), rotationAngle(CursedQuatThing) )
+                
+                HeldEntity:perfectAngForce( TargetAng )
+                
+                HeldEntity:applyOffsetForce( Force, BeamEndPos )    
+                
+                Owner:plyApplyForce( -Force / PLAYER_MASS )
+            break
+            case 2,
+                BeamEndPos = HeldLocalPos
+            
+                Force      = Owner:shootPos() + Owner:eye() * BeamLength - BeamEndPos # initial force
+                Force     += Owner:vel()*0.05
+                Force     *= WORLD_MASS # world is extremely heavy
+                
+                Owner:plyApplyForce( -Force / PLAYER_MASS )            
+            break
+        }
     }
     elseif(Attack1){
         BeamEndPos = EyeTrace:pos()
@@ -131,3 +155,4 @@ if( Owner:weapon():type() == "weapon_physgun" ) {
     Chip:setPos( BeamEndPos )
 
 }
+
