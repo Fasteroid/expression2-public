@@ -111,19 +111,20 @@ if( Owner:weapon():type() == "weapon_physgun" ) {
     if( Holding ){
         switch( Holding ){
             case 1,
+                Mul = clamp(HeldEntity:mass(),0,1000)
                 BeamEndPos = HeldEntity:toWorld( HeldLocalPos )
                 
                 Force      = Owner:shootPos() + Owner:eye() * BeamLength - BeamEndPos # initial force
                 Force     -= HeldEntity:pointVel( HeldLocalPos ) * 0.1
                 Force     -= HeldEntity:vel() * 0.05
                 Force     += Owner:vel()*0.05
-                Force     *= clamp(HeldEntity:mass(),0,1000)
+                Force     *= Mul
                 
                 TargetAng = InitialGrabAng
                 CursedQuatThing = quat( Chip:angles():rotateAroundAxis( vec(0,0,1), Owner:angles()[2] - InitialGrabYaw ) ) / InitialGrabQuat
                 TargetAng = TargetAng:rotateAroundAxis( rotationAxis(CursedQuatThing), rotationAngle(CursedQuatThing) )
                 
-                Owner:plyApplyForce( -Force / PLAYER_MASS )
+                Owner:plyApplyForce( -Force / PLAYER_MASS - Owner:vel()*0.00004*Mul )
                 
                 rangerFilter( array(Owner,Chip) )
                 GroundTest = rangerOffsetHull(1,Owner:pos(),vec(0,0,-1),Owner:aabbMin(),Owner:aabbMax())
