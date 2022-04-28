@@ -107,10 +107,11 @@ if( Owner:weapon():type() == "weapon_physgun" ) {
     ##
     ###
     if( Holding ){
+
         switch( Holding ){
             case 1,
                 BeamEndPos = HeldEntity:toWorld( HeldLocalPos )
-            
+                
                 Force      = Owner:shootPos() + Owner:eye() * BeamLength - BeamEndPos # initial force
                 Force     -= HeldEntity:pointVel( HeldLocalPos ) * 0.1
                 Force     -= HeldEntity:vel() * 0.05
@@ -121,11 +122,15 @@ if( Owner:weapon():type() == "weapon_physgun" ) {
                 CursedQuatThing = quat( Chip:angles():rotateAroundAxis( vec(0,0,1), Owner:angles()[2] - InitialGrabYaw ) ) / InitialGrabQuat
                 TargetAng = TargetAng:rotateAroundAxis( rotationAxis(CursedQuatThing), rotationAngle(CursedQuatThing) )
                 
-                HeldEntity:perfectAngForce( TargetAng )
+                Owner:plyApplyForce( -Force / PLAYER_MASS )
                 
+                rangerFilter( array(Owner,Chip) )
+                GroundTest = rangerOffsetHull(1,Owner:pos(),vec(0,0,-1),Owner:aabbMin(),Owner:aabbMax())
+                if( GroundTest:entity() == HeldEntity ){ break } # no prop surfing for you! that's troll physics!
+                
+                HeldEntity:perfectAngForce( TargetAng )
                 HeldEntity:applyOffsetForce( Force, BeamEndPos )    
                 
-                Owner:plyApplyForce( -Force / PLAYER_MASS )
             break
             case 2,
                 BeamEndPos = HeldLocalPos
@@ -155,4 +160,8 @@ if( Owner:weapon():type() == "weapon_physgun" ) {
     Chip:setPos( BeamEndPos )
 
 }
+else{
+    Chip:propNotSolid(1)    
+}
 
+Holding = Holding & Owner:isAlive()
