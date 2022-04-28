@@ -107,7 +107,6 @@ if( Owner:weapon():type() == "weapon_physgun" ) {
     ##
     ###
     if( Holding ){
-
         switch( Holding ){
             case 1,
                 BeamEndPos = HeldEntity:toWorld( HeldLocalPos )
@@ -164,4 +163,6 @@ else{
     Chip:propNotSolid(1)    
 }
 
-Holding = Holding & Owner:isAlive()
+if( !Owner:isAlive() ){
+    Holding = 0
+}
