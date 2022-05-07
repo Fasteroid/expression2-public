@@ -11,7 +11,7 @@ if(first()){
     #      E2 Hex Elytra      #
     #      by: Fasteroid      #
     #                         #
-       SHOW_WINGS    =    0
+       SHOW_WINGS    =    1
     #                         #
     #  Remove this to become  #
     #   inf() gay instantly   #
@@ -153,7 +153,7 @@ if( Jumps==2 ){
     ##   Tweaked Elytra Source Code 
     #
         ANG = owner():eyeAngles()
-        ANG = ANG + ang(-15*(1-ANG[1]/89),90,0)
+        ANG = ANG + ang(-5*(1-ANG[1]/89),90,0)
         VEL = owner():vel()*vec(0.02,0.02,0.1)
         
         FORCE = vec()
@@ -171,20 +171,20 @@ if( Jumps==2 ){
     		  Hlook = Pitchcos
     		  Sqrpitchcos = Pitchcos^2
     		
-    		  #code is identical to the code found in net.minecraft.entity.EntityLivingBase.moveEntityWithHeading(float, float) or rq.g(float, float) in obfuscated 15w41b
+    		  # code is close to the code found in net.minecraft.entity.EntityLivingBase.moveEntityWithHeading(float, float) or rq.g(float, float) in obfuscated 15w41b
     		  FORCE:setZ(-10 + Sqrpitchcos * 0.1)
     		
     		  if (VEL:z()< 0 & Hlook > 0){
-    			   Yacc = VEL:z() * -0.01 * Sqrpitchcos
-    			   FORCE = FORCE + vec(LookX * Yacc / Hlook,LookZ * Yacc / Hlook,Yacc)
-    		  }
+            Yacc = VEL:z() * -0.01 * Sqrpitchcos
+            FORCE = FORCE + vec(LookX * Yacc / Hlook,LookZ * Yacc / Hlook,Yacc)
+        }
     		  if (ANG:pitch() < 0){
-    			   Yacc = Hvel * -Pitchsin * 0.005
-    			   FORCE = FORCE + vec(-LookX * Yacc * 1.5 / Hlook,-LookZ * Yacc * 1.5 / Hlook,Yacc*6 )
-    		  }
+            Yacc = Hvel * -Pitchsin * 0.005
+            FORCE = FORCE + vec(-LookX * Yacc * 1.5 / Hlook,-LookZ * Yacc * 1.5 / Hlook,Yacc*6 )
+        }
     		  if (Hlook > 0){
-          FORCE = FORCE + vec(LookX / Hlook * Hvel - VEL:x(),LookZ / Hlook * Hvel - VEL:y(),0)*vec(0.6,0.6,0.3)
-		  }
+            FORCE = FORCE + vec(LookX / Hlook * Hvel - VEL:x(),LookZ / Hlook * Hvel - VEL:y(),0)*vec(0.6,0.6,0.3)
+        }
     		  FORCE[3] = min(FORCE[3],15) - max(VEL[3],0) * 0.006
         owner():plyApplyForce(FORCE*35 - VEL*vec(0.1,0.1,0)) # apply forces
     #
