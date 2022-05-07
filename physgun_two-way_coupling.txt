@@ -1,7 +1,7 @@
 @name F=MA Compliant Physgun
 @inputs 
 @outputs 
-@persist BeamLength HeldEntity:entity HeldLocalPos:vector InitialGrabYaw InitialGrabAng:angle InitialGrabQuat:quaternion Holding PLAYER_MASS WORLD_MASS MASS_CLAMP
+@persist BeamLength HeldEntity:entity HeldLocalPos:vector InitialGrabYaw InitialGrabAng:angle InitialGrabQuat:quaternion Holding PLAYER_MASS WORLD_MASS MASS_CLAMP Respawning
 @persist OwnerEyeAng:angle Attack1
 @persist [Chip,Owner]:entity TickInterval
 @model models/hunter/misc/sphere025x025.mdl
@@ -49,12 +49,13 @@ if( keyClk() ){ # default wheel speed is 5
     exit()
 }
 
-if( Owner:weapon():type() == "weapon_physgun" ) {
+if( Owner:weapon():type() == "weapon_physgun" & !Respawning ) {
     
-    Chip:propNotSolid(Attack1)
     Attack1 = Owner:keyAttack1()
     Attack2 = Owner:keyAttack2()
     Reload  = Owner:keyReload()
+    
+    Chip:propNotSolid(Attack1)
     
     rangerFilter( array(Owner,Chip) )
     EyeTrace = rangerOffset( 8192, Owner:shootPos() + Owner:vel() * TickInterval * 1.5, Owner:eye() )
@@ -122,7 +123,7 @@ if( Owner:weapon():type() == "weapon_physgun" ) {
         }
     ##
     ###
-    if( Holding ){
+    if( Holding & !Respawning ){
         switch( Holding ){
             case 1,
                 Mul = clamp(HeldEntity:mass(),0,1000)
@@ -180,6 +181,16 @@ else{
     Chip:propNotSolid(1)    
 }
 
-if( !Owner:isAlive() ){
-    Holding = 0
+if( changed(Owner:isAlive()) ){
+    if( !Owner:isAlive() ){
+        Holding = 0
+        Respawning = 1
+    }
+    else{
+        timer("doneRespawn",250)
+    }
+}
+
+if( clk("doneRespawn") ){
+    Respawning = 0
 }
