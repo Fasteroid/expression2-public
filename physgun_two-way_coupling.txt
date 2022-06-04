@@ -52,6 +52,7 @@ if( keyClk() ){ # default wheel speed is 5
 if( Owner:weapon():type() == "weapon_physgun" & !Respawning ) {
     
     Attack1 = Owner:keyAttack1()
+    Chip:propDraw(!Attack1)
     Attack2 = Owner:keyAttack2()
     Reload  = Owner:keyReload()
     
