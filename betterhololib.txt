@@ -1,5 +1,5 @@
 @name betterhololib
-@persist HOLOLIB_INDEXES:array
+@persist BETTERHOLO_AVAILABLE:array BETTERHOLO_MAX
 @model models/bull/gates/microcontroller1.mdl
 
 #[                                        ]#
@@ -7,6 +7,8 @@
 ##                                        ##
 ##    Manages hologram IDs for you.       ##
 ##    Call holoAlloc() to get started.    ##
+##                                        ##
+##    Now completely vanilla!             ##
 #[                                        ]#
 
 if( first() ){
@@ -17,31 +19,31 @@ if( first() ){
     #     Returns the next available hologram ID for use.
     #
     function number nextHoloID(){
-        local Test = HOLOLIB_INDEXES:getIndex(0)
-        if(Test){
-            return Test
+        if( BETTERHOLO_AVAILABLE:count() == 0 ){
+            BETTERHOLO_MAX++
+            return BETTERHOLO_MAX
         }
-        else{
-            return HOLOLIB_INDEXES:count() + 1
+        else {
+            return BETTERHOLO_AVAILABLE:popNumber()
         }
     }
     
     ###############
     ## 
-    #   allocHolo( Pos:vector = entity():pos() )
+    #   holoAlloc( Pos:vector = entity():pos() )
     #     Creates a new BetterHolo and returns its index.
     #     Optionally takes in a position to spawn the holo at.
     #
     function number holoAlloc(){
         local Next = nextHoloID()
-        HOLOLIB_INDEXES[Next,number] = 1
+        print("allocate "+Next)
         holoCreate(Next)
         return Next
     }
     function number holoAlloc(Pos:vector){
         local Next = nextHoloID()
-        HOLOLIB_INDEXES[Next,number] = 1
         holoCreate(Next,Pos)
+        print("allocate "+Next)
         return Next
     }
     
@@ -52,7 +54,8 @@ if( first() ){
     #
     function number:destroy(){
         holoDelete(This)
-        HOLOLIB_INDEXES[This,number] = 0
+        print("free "+This)
+        BETTERHOLO_AVAILABLE:pushNumber(This)
     }
     
     if(entity():model() == "models/bull/gates/microcontroller1.mdl"){
