@@ -1,7 +1,7 @@
 @name F=MA Compliant Physgun
 @inputs 
 @outputs 
-@persist BeamLength HeldEntity:entity HeldLocalPos:vector InitialGrabYaw InitialGrabAng:angle InitialGrabQuat:quaternion Holding PLAYER_MASS WORLD_MASS MASS_CLAMP Respawning
+@persist BeamLength HeldEntity:entity HeldLocalPos:vector InitialGrabYaw InitialGrabAng:angle InitialGrabQuat:quaternion Holding PLAYER_MASS WORLD_MASS Respawning
 @persist OwnerEyeAng:angle Attack1
 @persist [Chip,Owner]:entity TickInterval
 @model models/hunter/misc/sphere025x025.mdl
@@ -17,7 +17,6 @@ if( first() ){
     
     PLAYER_MASS = 150
     WORLD_MASS = 1500
-    MASS_CLAMP = 1000
     
     Chip = entity()
     Owner = owner()
