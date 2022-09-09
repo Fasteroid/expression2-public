@@ -36,14 +36,12 @@ if( first() ){
     #
     function number holoAlloc(){
         local Next = nextHoloID()
-        print("allocate "+Next)
         holoCreate(Next)
         return Next
     }
     function number holoAlloc(Pos:vector){
         local Next = nextHoloID()
         holoCreate(Next,Pos)
-        print("allocate "+Next)
         return Next
     }
     
@@ -54,7 +52,6 @@ if( first() ){
     #
     function number:destroy(){
         holoDelete(This)
-        print("free "+This)
         BETTERHOLO_AVAILABLE:pushNumber(This)
     }
     
