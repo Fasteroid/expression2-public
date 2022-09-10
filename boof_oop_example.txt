@@ -50,10 +50,10 @@ for(I=Objs:count(),1,-1){ # iterate over all objects, but backwards so we don't 
     Boof["scale_vel",number] = Boof["scale_vel",number]*0.7 + ( Boof["maxscale",number]*(Boof["time",number]>2) - Boof["scale",number] )*0.2
     Boof["scale",number] = Boof["scale",number] + Boof["scale_vel",number]
     
-    if( Boof["time",number] < 0 ){    # time to delete this object
-        Boof["holo",number]:destroy() # free up this holo
-        Objs:remove(I)                # remove table entry
-        continue                      # nothing else to do here
+    if( Boof["time",number] < 0 ){     # time to delete this object
+        Boof["holo",number]:holoFree() # free up this holo
+        Objs:remove(I)                 # remove table entry
+        continue                       # nothing else to do here
     }
     
     holoScale(Boof["holo",number],vec(Boof["scale",number])) # scale this object's holo according its time

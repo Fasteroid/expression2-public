@@ -47,14 +47,24 @@ if( first() ){
     
     ###############
     ## 
-    #   <BetterHolo>:destroy( )
-    #     Destroys the BetterHolo it's called on
+    #   <BetterHolo>:holoFree( )
+    #     Deletes the BetterHolo it's called on and frees the index for use again.
     #
-    function number:destroy(){
+    function number:holoFree(){
         holoDelete(This)
         BETTERHOLO_AVAILABLE:pushNumber(This)
     }
     
+    ### DEPRECATED ##
+    ## 
+    #   <BetterHolo>:destroy( )
+    #     Old alias of holoFree, kept for backwards-compatibility
+    #
+    function number:destroy(){
+        This:holoFree()
+    }
+    
+
     if(entity():model() == "models/bull/gates/microcontroller1.mdl"){
         selfDestruct()
         error("This is a library; #include it in something.")
