@@ -1,0 +1,49 @@
+@name advanced bugbait bombs
+@inputs 
+@outputs 
+@persist Bombs:table
+@trigger
+
+#include "vr_holo_designer/example/nade_model"
+
+if( first() ){
+    runOnTick(1) # run the code every tick
+}
+
+
+if( changed( owner():keyAttack1() ) & !owner():keyAttack1() ){ # when you release the mouse...
+    
+    timer( "findbugbait", 250 ) # delay the find because bugbait is cringe and doesn't spawn right away
+
+}
+
+if( clk( "findbugbait" ) ){
+    
+    findByClass("npc_grenade_bugbait")
+    Ents = findToArray()
+    foreach(N, K:entity = Ents){
+        if( K["found",number] ){ continue }
+        K["found",number] = 1
+        K:setTrails(100, 1, 1, "trails/laser", vec(255,0,0), 255, 0, 0) # stick a trail on it
+        local Holo = holoStructCreate("nade",K:pos())
+        holoParent(Holo,K)
+        Bombs:pushTable(table(
+            "ent" = K,
+            "holo" = Holo
+        ))
+    }
+    
+}
+
+for(I=Bombs:count(),1,-1){
+    local Obj = Bombs[I,table]
+    if( !Obj["ent",entity]:isValid() ){
+        Obj["holo",number]:holoStructFree()
+        Bomb = propSpawn("models/props_phx/ball.mdl",Obj["pos",vector],1)
+        Bomb:propBreak()
+        Bombs:remove(I)
+    }
+    else{
+        Obj["pos",vector] = Obj["ent",entity]:pos()
+    }
+}
