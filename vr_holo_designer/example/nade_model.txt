@@ -1,0 +1,13 @@
+@name holo structure: nade
+#include "vr_holo_designer/holostructurelib"
+
+# ~ #include this in your e2 to use with holostructurelib
+# ~ exported by fast's vr hologram designer on september 10 2022
+
+if(first()){ registerStructure("nade",table(
+  "models" = array("icosphere2","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere"),
+  "positions" = array(vec(0.11111,-0.11111,-0.11111),vec(2.61111,-2.11111,1.88889),vec(-0.38889,-2.11111,-3.11111),vec(2.61111,0.88889,-3.11111),vec(1.61111,3.88889,1.88889),vec(-1.38889,2.88889,-2.11111),vec(-3.38889,0.88889,1.88889),vec(0.61111,-1.11111,3.88889),vec(-2.38889,-3.11111,-1.11111)),
+  "angles" = array(ang(-12,-172,-94),ang(-39,-54,110),ang(-47,78,11),ang(-43,-158,-81),ang(26,-101,-144),ang(-48,-49,-110),ang(-39,170,90),ang(-84,72,64),ang(24,-144,-176)),
+  "scales" = array(vec(0.65315,0.6737,0.73809),vec(0.39515,0.20642,0.22364),vec(0.39515,0.20642,0.22364),vec(0.39515,0.20642,0.22364),vec(0.39515,0.20642,0.22364),vec(0.39515,0.20642,0.22364),vec(0.39515,0.20642,0.22364),vec(0.39515,0.20642,0.22364),vec(0.39515,0.20642,0.22364)),
+  "colors" = array(vec(51,51,51),vec(255,85,51),vec(255,85,51),vec(255,85,51),vec(255,85,51),vec(255,85,51),vec(255,85,51),vec(255,85,51),vec(255,85,51))
+))}

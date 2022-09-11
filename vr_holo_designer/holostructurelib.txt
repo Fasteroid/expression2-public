@@ -44,13 +44,14 @@ if( first() ){
         if( !HOLOSTRUCTURE_DATA:exists(Class) ){
             error("Attempt to spawn unknown structure '"+Class+"'")
         }
-        local Base = holoAlloc()
+        local Base = holoAlloc(Pos)
         holoAlpha(Base,0)
-        HOLOSTRUCTURE_QUEUE[Base,table] = table(
+        HOLOSTRUCTURE_QUEUE[Base+"",table] = table(
             "template" = HOLOSTRUCTURE_DATA[Class,table],
             "progress" = 0,
             "children" = array(),
-            "entity" = holoEntity(Base)
+            "entity" = holoEntity(Base),
+            "id" = Base
         )
         return Base
     }
@@ -64,14 +65,16 @@ if( first() ){
     #     Deletes a HoloStructure and all its children.
     # 
     function number:holoStructFree(){
-        if( HOLOSTRUCTURE_SPAWNED:exists(This) ){ # probably already spawned
-            local Holos = HOLOSTRUCTURE_SPAWNED[This,table]["children",array]
+        local ThisStr = This+""
+        if( HOLOSTRUCTURE_SPAWNED:exists(ThisStr) ){ # probably already spawned
+            local Holos = HOLOSTRUCTURE_SPAWNED[ThisStr,table]["children",array]
             foreach(N,ID:number=Holos){
                 ID:holoFree()
             }
+            HOLOSTRUCTURE_SPAWNED:remove(ThisStr)
         }
-        elseif( HOLOSTRUCTURE_QUEUE:exists(This) ) { # check queue just in case
-            local Holos = HOLOSTRUCTURE_QUEUE[This,table]["children",array]
+        elseif( HOLOSTRUCTURE_QUEUE:exists(ThisStr) ) { # check queue just in case
+            local Holos = HOLOSTRUCTURE_QUEUE[ThisStr,table]["children",array]
             foreach(N,ID:number=Holos){
                 ID:holoFree()
             }
@@ -87,9 +90,10 @@ if( first() ){
     
 }
 
-foreach(N:number, SpawnStruct:table = HOLOSTRUCTURE_QUEUE){
+foreach(S, SpawnStruct:table = HOLOSTRUCTURE_QUEUE){
     
     if( !holoCanCreate() ){ break }
+    N = SpawnStruct["id",number]
     
     local Template = SpawnStruct["template",table]
         local Models = Template["models",array]
@@ -117,7 +121,7 @@ foreach(N:number, SpawnStruct:table = HOLOSTRUCTURE_QUEUE){
     SpawnStruct["progress",number] = Progress
     
     if( Progress == Max ){ # done, move it out of the queue
-        HOLOSTRUCTURE_SPAWNED[N,table] = HOLOSTRUCTURE_QUEUE:removeTable(N)
+        HOLOSTRUCTURE_SPAWNED[N+"",table] = HOLOSTRUCTURE_QUEUE:removeTable(N+"")
     }
     
 }

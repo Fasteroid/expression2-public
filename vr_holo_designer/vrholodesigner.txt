@@ -1,0 +1,831 @@
+@name VR Holo Designer v1.3
+@inputs 
+@outputs 
+
+# GLOBAL CONSTANTS
+@persist PLY:entity 
+@persist MENU_DATA:table SPAWNMENU_W SPAWNMENU_H SPAWNMENU_SCL MENU_BASE SELECT_BASE SPAWNMENU_SPACING X Y MENU_SPAWNED MENU_ENT:entity HOLOMODELS:array HOLOMODELOFFSETS:table DEFAULT_SCALE:vector
+@persist HANDLE_DATA:table HANDLE_OPPOSITES:table HANDLE_CENTER HANDLE_SCL HANDLE_COLOR:vector HIGHLIGHT_HOLO
+@persist DELETER_BASE DELETER_TOP DELETER_BOTTOM DELETER_SPIN DELETER_SPINRATE DELETER_FLASHER DELETER:entity
+@persist BUCKET_BASE BUCKET_PAINT BUCKET_ENT:entity BUCKET_SPAWNED BUCKET_SATS BUCKET_BRIGHTS BUCKET_SELECTOR BUCKET_LEN BUCKET_ANGLE HUE_CURRENT HSV_CURRENT:vector BUCKET_POINTER BUCKET_DATA:table BUCKET_POINTER_ENT:entity
+
+# GLOBAL TRANSIENTS
+@persist Grab_Holos:table Grab_Holo_AvailableIDs:array Grab_Holo_MaxID
+@persist Delet_Sound Deleting_Grab_Holos:table
+@persist Hue_State Hue_Row Coloring_State
+@persist Holding_State Menu_Holo_Selected:table Held_Holo:table Hand_Local_Ang:angle Hand_Local_Pos:vector Force_Menu_Update
+@persist Allow_Dragging Allow_Scale_Hovering Nearest_Handle_Dist Dragging_State Nearest_Holo:table Nearest_Handle:table Slider_Handle:vector Opposite_Handle:table Hand_Pos:vector
+
+
+### PLANNED ADDITIONAL FEATURES
+
+# sliders for snapping control [ ]
+
+# save button [ ]
+
+# model loader library [0]
+# |- make loading async! [0]
+# |- #include compatibility [0]
+# |- saving [ ]
+
+#include "betterhololib"
+#include "bettersoundlib"
+
+if( first() ){
+    
+    #holoCreate(-1)
+    #holoScale(-1,vec(0.1))
+    
+    Hand_Pos = vec()
+    Hand_Ang = ang()
+    
+    runOnTick(1)
+    
+    PLY = findPlayerByName("fast")   
+    
+    SPAWNMENU_W = 6
+    SPAWNMENU_SCL = 14
+    SPAWNMENU_SPACING = 2
+    
+    HANDLE_SCL = 4
+    HANDLE_COLOR = vec(100)
+    
+    BUCKET_SATS = 6
+    BUCKET_BRIGHTS = 6
+    BUCKET_ANGLE = 40
+    
+    HOLOMODELS = array(
+        "rcube_thin",
+        "rcube",
+        "rcube_thick",
+        "rcylinder_thin",
+        "rcylinder",
+        "rcylinder_thick",
+        "hq_rcube_thin",
+        "hq_rcube",
+        "hq_rcube_thick",
+        "hq_rcylinder_thin",
+        "hq_rcylinder",
+        "hq_rcylinder_thick",
+        "plane",
+        "cplane",
+        "cube",
+        "hq_tube_thin",
+        "hq_tube",
+        "hq_tube_thick",
+        "icosphere",
+        "icosphere2",
+        "icosphere3",
+        "torus",
+        "torus2",
+        "torus3",
+        "cone",
+        "pyramid",
+        "tetra",
+        "hq_cone",
+        "prism",
+        "right_prism",
+        "hq_dome",
+        "hq_icosphere",
+        "hq_cylinder",
+        "hq_torus",
+        "hq_torus_oldsize",
+        "hq_torus_thick"
+    )
+    
+    HOLOMODELOFFSETS = table(
+        "right_prism" = ang(-90,0,90),
+        "prism" = ang(90,90,90),
+        "plane" = ang(-45,0,0),
+        "cplane" = ang(-45,0,0)
+    )
+    
+    # Feel free to modify this to your liking.
+    # I'm from the US, so I use M/D/Y
+    function string getTimeStamp(){
+        local MONTHS = array("january","february","march","april","may","june","july","august","september","october","november","december")
+        local D = date()
+        return MONTHS[ D["month",number], string ] + " " + D["day",number] + " " + D["year",number]
+    }
+    
+    function updateHandlePositions(Scale:vector, Enable){
+        Allow_Scale_Hovering = Enable
+        for(I=1,HANDLE_DATA:count()){
+            local H = HANDLE_DATA[I,table]
+            
+            # due to some godforsaken bug with parenting, I must do this horrible shit
+            #holoUnparent(H["trueid",number])
+            #holoParent(H["trueid",number],HANDLE_CENTER)
+            
+            holoPos( H["trueid",number], holoEntity(HANDLE_CENTER):toWorld(H["slider",vector]*Scale*0.5) )
+        }
+    }
+
+    function setHandleAlphas(A){
+        local Keys = HANDLE_DATA:keys()
+        foreach(N,ID:string=Keys){
+            local H = HANDLE_DATA[ID,table]
+            holoAlpha( H["trueid",number], A )
+        }
+    }
+    
+    function number nextGrabbableID(){
+        if( Grab_Holo_AvailableIDs:count() == 0 ){
+            Grab_Holo_MaxID++
+            return Grab_Holo_MaxID
+        }
+        else {
+            return Grab_Holo_AvailableIDs:popNumber()
+        } 
+    }
+
+    function table holoCreateGrabbable(Options:table){
+        local H = holoAlloc()
+        
+        holoModel(H,Options["model",string])
+        holoAng(H,Options["ent",entity]:angles())
+        holoPos(H,Options["ent",entity]:pos())
+        holoMaterial(H,"pac/default")
+        holoScaleUnits(H,Options["scale",vector])
+        holoColor(H,Options["ent",entity]:getColor())
+        
+        local GID = nextGrabbableID()
+        
+        local Holo = table(
+            "ent" = holoEntity(H),
+            "trueid"  = H,
+            "grabid" = GID,
+            "scale" = Options["scale",vector],
+            "model" = Options["model",string]
+        )
+        Grab_Holos[GID,table] = Holo
+        
+        return Holo
+    }
+
+    
+    function holoCreateAndGrab(BaseHolo:table){
+        local Holo = holoCreateGrabbable(BaseHolo)
+        holoParent(HANDLE_CENTER,Holo["trueid",number])
+        Held_Holo = Holo
+        Holding_State = 1
+        Locals = toLocalPosAng(BaseHolo["ent",entity]:pos(),BaseHolo["ent",entity]:angles(),Hand_Pos,Hand_Ang)
+        Hand_Local_Pos = Locals[1,vector]
+        Hand_Local_Ang = Locals[2,angle]
+    }
+    
+    function holoFreeGrabbable(BaseHolo:table){
+        holoUnparent(HANDLE_CENTER)
+        BaseHolo["trueid",number]:holoFree()
+        
+        # for now I'm just clearing the table and will check for that when I export
+        # actually removing them won't be constant time and is therefore stupid
+        Grab_Holo_AvailableIDs:pushNumber(BaseHolo["grabid",number])
+        BaseHolo:clear()
+        
+        Held_Holo = table()
+        Nearest_Holo = table()
+    }
+    
+    function holoShredGrabbable(BaseHolo:table){
+        holoUnparent(HANDLE_CENTER)
+        holoPos(HANDLE_CENTER,entity():pos() - vec(0,0,200))
+        
+        local DeleteAnimation = BaseHolo:clone()
+
+        DeleteAnimation["deathpos",vector] = DeleteAnimation["ent",entity]:pos()
+        DeleteAnimation["deathscale",vector] = DeleteAnimation["scale",vector]
+        DeleteAnimation["hp",number] = 1
+        
+        BaseHolo:clear() # can't free the entity yet since it's needed for animation
+        
+        Deleting_Grab_Holos:pushTable(DeleteAnimation)
+        Held_Holo = table()
+        Nearest_Holo = table()
+    }
+    
+    Allow_Scale_Hovering = 1
+
+    ### slider node population
+    ##
+        Sliders = array()
+        for(X=-1,1){ # I'm lazy
+            for(Y=-1,1){
+                for(Z=-1,1){
+                    if( !(X==0 & Y==0 & Z==0) ){
+                        Sliders:pushVector( vec(X,Y,Z) )
+                    }
+                }
+            }
+        }
+        
+        HANDLE_CENTER = holoAlloc()
+        holoAlpha(HANDLE_CENTER,0)    
+        DEFAULT_SCALE = vec(0.9)*SPAWNMENU_SCL-SPAWNMENU_SPACING
+        # first, make all the draggable handles
+      
+        for(I=1,Sliders:count()){
+            local Slider_Handle = Sliders[I,vector]
+            local H = holoAlloc(entity():toWorld(Slider_Handle*DEFAULT_SCALE*0.5))
+            holoModel(H,"hq_icosphere")
+            holoColor(H,HANDLE_COLOR,100)
+            holoScaleUnits(H,vec(HANDLE_SCL*0.5))
+            holoParent(H,HANDLE_CENTER)
+            holoMaterial(H,"lights/white")
+            local Holo = table(
+                "trueid" = H,
+                "slider" = Slider_Handle,
+                "ent" = holoEntity(H)
+            )
+            HANDLE_DATA[I,table] = Holo
+            Opp = round(-Slider_Handle)
+            HANDLE_OPPOSITES[ Opp+"", table ] = Holo
+        }
+    ##
+    ###
+    
+    # holo spawnmenu
+
+    MENU_BASE = holoAlloc()
+    holoParent(MENU_BASE,entity())
+    holoColor(MENU_BASE,vec(10,11,12),100)
+    
+    DELETER_BASE = holoAlloc()
+    DeleterCenter = vec(0,(SPAWNMENU_W+0.2+1.5)*-SPAWNMENU_SCL*0.5,SPAWNMENU_SCL*0.6)
+    holoPos(DELETER_BASE,entity():toWorld( DeleterCenter ))
+    holoScaleUnits(DELETER_BASE,vec(1.5,1.5,0.75)*SPAWNMENU_SCL)
+    holoModel(DELETER_BASE,"hq_stube_thin")
+    holoMaterial(DELETER_BASE,"pac/default")
+    holoColor(DELETER_BASE,vec(40))
+    
+    DELETER_BOTTOM = holoAlloc()
+    holoPos(DELETER_BOTTOM,entity():toWorld( DeleterCenter + vec(-0.35,0,0)*SPAWNMENU_SCL ))
+    holoAng(DELETER_BOTTOM,entity():toWorld(ang(0,0,90)))
+    holoScaleUnits(DELETER_BOTTOM,vec(0.6,0.6,1.55)*SPAWNMENU_SCL)
+    holoModel(DELETER_BOTTOM,"hexagon")
+    holoMaterial(DELETER_BOTTOM,"pac/default")
+    holoColor(DELETER_BOTTOM,vec(60))
+    
+    DELETER_TOP = holoAlloc()
+    holoPos(DELETER_TOP,entity():toWorld( DeleterCenter + vec(0.35,0,0)*SPAWNMENU_SCL ))
+    holoAng(DELETER_TOP,entity():toWorld(ang(0,0,90)))
+    holoScaleUnits(DELETER_TOP,vec(0.6,0.6,1.55)*SPAWNMENU_SCL)
+    holoModel(DELETER_TOP,"hexagon")
+    holoMaterial(DELETER_TOP,"pac/default")
+    holoColor(DELETER_TOP,vec(60))
+    
+    holoParent(DELETER_TOP,DELETER_BASE)
+    holoParent(DELETER_BOTTOM,DELETER_BASE)
+    holoParent(DELETER_BASE,MENU_BASE)
+    
+    DELETER = holoEntity(DELETER_BASE)
+    
+    BUCKET_BASE = holoAlloc()
+    BucketCenter = vec(0.5,(SPAWNMENU_W+0.6+1.5)*-0.5,0.9)*SPAWNMENU_SCL
+    holoPos(BUCKET_BASE,entity():toWorld(BucketCenter))
+    holoModel(BUCKET_BASE,"hq_tube_thin")
+    holoScaleUnits(BUCKET_BASE,vec(1.8,1.8,1.8)*SPAWNMENU_SCL)
+    holoMaterial(BUCKET_BASE,"pac/default")
+    
+    BUCKET_PAINT = holoAlloc()
+    holoParent(BUCKET_PAINT,BUCKET_BASE)
+    holoPos(BUCKET_PAINT,entity():toWorld(BucketCenter-vec(0,0,0.2)*SPAWNMENU_SCL))
+    holoModel(BUCKET_PAINT,"hq_cylinder")
+    holoScaleUnits(BUCKET_PAINT,vec(1.7,1.7,1.6)*SPAWNMENU_SCL)    
+    holoMaterial(BUCKET_PAINT,"models/shiny")
+    
+    BUCKET_ENT = holoEntity(BUCKET_BASE)
+    
+    SidelenSolverPt = vec2(cos(BUCKET_ANGLE/(BUCKET_SATS-1)),sin(BUCKET_ANGLE/(BUCKET_SATS-1)))
+    BUCKET_LEN = SidelenSolverPt[2] * (1/SidelenSolverPt[1]) * SPAWNMENU_SCL
+    
+    BUCKET_POINTER = holoAlloc()
+    holoModel(BUCKET_POINTER,"hq_cone")
+    holoScaleUnits(BUCKET_POINTER,vec(BUCKET_LEN*1.5))    
+    holoParent(BUCKET_POINTER,BUCKET_BASE)
+    
+    BUCKET_POINTER_ENT = holoEntity(BUCKET_POINTER)
+    Hue_State = -1
+    
+    X=Y=0
+    SPAWNMENU_H = ceil(HOLOMODELS:count() / SPAWNMENU_W)
+    holoScaleUnits( MENU_BASE, vec(SPAWNMENU_H,SPAWNMENU_W,0)*SPAWNMENU_SCL )
+    
+    holoPos(MENU_BASE,entity():pos()+vec(0,0,(SPAWNMENU_H/2)*SPAWNMENU_SCL))
+    holoAng(MENU_BASE,ang(-90,entity():angles():yaw()+180,0))
+    
+    MENU_ENT = holoEntity(MENU_BASE)
+    
+    holoParent(BUCKET_BASE,MENU_BASE)
+    
+}
+
+
+while( MENU_SPAWNED < HOLOMODELS:count() & holoCanCreate() ){
+    
+    MENU_SPAWNED++
+    local MDL = HOLOMODELS[MENU_SPAWNED,string]
+    local Background = holoAlloc()
+    local Holo = holoAlloc()
+    if(MENU_SPAWNED==1){
+        SELECT_BASE = Background
+    }
+    
+    local IndexPos = vec(Y,X,0)
+    local Pos = MENU_ENT:toWorld( IndexPos*SPAWNMENU_SCL - vec(SPAWNMENU_H-1,SPAWNMENU_W-1,0)*0.5*SPAWNMENU_SCL + vec(0,0,1) )
+    
+    holoModel(Holo,MDL)
+
+    holoColor(Background,vec(40),150)
+    holoColor(Holo,vec(60))
+    holoMaterial(Holo,"pac/default")    
+
+    holoScaleUnits(Background,vec(1,1,0)*(SPAWNMENU_SCL-SPAWNMENU_SPACING))        
+    holoScaleUnits(Holo,DEFAULT_SCALE)        
+
+    holoPos(Background,Pos)
+    holoPos(Holo,Pos+MENU_ENT:toWorldAxis(vec(0,0,SPAWNMENU_SCL*0.5)))
+    
+    holoAng(Holo,MENU_ENT:toWorld(ang(90,0,0) + HOLOMODELOFFSETS[MDL,angle]))
+    holoAng(Background,MENU_ENT:angles())
+    
+    holoParent(Background,MENU_BASE)
+    holoParent(Holo,MENU_BASE)
+    local Index = IndexPos+""
+    
+    local HoloTable = table(
+        "trueid" = Holo,
+        "model" = MDL,
+        "ent" = holoEntity(Holo),
+        "scale" = DEFAULT_SCALE,
+        "ismenu" = 1
+    )
+    
+    MENU_DATA[Index,table] = HoloTable
+    
+    X=(X+1)%SPAWNMENU_W
+    if(!X){Y++}   
+}
+
+while( BUCKET_SPAWNED < BUCKET_SATS*BUCKET_BRIGHTS & holoCanCreate() ){
+    
+    BUCKET_SPAWNED++
+ 
+    local Holo = holoAlloc()
+    
+    if(BUCKET_SPAWNED==1){ 
+        X = Y = 0 
+        holoPos(BUCKET_POINTER,BUCKET_ENT:toWorld(vec(SPAWNMENU_SCL+BUCKET_LEN,0,0)))
+        holoAng(BUCKET_POINTER,BUCKET_ENT:toWorld(ang(-90,0,0)))
+    }
+    
+    local Deg = (BUCKET_ANGLE*2)*X/(BUCKET_SATS-1)
+    holoAng(Holo,BUCKET_ENT:toWorld(ang(0,Deg-90-BUCKET_ANGLE,-90)))
+    holoPos(Holo,BUCKET_ENT:toWorld( vec(SPAWNMENU_SCL,0,SPAWNMENU_SCL*1.6*(Y/BUCKET_BRIGHTS-0.5+0.5/BUCKET_BRIGHTS)):rotate(ang(0,Deg-BUCKET_ANGLE,0)) ))
+    holoScaleUnits(Holo,vec(BUCKET_LEN*2,1.6*SPAWNMENU_SCL/BUCKET_BRIGHTS,0.01))
+    local HSV = vec(0, 1-X/(BUCKET_SATS-1), Y/(BUCKET_BRIGHTS-1))
+    holoColor( Holo, hsv2rgb( HSV ) )
+    holoMaterial( Holo, "lights/white" )
+    holoParent( Holo, BUCKET_BASE )
+    
+    local HoloData = table(
+        "trueid" = Holo,
+        "hsv" = HSV,
+        "hue" = (Y/BUCKET_BRIGHTS)*360 + (X/BUCKET_SATS)*360/BUCKET_BRIGHTS
+    )
+    
+    BUCKET_DATA[(X+1)+","+(Y+1),table] = HoloData
+    X=(X+1)%BUCKET_SATS
+    if(!X){Y++}   
+    
+}
+
+
+
+if(PLY:isPlayerInVR()){
+    Hand_Ang = PLY:getRightHandAngVR()
+    Hand_Pos = round(PLY:getRightHandPosVR()+Hand_Ang:forward()*5)
+    Hand_Ang = round(Hand_Ang/15)*15
+}
+else{
+    Hand_Pos = PLY:shootPos() + PLY:eye()*35
+    Hand_Ang = PLY:eyeAngles()
+}
+
+holoPos(-1,Hand_Pos)
+
+AngTemp = (Hand_Pos-BUCKET_ENT:pos()):toAngle()
+
+GridPos = holoEntity(SELECT_BASE):toLocal(Hand_Pos)
+GridPos_R = round(GridPos/SPAWNMENU_SCL-vec(0,0,0.5))
+GridPos_D = GridPos-(GridPos_R)*SPAWNMENU_SCL
+
+if(!Dragging_State){
+    
+    Current_Nearest_Handle = table()
+    
+    if(!Holding_State & !Coloring_State){
+        UsingMenu = 0
+        if( (abs(GridPos_D[1])<=(SPAWNMENU_SCL-SPAWNMENU_SPACING)*0.5) & (abs(GridPos_D[2])<=(SPAWNMENU_SCL-SPAWNMENU_SPACING)*0.5) ){
+            
+            holoColor(Menu_Holo_Selected["trueid",number],vec(60))               
+            Menu_Holo_Selected = MENU_DATA[ GridPos_R+"", table ]
+            holoColor(Menu_Holo_Selected["trueid",number],vec(255))
+            
+            UsingMenu = Menu_Holo_Selected["trueid",number] # will be 0 if we aren't actually using the menu
+            
+            if( changed(Menu_Holo_Selected["trueid",number]) & Menu_Holo_Selected["trueid",number] ){
+                Allow_Dragging = 0
+                Nearest_Holo = table()
+                holoEntity(Menu_Holo_Selected["trueid",number]):betterSoundPlay("common/talk.wav",0.2)
+                holoAng(HANDLE_CENTER,Menu_Holo_Selected["ent",entity]:angles())
+                holoPos(HANDLE_CENTER,Menu_Holo_Selected["ent",entity]:pos())
+                updateHandlePositions(DEFAULT_SCALE,0)
+            }
+            
+        }
+        
+        if(holoEntity(BUCKET_POINTER):pos():distance(Hand_Pos) < BUCKET_LEN*1.25){
+            ShouldColor = 1
+            UsingMenu = 1
+            holoColor(BUCKET_POINTER,hsv2rgb(HUE_CURRENT,1,1))
+        }
+        else{
+            holoColor(BUCKET_POINTER,vec(255))            
+        }
+        
+        if(!UsingMenu){
+                
+            Nearest_Holo_Dist = SPAWNMENU_SCL
+            for(I=1,Grab_Holos:count()){
+                local Holo = Grab_Holos[I,table]
+                local TestDist = Holo["ent",entity]:pos():distance(Hand_Pos)
+                if(TestDist<Nearest_Holo_Dist){
+                    Nearest_Holo_Dist = TestDist
+                    Nearest_Holo = Holo
+                }
+            }
+            
+            Nearest_Handle_Dist = inf() # lol
+            for(I=1,HANDLE_DATA:count()){
+                local Holo = HANDLE_DATA[I,table]
+                local TestDist = Holo["ent",entity]:pos():distance(Hand_Pos)
+                if(TestDist<Nearest_Handle_Dist){
+                    Nearest_Handle_Dist = TestDist
+                    Current_Nearest_Handle = Holo
+                }
+            }
+            
+            Highlight1 = changed(Current_Nearest_Handle["trueid",number])
+            Highlight2 = changed(Nearest_Handle_Dist<HANDLE_SCL)
+            if( ( Highlight1 | Highlight2 ) ){
+                holoColor( Nearest_Handle["trueid",number], HANDLE_COLOR, 100 )
+                if( (Nearest_Handle_Dist<HANDLE_SCL) ){
+                    Nearest_Handle = Current_Nearest_Handle
+                    if( Allow_Scale_Hovering ){
+                        holoColor( Nearest_Handle["trueid",number], vec(0,255,0), 150 )
+                    }
+                }
+            }
+
+            Highlight3 = changed(Nearest_Holo["trueid",number])
+            #Highlight4 = changed(Nearest_Holo_Dist<SPAWNMENU_SCL)
+            if( ( Highlight3 ) & Nearest_Holo_Dist<Nearest_Holo["ent",entity]:radius()^2 ){
+                Nearest_Holo["ent",entity]:betterSoundPlay("common/talk.wav",0.2)
+                holoAng(HANDLE_CENTER,Nearest_Holo["ent",entity]:angles())
+                holoPos(HANDLE_CENTER,Nearest_Holo["ent",entity]:pos())        
+                holoParent(HANDLE_CENTER,Nearest_Holo["trueid",number])
+                updateHandlePositions(Nearest_Holo["scale",vector],1)
+                Allow_Dragging = 1
+            }
+            
+        }
+    }
+    elseif(!Coloring_State){
+
+        PaintTest = BUCKET_ENT:toLocal(Held_Holo["ent",entity]:pos())
+        if( PaintTest:setZ(0):length()<=0.9*SPAWNMENU_SCL & abs(PaintTest[3])<SPAWNMENU_SCL*0.9 ){
+            BucketVictim = Held_Holo["ent",entity]
+            NewColor = holoEntity(BUCKET_PAINT):getColor()
+            if( BucketVictim:getColor() != NewColor ){
+                holoColor(Held_Holo["trueid",number],NewColor)
+                BUCKET_ENT:betterSoundPlay("ambient/levels/canals/toxic_slime_gurgle5.wav",1)
+            }
+        }
+        
+        if( inrange(holoEntity(DELETER_BASE):toLocal(Held_Holo["ent",entity]:pos()),-vec(0.75)*SPAWNMENU_SCL,vec(0.75,0.75,1.5)*SPAWNMENU_SCL) ){
+            DeletFlash=1 
+            Delet_Spin_On=1
+        }
+        elseif( inrange(holoEntity(DELETER_BASE):toLocal(Held_Holo["ent",entity]:pos() + $Hand_Pos),-vec(0.75)*SPAWNMENU_SCL,vec(0.75,0.75,1.5)*SPAWNMENU_SCL) ){
+            DeletFlash=2
+            Delet_Spin_On=1
+        }
+        elseif( inrange(holoEntity(DELETER_BASE):toLocal(Held_Holo["ent",entity]:pos()),-vec(0.75)*SPAWNMENU_SCL,vec(0.9,0.9,3)*SPAWNMENU_SCL) ){
+            Delet_Spin_On=1
+        }
+        
+        Worlds = toWorldPosAng(Hand_Local_Pos,Hand_Local_Ang,Hand_Pos,Hand_Ang)
+        holoPos(Held_Holo["trueid",number],round(Worlds[1,vector]))
+        holoAng(Held_Holo["trueid",number],round(Worlds[2,angle]))
+        
+    }
+    else{
+        # we're moving the paint selector thing, which sucks balls. too bad!
+        BucketPos = BUCKET_ENT:toLocal(Hand_Pos)
+        
+        BucketScaler1 = (BUCKET_ANGLE/(BUCKET_SATS-1))*2
+        BucketScaler2 = (SPAWNMENU_SCL*1.6/BUCKET_BRIGHTS)       
+        Odd1 = (BUCKET_SATS%2)
+        Odd2 = (BUCKET_BRIGHTS%2)        
+        
+        BucketYaw = ceil(angnorm(BucketPos:setZ(0):toAngle())[2]/BucketScaler1-0.5*Odd1)
+        BucketZ = ceil(BucketPos[3]/BucketScaler2-0.5*Odd2)-1
+        BucketYawOffset = ceil(BUCKET_SATS/2)+1
+        BucketYaw = BucketYaw-BucketYawOffset
+        BucketZOffset = ceil(BUCKET_BRIGHTS/2)
+        BucketZ = BucketZ-BucketZOffset
+        BucketYaw = clamp(BucketYaw,-BUCKET_SATS-Odd1,-1-Odd1)
+        BucketZ = clamp(BucketZ,-BUCKET_BRIGHTS-Odd2,-1-Odd2)+Odd2
+        
+        Rotation = ang(0,(BucketYaw+BucketYawOffset-0.5*!Odd1)*BucketScaler1,0)
+        holoPos(BUCKET_POINTER,BUCKET_ENT:toWorld( (Rotation:forward()*(SPAWNMENU_SCL+BUCKET_LEN)):setZ( (BucketZ+BucketZOffset+0.5*!Odd2)*BucketScaler2 ) ))
+        holoAng(BUCKET_POINTER,BUCKET_ENT:toWorld( Rotation:setPitch(-90) ))
+        
+        BucketYaw = BUCKET_SATS+BucketYaw+Odd1+1
+        BucketZ = BUCKET_BRIGHTS+BucketZ+1
+        ColorData = BUCKET_DATA[BucketYaw+","+BucketZ,table]
+        if(changed(ColorData["trueid",number])){
+            Lol = BUCKET_ENT:betterSoundPlay("player/footsteps/gravel"+randint(1,4)+".wav",0.2)
+            soundPitch(Lol,255)
+        }
+
+        if(Hue_Row==BUCKET_BRIGHTS){
+            HUE_CURRENT = ColorData["hue",number]
+            holoColor(BUCKET_POINTER,hsv2rgb(HUE_CURRENT,1,1))
+        }
+        elseif(Hue_Row==0){
+            HSV_CURRENT = ColorData["hsv",vector]
+        }
+        holoColor(BUCKET_PAINT,hsv2rgb(HSV_CURRENT:setX(HUE_CURRENT)))        
+       # printTable(ColorData)
+    }
+
+}
+else{
+    # scaling code
+    local H = Held_Holo["ent",entity]
+    local O = Opposite_Handle["ent",entity]
+    
+    local HandOnAxis = O:toLocal( Hand_Pos+Hand_Local_Pos )*positive(Nearest_Handle["slider",vector])
+    local HandOnWorldAxis = O:toWorld(HandOnAxis)
+    local Center = (HandOnWorldAxis+Opposite_Handle["ent",entity]:pos())*0.5
+    local Scale = Held_Holo["scale",vector]*(1-positive(Nearest_Handle["slider",vector])) + HandOnAxis*Nearest_Handle["slider",vector]
+
+    holoPos(Held_Holo["trueid",number], Center)
+    holoScaleUnits(Held_Holo["trueid",number],Scale)
+    holoPos(Nearest_Handle["trueid",number], HandOnWorldAxis )
+    Held_Holo["scale",vector] = Scale
+    holoPos(HANDLE_CENTER,Center)
+    updateHandlePositions(Nearest_Holo["scale",vector],1)
+}
+
+
+### deleter animation stuff
+##
+
+    if(DeletFlash==1 | (DELETER_FLASHER%1 != 0) ){
+        DELETER_FLASHER = round( ((DELETER_FLASHER+0.02)%1)*50 )*0.02
+    }
+
+    holoColor(DELETER_BASE,vec(40)+vec(115)*(sin(DELETER_FLASHER*180)^2))
+
+    for(I=Deleting_Grab_Holos:count(),1,-1){
+        
+        local HoloObj = Deleting_Grab_Holos[I,table]
+        local ID = HoloObj["trueid",number]
+        
+        if(HoloObj["hp",number]>0.05){
+            Delet_Spin_On = 1 # keep the shredder on if we're shredding
+            HoloObj["hp",number] = HoloObj["hp",number] * 0.9
+            holoScaleUnits(ID, HoloObj["deathscale",vector]*HoloObj["hp",number])
+            holoPos(ID, mix(HoloObj["deathpos",vector], DELETER:pos()-DELETER:up()*5, HoloObj["hp",number]))
+        }
+        else{
+            #holoUnparent(HANDLE_CENTER) -- probably not needed, will remove when I'm sure
+            HoloObj["trueid",number]:holoFree()
+            Deleting_Grab_Holos:remove(I)
+        }
+        
+    }
+
+    if(changed(Delet_Spin_On)){
+        if(Delet_Spin_On){
+            Delet_Sound = DELETER:betterSoundPlay("vehicles/apc/apc_start_loop3.wav",0)
+        }
+        else{
+            betterSoundStop(Delet_Sound)
+            DELETER:betterSoundPlay("vehicles/apc/apc_shutdown.wav",2)
+        }
+    }
+
+    DELETER_SPINRATE = (DELETER_SPINRATE*0.9+Delet_Spin_On*0.1)
+    DELETER_SPIN = DELETER_SPIN + DELETER_SPINRATE*20
+    holoAng(DELETER_TOP,DELETER:toWorld(ang(-DELETER_SPIN,0,90)))
+    holoAng(DELETER_BOTTOM,DELETER:toWorld(ang(DELETER_SPIN,0,90)))
+    DeletColor = mix( vec(255),vec(60),DELETER_SPINRATE )
+    holoColor(DELETER_TOP,DeletColor)
+    holoColor(DELETER_BOTTOM,DeletColor)
+
+##
+### deleter animation stuff end
+
+
+### hue editor stuff
+##
+    if( Hue_State==1 | Hue_Row > 0 ){
+        Divisions = 8
+        Hue_Row = clamp(Hue_Row+Hue_State*(1/Divisions),0,BUCKET_BRIGHTS)
+        CurHue = floor(Hue_Row)
+        T=0
+        Rot = (Hue_Row-CurHue)*(Divisions)/(Divisions-1)
+        for(N=1,BUCKET_SATS){
+            local Deg = (BUCKET_ANGLE*2)*(N-1)/(BUCKET_SATS-1)
+            local Holo = BUCKET_DATA[(N)+","+(CurHue+1),table]
+            holoAng(Holo["trueid",number],BUCKET_ENT:toWorld(ang(0,Deg+90*(-1+Rot*2)-BUCKET_ANGLE,-90)))
+        }
+        #print(Rot)
+        if(Rot==1){
+            if(Hue_State==1){
+                for(N=1,BUCKET_SATS){
+                    local Holo = BUCKET_DATA[(N)+","+(CurHue+1),table]
+                    holoColor(Holo["trueid",number],hsv2rgb(Holo["hue",number],1,1))
+                }
+            }
+            else{
+                for(N=1,BUCKET_SATS){
+                    local Holo = BUCKET_DATA[(N)+","+(CurHue+1),table]
+                    holoColor(Holo["trueid",number],hsv2rgb(Holo["hsv",vector]:setX(HUE_CURRENT)))
+                } 
+            }
+        }
+        
+    }
+##
+### hue editor stuff end
+
+
+
+if( changed(PLY:keyUse()) & !Dragging_State ){
+        
+    if(PLY:keyUse()){
+        if(!Coloring_State){
+            if(changed(Coloring_State)){
+                Hue_State = -1
+            }
+            if(Menu_Holo_Selected["trueid",number]){
+                holoCreateAndGrab( Menu_Holo_Selected )
+            }
+            else{
+                if(Nearest_Holo["trueid",number] & ( round(Nearest_Holo["ent",entity]:nearestPoint(Hand_Pos))==round(Hand_Pos) ) ){
+                    Locals = toLocalPosAng(Nearest_Holo["ent",entity]:pos(),Nearest_Holo["ent",entity]:angles(),Hand_Pos,Hand_Ang)
+                    Hand_Local_Pos = Locals[1,vector]
+                    Hand_Local_Ang = Locals[2,angle]
+                    Held_Holo = Nearest_Holo
+                    Holding_State = 1
+                }
+            }
+            holoParent(HANDLE_CENTER,Held_Holo["trueid",number])
+        }
+        else{
+            Hue_State = 1
+        }
+        
+    }
+    elseif(!PLY:keyUse()){
+        if( Held_Holo["trueid",number] & MENU_DATA:exists(GridPos_R+"") ){ # they dropped it back in the menu, oops
+            holoFreeGrabbable(Held_Holo)
+            Force_Menu_Update = 1
+        }
+        elseif(DeletFlash){
+            DELETER:betterSoundPlay("player/footsteps/ice"+randint(2,3)+".wav",1)
+            holoShredGrabbable(Held_Holo)
+        }
+        Held_Holo = table()
+        Nearest_Holo = table()
+        Holding_State = 0
+        Hue_State = -1
+        timer("hue",10)
+    }
+
+}
+
+if( changed(PLY:keyAttack1()) ){
+    
+    if( !Holding_State ){
+        if( PLY:keyAttack1() ){
+            
+            if(ShouldColor){
+                Locals = toLocalPosAng(BUCKET_POINTER_ENT:pos(),BUCKET_POINTER_ENT:angles(),Hand_Pos,Hand_Ang)
+                Hand_Local_Pos = Locals[1,vector]
+                Hand_Local_Ang = Locals[2,angle]
+                Coloring_State = 1
+            }
+            elseif( Nearest_Holo["trueid",number] & (Nearest_Handle_Dist<HANDLE_SCL) ){
+                # scaling action init
+                #printTable(Nearest_Handle)
+                holoColor( Nearest_Handle["trueid",number], vec(255,0,0) )
+                Nearest_Handle["ent",entity]:betterSoundPlay("common/wpn_select.wav",0.5)
+                Hand_Local_Pos = Nearest_Handle["ent",entity]:pos() - Hand_Pos
+                Slider_Handle = Nearest_Handle["slider",vector]
+                Opposite_Handle = HANDLE_OPPOSITES[Slider_Handle+"",table]
+                Dragging_State = 1
+                Held_Holo = Nearest_Holo
+                holoUnparent(HANDLE_CENTER)
+                setHandleAlphas(0)
+            }
+            
+        }
+        else{
+            setHandleAlphas(50)
+            Dragging_State = 0
+            Coloring_State = 0
+            Held_Holo = table()
+        }
+    }
+    else{
+        if( PLY:keyAttack1() ){
+            holoCreateAndGrab(Held_Holo)
+        }       
+    }
+    
+}
+
+
+if( changed(owner():lastSaidWhen()) ){
+    
+    S = owner():lastSaid():explode(" ")
+    
+    if(S[1,string] == ".s"){
+        if( S[2,string] != "" ){
+            
+            local ValidHolos = table()
+            
+            local Models = array()
+            local Positions = array()
+            local Angles = array()
+            local Scales = array()
+            local Colors = array()
+            
+            Center = vec(0,0,0)
+            
+            for(I=1,Grab_Holos:count()){
+                local Holo = Grab_Holos[I,table]
+                if(Holo:count()){ # we've got a valid one!
+                    ValidHolos:pushTable( Holo )
+                    Center = Center + Holo["ent",entity]:pos()
+                }
+            }
+
+            Center = Center / ValidHolos:count()
+
+            foreach(N:number, Holo:table = ValidHolos){
+                local M = Holo["model",string]
+                Models:pushString( "\""+M+"\"" )
+                
+                local V = round(Holo["ent",entity]:pos() - Center, 5)
+                Positions:pushString( "vec("+V[1]+","+V[2]+","+V[3]+")" )
+                
+                local A = round(Holo["ent",entity]:angles(), 3)
+                Angles:pushString( "ang("+A[1]+","+A[2]+","+A[3]+")" )
+                
+                local S = round(holoScale(Holo["trueid",number]), 5)
+                Scales:pushString( "vec("+S[1]+","+S[2]+","+S[3]+")" )
+                
+                local C = round(Holo["ent",entity]:getColor())
+                Colors:pushString( "vec("+C[1]+","+C[2]+","+C[3]+")" )
+            }
+            
+            local Code = "@name holo structure: " + S[2,string] + "\n" +
+                         "#include \"vr_holo_designer/holostructurelib\"" + "\n\n" +
+                         "# ~ #include this in your e2 to use with holostructurelib" + "\n" +
+                         "# ~ exported by fast's vr hologram designer on " + getTimeStamp() + "\n\n" +
+                         "if(first()){ registerStructure(\"" + S[2,string] + "\",table(" + "\n" +
+                         "  \"models\" = array(" + Models:concat(",") + ")," + "\n" +
+                         "  \"positions\" = array(" + Positions:concat(",") + ")," + "\n" +
+                         "  \"angles\" = array(" + Angles:concat(",") + ")," + "\n" +
+                         "  \"scales\" = array(" + Scales:concat(",") + ")," + "\n" +
+                         "  \"colors\" = array(" + Colors:concat(",") + ")" + "\n" +
+                         "))}\n"
+            
+            fileWrite(">e2shared/vrmodels/"+S[2,string]+".txt",Code)
+            owner():betterSoundPlay("buttons/button9.wav",1)
+            
+        }
+        else{
+            owner():betterSoundPlay("buttons/button10.wav",1)    
+        }
+    }
+    
+}
+
