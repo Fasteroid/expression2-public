@@ -8,33 +8,32 @@
 @persist HANDLE_DATA:table HANDLE_OPPOSITES:table HANDLE_CENTER HANDLE_SCL HANDLE_COLOR:vector HIGHLIGHT_HOLO
 @persist DELETER_BASE DELETER_TOP DELETER_BOTTOM DELETER_SPIN DELETER_SPINRATE DELETER_FLASHER DELETER:entity
 @persist BUCKET_BASE BUCKET_PAINT BUCKET_ENT:entity BUCKET_SPAWNED BUCKET_SATS BUCKET_BRIGHTS BUCKET_SELECTOR BUCKET_LEN BUCKET_ANGLE HUE_CURRENT HSV_CURRENT:vector BUCKET_POINTER BUCKET_DATA:table BUCKET_POINTER_ENT:entity
+@persist POSITION_SNAP ANGLE_SNAP
+
 
 # GLOBAL TRANSIENTS
-@persist Grab_Holos:table Grab_Holo_AvailableIDs:array Grab_Holo_MaxID
+@persist Grab_Holos:table Grab_Holo_AvailableIDs:array Grab_Holo_MaxID Handle_Parent:entity
 @persist Delet_Sound Deleting_Grab_Holos:table
 @persist Hue_State Hue_Row Coloring_State
 @persist Holding_State Menu_Holo_Selected:table Held_Holo:table Hand_Local_Ang:angle Hand_Local_Pos:vector Force_Menu_Update
-@persist Allow_Dragging Allow_Scale_Hovering Nearest_Handle_Dist Dragging_State Nearest_Holo:table Nearest_Handle:table Slider_Handle:vector Opposite_Handle:table Hand_Pos:vector
+@persist Allow_Scale_Hovering Nearest_Handle_Dist Handle_Interaction_State Nearest_Holo:table Nearest_Handle:table Slider_Handle:vector Opposite_Handle:table Hand_Pos:vector
 
 
 ### PLANNED ADDITIONAL FEATURES
 
-# sliders for snapping control [ ]
+# sliders for snapping control [~]
 
 # save button [ ]
 
 # model loader library [0]
 # |- make loading async! [0]
 # |- #include compatibility [0]
-# |- saving [ ]
+# |- saving [0]
 
 #include "betterhololib"
 #include "bettersoundlib"
 
 if( first() ){
-    
-    #holoCreate(-1)
-    #holoScale(-1,vec(0.1))
     
     Hand_Pos = vec()
     Hand_Ang = ang()
@@ -53,6 +52,9 @@ if( first() ){
     BUCKET_SATS = 6
     BUCKET_BRIGHTS = 6
     BUCKET_ANGLE = 40
+    
+    POSITION_SNAP = 8
+    ANGLE_SNAP = 5
     
     HOLOMODELS = array(
         "rcube_thin",
@@ -108,7 +110,7 @@ if( first() ){
         return MONTHS[ D["month",number], string ] + " " + D["day",number] + " " + D["year",number]
     }
     
-    function updateHandlePositions(Scale:vector, Enable){
+    function updateHandles(Scale:vector, Enable){
         Allow_Scale_Hovering = Enable
         for(I=1,HANDLE_DATA:count()){
             local H = HANDLE_DATA[I,table]
@@ -119,6 +121,7 @@ if( first() ){
             
             holoPos( H["trueid",number], holoEntity(HANDLE_CENTER):toWorld(H["slider",vector]*Scale*0.5) )
         }
+        holoScaleUnits(HANDLE_CENTER,Scale)
     }
 
     function setHandleAlphas(A){
@@ -127,6 +130,15 @@ if( first() ){
             local H = HANDLE_DATA[ID,table]
             holoAlpha( H["trueid",number], A )
         }
+    }
+    
+    function table:attachHandles(){
+        Handle_Parent = This["ent",entity]
+        holoAng(HANDLE_CENTER,Handle_Parent:angles())
+        holoPos(HANDLE_CENTER,Handle_Parent:pos())
+        holoParent(HANDLE_CENTER,This["trueid",number])
+        holoModel(HANDLE_CENTER,This["model",string])
+        holoScale(HANDLE_CENTER,holoScale(This["trueid",number]))
     }
     
     function number nextGrabbableID(){
@@ -204,7 +216,9 @@ if( first() ){
         Nearest_Holo = table()
     }
     
-    Allow_Scale_Hovering = 1
+    function number entity:containsPoint(V:vector){
+        return round(This:nearestPoint(V))==round(V)    
+    }
 
     ### slider node population
     ##
@@ -220,7 +234,7 @@ if( first() ){
         }
         
         HANDLE_CENTER = holoAlloc()
-        holoAlpha(HANDLE_CENTER,0)    
+        holoMaterial(HANDLE_CENTER,"models/wireframe")
         DEFAULT_SCALE = vec(0.9)*SPAWNMENU_SCL-SPAWNMENU_SPACING
         # first, make all the draggable handles
       
@@ -321,141 +335,145 @@ if( first() ){
 }
 
 
-while( MENU_SPAWNED < HOLOMODELS:count() & holoCanCreate() ){
+
+####
+###   Menu Element Spawning
+##
+    while( MENU_SPAWNED < HOLOMODELS:count() & holoCanCreate() ){
+        MENU_SPAWNED++
+        local MDL = HOLOMODELS[MENU_SPAWNED,string]
+        local Background = holoAlloc()
+        local Holo = holoAlloc()
+        if(MENU_SPAWNED==1){
+            SELECT_BASE = Background
+        }
+        
+        local IndexPos = vec(Y,X,0)
+        local Pos = MENU_ENT:toWorld( IndexPos*SPAWNMENU_SCL - vec(SPAWNMENU_H-1,SPAWNMENU_W-1,0)*0.5*SPAWNMENU_SCL + vec(0,0,1) )
+        
+        holoModel(Holo,MDL)
     
-    MENU_SPAWNED++
-    local MDL = HOLOMODELS[MENU_SPAWNED,string]
-    local Background = holoAlloc()
-    local Holo = holoAlloc()
-    if(MENU_SPAWNED==1){
-        SELECT_BASE = Background
+        holoColor(Background,vec(40),150)
+        holoColor(Holo,vec(60))
+        holoMaterial(Holo,"pac/default")    
+    
+        holoScaleUnits(Background,vec(1,1,0)*(SPAWNMENU_SCL-SPAWNMENU_SPACING))        
+        holoScaleUnits(Holo,DEFAULT_SCALE)        
+    
+        holoPos(Background,Pos)
+        holoPos(Holo,Pos+MENU_ENT:toWorldAxis(vec(0,0,SPAWNMENU_SCL*0.5)))
+        
+        holoAng(Holo,MENU_ENT:toWorld(ang(90,0,0) + HOLOMODELOFFSETS[MDL,angle]))
+        holoAng(Background,MENU_ENT:angles())
+        
+        holoParent(Background,MENU_BASE)
+        holoParent(Holo,MENU_BASE)
+        local Index = IndexPos+""
+        
+        local HoloTable = table(
+            "trueid" = Holo,
+            "model" = MDL,
+            "ent" = holoEntity(Holo),
+            "scale" = DEFAULT_SCALE,
+            "ismenu" = 1
+        )
+        
+        MENU_DATA[Index,table] = HoloTable
+        
+        X=(X+1)%SPAWNMENU_W
+        if(!X){Y++}   
     }
     
-    local IndexPos = vec(Y,X,0)
-    local Pos = MENU_ENT:toWorld( IndexPos*SPAWNMENU_SCL - vec(SPAWNMENU_H-1,SPAWNMENU_W-1,0)*0.5*SPAWNMENU_SCL + vec(0,0,1) )
-    
-    holoModel(Holo,MDL)
-
-    holoColor(Background,vec(40),150)
-    holoColor(Holo,vec(60))
-    holoMaterial(Holo,"pac/default")    
-
-    holoScaleUnits(Background,vec(1,1,0)*(SPAWNMENU_SCL-SPAWNMENU_SPACING))        
-    holoScaleUnits(Holo,DEFAULT_SCALE)        
-
-    holoPos(Background,Pos)
-    holoPos(Holo,Pos+MENU_ENT:toWorldAxis(vec(0,0,SPAWNMENU_SCL*0.5)))
-    
-    holoAng(Holo,MENU_ENT:toWorld(ang(90,0,0) + HOLOMODELOFFSETS[MDL,angle]))
-    holoAng(Background,MENU_ENT:angles())
-    
-    holoParent(Background,MENU_BASE)
-    holoParent(Holo,MENU_BASE)
-    local Index = IndexPos+""
-    
-    local HoloTable = table(
-        "trueid" = Holo,
-        "model" = MDL,
-        "ent" = holoEntity(Holo),
-        "scale" = DEFAULT_SCALE,
-        "ismenu" = 1
-    )
-    
-    MENU_DATA[Index,table] = HoloTable
-    
-    X=(X+1)%SPAWNMENU_W
-    if(!X){Y++}   
-}
-
-while( BUCKET_SPAWNED < BUCKET_SATS*BUCKET_BRIGHTS & holoCanCreate() ){
-    
-    BUCKET_SPAWNED++
- 
-    local Holo = holoAlloc()
-    
-    if(BUCKET_SPAWNED==1){ 
-        X = Y = 0 
-        holoPos(BUCKET_POINTER,BUCKET_ENT:toWorld(vec(SPAWNMENU_SCL+BUCKET_LEN,0,0)))
-        holoAng(BUCKET_POINTER,BUCKET_ENT:toWorld(ang(-90,0,0)))
+    while( BUCKET_SPAWNED < BUCKET_SATS*BUCKET_BRIGHTS & holoCanCreate() ){
+        BUCKET_SPAWNED++
+     
+        local Holo = holoAlloc()
+        
+        if(BUCKET_SPAWNED==1){ 
+            X = Y = 0 
+            holoPos(BUCKET_POINTER,BUCKET_ENT:toWorld(vec(SPAWNMENU_SCL+BUCKET_LEN,0,0)))
+            holoAng(BUCKET_POINTER,BUCKET_ENT:toWorld(ang(-90,0,0)))
+        }
+        
+        local Deg = (BUCKET_ANGLE*2)*X/(BUCKET_SATS-1)
+        holoAng(Holo,BUCKET_ENT:toWorld(ang(0,Deg-90-BUCKET_ANGLE,-90)))
+        holoPos(Holo,BUCKET_ENT:toWorld( vec(SPAWNMENU_SCL,0,SPAWNMENU_SCL*1.6*(Y/BUCKET_BRIGHTS-0.5+0.5/BUCKET_BRIGHTS)):rotate(ang(0,Deg-BUCKET_ANGLE,0)) ))
+        holoScaleUnits(Holo,vec(BUCKET_LEN*2,1.6*SPAWNMENU_SCL/BUCKET_BRIGHTS,0.01))
+        local HSV = vec(0, 1-X/(BUCKET_SATS-1), Y/(BUCKET_BRIGHTS-1))
+        holoColor( Holo, hsv2rgb( HSV ) )
+        holoMaterial( Holo, "lights/white" )
+        holoParent( Holo, BUCKET_BASE )
+        
+        local HoloData = table(
+            "trueid" = Holo,
+            "hsv" = HSV,
+            "hue" = (Y/BUCKET_BRIGHTS)*360 + (X/BUCKET_SATS)*360/BUCKET_BRIGHTS
+        )
+        
+        BUCKET_DATA[(X+1)+","+(Y+1),table] = HoloData
+        X=(X+1)%BUCKET_SATS
+        if(!X){Y++}   
     }
-    
-    local Deg = (BUCKET_ANGLE*2)*X/(BUCKET_SATS-1)
-    holoAng(Holo,BUCKET_ENT:toWorld(ang(0,Deg-90-BUCKET_ANGLE,-90)))
-    holoPos(Holo,BUCKET_ENT:toWorld( vec(SPAWNMENU_SCL,0,SPAWNMENU_SCL*1.6*(Y/BUCKET_BRIGHTS-0.5+0.5/BUCKET_BRIGHTS)):rotate(ang(0,Deg-BUCKET_ANGLE,0)) ))
-    holoScaleUnits(Holo,vec(BUCKET_LEN*2,1.6*SPAWNMENU_SCL/BUCKET_BRIGHTS,0.01))
-    local HSV = vec(0, 1-X/(BUCKET_SATS-1), Y/(BUCKET_BRIGHTS-1))
-    holoColor( Holo, hsv2rgb( HSV ) )
-    holoMaterial( Holo, "lights/white" )
-    holoParent( Holo, BUCKET_BASE )
-    
-    local HoloData = table(
-        "trueid" = Holo,
-        "hsv" = HSV,
-        "hue" = (Y/BUCKET_BRIGHTS)*360 + (X/BUCKET_SATS)*360/BUCKET_BRIGHTS
-    )
-    
-    BUCKET_DATA[(X+1)+","+(Y+1),table] = HoloData
-    X=(X+1)%BUCKET_SATS
-    if(!X){Y++}   
-    
-}
+##
+###   Menu Element Spawning
+####
+
+
 
 
 
 if(PLY:isPlayerInVR()){
     Hand_Ang = PLY:getRightHandAngVR()
     Hand_Pos = round(PLY:getRightHandPosVR()+Hand_Ang:forward()*5)
-    Hand_Ang = round(Hand_Ang/15)*15
 }
 else{
     Hand_Pos = PLY:shootPos() + PLY:eye()*35
     Hand_Ang = PLY:eyeAngles()
 }
 
-holoPos(-1,Hand_Pos)
+Hand_Pos = round( (Hand_Pos-entity():pos() - SPAWNMENU_SCL*0.5)/(SPAWNMENU_SCL/POSITION_SNAP) ) * (SPAWNMENU_SCL/POSITION_SNAP) + entity():pos() + SPAWNMENU_SCL*0.5
+Hand_Ang = round( Hand_Ang/ANGLE_SNAP ) * ANGLE_SNAP
 
-AngTemp = (Hand_Pos-BUCKET_ENT:pos()):toAngle()
+holoPos(-1,Hand_Pos)
 
 GridPos = holoEntity(SELECT_BASE):toLocal(Hand_Pos)
 GridPos_R = round(GridPos/SPAWNMENU_SCL-vec(0,0,0.5))
 GridPos_D = GridPos-(GridPos_R)*SPAWNMENU_SCL
 
-if(!Dragging_State){
+if(!Handle_Interaction_State){
     
     Current_Nearest_Handle = table()
+    SkipDistanceChecks = 0
     
     if(!Holding_State & !Coloring_State){
-        UsingMenu = 0
-        if( (abs(GridPos_D[1])<=(SPAWNMENU_SCL-SPAWNMENU_SPACING)*0.5) & (abs(GridPos_D[2])<=(SPAWNMENU_SCL-SPAWNMENU_SPACING)*0.5) ){
+        
+        if( (abs(GridPos_D[1])<=(SPAWNMENU_SCL-SPAWNMENU_SPACING)*0.5) & (abs(GridPos_D[2])<=(SPAWNMENU_SCL-SPAWNMENU_SPACING)*0.5) ){ # might be hovering the menu
             
             holoColor(Menu_Holo_Selected["trueid",number],vec(60))               
             Menu_Holo_Selected = MENU_DATA[ GridPos_R+"", table ]
             holoColor(Menu_Holo_Selected["trueid",number],vec(255))
             
-            UsingMenu = Menu_Holo_Selected["trueid",number] # will be 0 if we aren't actually using the menu
+            SkipDistanceChecks = Menu_Holo_Selected["trueid",number] # will be nonzero if we're actually on the menu
             
             if( changed(Menu_Holo_Selected["trueid",number]) & Menu_Holo_Selected["trueid",number] ){
-                Allow_Dragging = 0
                 Nearest_Holo = table()
                 holoEntity(Menu_Holo_Selected["trueid",number]):betterSoundPlay("common/talk.wav",0.2)
-                holoAng(HANDLE_CENTER,Menu_Holo_Selected["ent",entity]:angles())
-                holoPos(HANDLE_CENTER,Menu_Holo_Selected["ent",entity]:pos())
-                updateHandlePositions(DEFAULT_SCALE,0)
+                Menu_Holo_Selected:attachHandles()
+                updateHandles(DEFAULT_SCALE,0)
             }
             
         }
         
         if(holoEntity(BUCKET_POINTER):pos():distance(Hand_Pos) < BUCKET_LEN*1.25){
             ShouldColor = 1
-            UsingMenu = 1
+            SkipDistanceChecks = 1
             holoColor(BUCKET_POINTER,hsv2rgb(HUE_CURRENT,1,1))
         }
         else{
             holoColor(BUCKET_POINTER,vec(255))            
         }
         
-        if(!UsingMenu){
-                
+        if( !SkipDistanceChecks ){
             Nearest_Holo_Dist = SPAWNMENU_SCL
             for(I=1,Grab_Holos:count()){
                 local Holo = Grab_Holos[I,table]
@@ -487,16 +505,13 @@ if(!Dragging_State){
                     }
                 }
             }
-
+    
             Highlight3 = changed(Nearest_Holo["trueid",number])
-            #Highlight4 = changed(Nearest_Holo_Dist<SPAWNMENU_SCL)
-            if( ( Highlight3 ) & Nearest_Holo_Dist<Nearest_Holo["ent",entity]:radius()^2 ){
+            Highlight4 = (Nearest_Holo_Dist<Nearest_Holo["ent",entity]:radius()^2)
+            if( Highlight3 & Highlight4 ){
                 Nearest_Holo["ent",entity]:betterSoundPlay("common/talk.wav",0.2)
-                holoAng(HANDLE_CENTER,Nearest_Holo["ent",entity]:angles())
-                holoPos(HANDLE_CENTER,Nearest_Holo["ent",entity]:pos())        
-                holoParent(HANDLE_CENTER,Nearest_Holo["trueid",number])
-                updateHandlePositions(Nearest_Holo["scale",vector],1)
-                Allow_Dragging = 1
+                Nearest_Holo:attachHandles()
+                updateHandles(Nearest_Holo["scale",vector],1)
             }
             
         }
@@ -532,29 +547,29 @@ if(!Dragging_State){
     }
     else{
         # we're moving the paint selector thing, which sucks balls. too bad!
-        BucketPos = BUCKET_ENT:toLocal(Hand_Pos)
+        local BucketPos = BUCKET_ENT:toLocal(Hand_Pos)
         
-        BucketScaler1 = (BUCKET_ANGLE/(BUCKET_SATS-1))*2
-        BucketScaler2 = (SPAWNMENU_SCL*1.6/BUCKET_BRIGHTS)       
-        Odd1 = (BUCKET_SATS%2)
-        Odd2 = (BUCKET_BRIGHTS%2)        
+        local BucketScaler1 = (BUCKET_ANGLE/(BUCKET_SATS-1))*2
+        local BucketScaler2 = (SPAWNMENU_SCL*1.6/BUCKET_BRIGHTS)       
+        local Odd1 = (BUCKET_SATS%2)
+        local Odd2 = (BUCKET_BRIGHTS%2)        
         
-        BucketYaw = ceil(angnorm(BucketPos:setZ(0):toAngle())[2]/BucketScaler1-0.5*Odd1)
-        BucketZ = ceil(BucketPos[3]/BucketScaler2-0.5*Odd2)-1
-        BucketYawOffset = ceil(BUCKET_SATS/2)+1
-        BucketYaw = BucketYaw-BucketYawOffset
-        BucketZOffset = ceil(BUCKET_BRIGHTS/2)
-        BucketZ = BucketZ-BucketZOffset
-        BucketYaw = clamp(BucketYaw,-BUCKET_SATS-Odd1,-1-Odd1)
-        BucketZ = clamp(BucketZ,-BUCKET_BRIGHTS-Odd2,-1-Odd2)+Odd2
+        local BucketYaw = ceil(angnorm(BucketPos:setZ(0):toAngle())[2]/BucketScaler1-0.5*Odd1)
+        local BucketZ = ceil(BucketPos[3]/BucketScaler2-0.5*Odd2)-1
+        local BucketYawOffset = ceil(BUCKET_SATS/2)+1
+        local BucketYaw = BucketYaw-BucketYawOffset
+        local BucketZOffset = ceil(BUCKET_BRIGHTS/2)
+        local BucketZ = BucketZ-BucketZOffset
+        local BucketYaw = clamp(BucketYaw,-BUCKET_SATS-Odd1,-1-Odd1)
+        local BucketZ = clamp(BucketZ,-BUCKET_BRIGHTS-Odd2,-1-Odd2)+Odd2
         
-        Rotation = ang(0,(BucketYaw+BucketYawOffset-0.5*!Odd1)*BucketScaler1,0)
+        local Rotation = ang(0,(BucketYaw+BucketYawOffset-0.5*!Odd1)*BucketScaler1,0)
         holoPos(BUCKET_POINTER,BUCKET_ENT:toWorld( (Rotation:forward()*(SPAWNMENU_SCL+BUCKET_LEN)):setZ( (BucketZ+BucketZOffset+0.5*!Odd2)*BucketScaler2 ) ))
         holoAng(BUCKET_POINTER,BUCKET_ENT:toWorld( Rotation:setPitch(-90) ))
         
-        BucketYaw = BUCKET_SATS+BucketYaw+Odd1+1
-        BucketZ = BUCKET_BRIGHTS+BucketZ+1
-        ColorData = BUCKET_DATA[BucketYaw+","+BucketZ,table]
+        local BucketYaw = BUCKET_SATS+BucketYaw+Odd1+1
+        local BucketZ = BUCKET_BRIGHTS+BucketZ+1
+        local ColorData = BUCKET_DATA[BucketYaw+","+BucketZ,table]
         if(changed(ColorData["trueid",number])){
             Lol = BUCKET_ENT:betterSoundPlay("player/footsteps/gravel"+randint(1,4)+".wav",0.2)
             soundPitch(Lol,255)
@@ -573,7 +588,7 @@ if(!Dragging_State){
 
 }
 else{
-    # scaling code
+
     local H = Held_Holo["ent",entity]
     local O = Opposite_Handle["ent",entity]
     
@@ -587,7 +602,8 @@ else{
     holoPos(Nearest_Handle["trueid",number], HandOnWorldAxis )
     Held_Holo["scale",vector] = Scale
     holoPos(HANDLE_CENTER,Center)
-    updateHandlePositions(Nearest_Holo["scale",vector],1)
+    updateHandles(Nearest_Holo["scale",vector],1)
+    
 }
 
 
@@ -640,6 +656,8 @@ else{
 ##
 ### deleter animation stuff end
 
+    holoAlpha(HANDLE_CENTER,255 * (Nearest_Holo["ent",entity]:containsPoint(Hand_Pos)|Holding_State))
+
 
 ### hue editor stuff
 ##
@@ -675,47 +693,46 @@ else{
 ### hue editor stuff end
 
 
-
-if( changed(PLY:keyUse()) & !Dragging_State ){
+if( changed(PLY:keyUse()) ){ # on use change 
         
-    if(PLY:keyUse()){
-        if(!Coloring_State){
-            if(changed(Coloring_State)){
-                Hue_State = -1
-            }
+    if(PLY:keyUse()){ # use
+        
+        if(Coloring_State){ # are we editing the paint right now?
+            Hue_State = 1 # yes, switch to editing hue
+        }
+        else { # otherwise grab the holos as normal
+            Hue_State = -1
             if(Menu_Holo_Selected["trueid",number]){
                 holoCreateAndGrab( Menu_Holo_Selected )
             }
-            else{
-                if(Nearest_Holo["trueid",number] & ( round(Nearest_Holo["ent",entity]:nearestPoint(Hand_Pos))==round(Hand_Pos) ) ){
-                    Locals = toLocalPosAng(Nearest_Holo["ent",entity]:pos(),Nearest_Holo["ent",entity]:angles(),Hand_Pos,Hand_Ang)
-                    Hand_Local_Pos = Locals[1,vector]
-                    Hand_Local_Ang = Locals[2,angle]
-                    Held_Holo = Nearest_Holo
-                    Holding_State = 1
-                }
+            elseif(Nearest_Holo["trueid",number] & Nearest_Holo["ent",entity]:containsPoint(Hand_Pos) ){
+                Locals = toLocalPosAng(Nearest_Holo["ent",entity]:pos(),Nearest_Holo["ent",entity]:angles(),Hand_Pos,Hand_Ang)
+                Hand_Local_Pos = Locals[1,vector]
+                Hand_Local_Ang = Locals[2,angle]
+                Held_Holo = Nearest_Holo
+                Holding_State = 1
             }
             holoParent(HANDLE_CENTER,Held_Holo["trueid",number])
         }
-        else{
-            Hue_State = 1
-        }
         
     }
-    elseif(!PLY:keyUse()){
+    else{ # un-use
+        
         if( Held_Holo["trueid",number] & MENU_DATA:exists(GridPos_R+"") ){ # they dropped it back in the menu, oops
             holoFreeGrabbable(Held_Holo)
-            Force_Menu_Update = 1
         }
-        elseif(DeletFlash){
+        elseif(DeletFlash){ # queue it for deletion
             DELETER:betterSoundPlay("player/footsteps/ice"+randint(2,3)+".wav",1)
             holoShredGrabbable(Held_Holo)
         }
+        
         Held_Holo = table()
         Nearest_Holo = table()
         Holding_State = 0
+        
         Hue_State = -1
         timer("hue",10)
+        
     }
 
 }
@@ -739,7 +756,7 @@ if( changed(PLY:keyAttack1()) ){
                 Hand_Local_Pos = Nearest_Handle["ent",entity]:pos() - Hand_Pos
                 Slider_Handle = Nearest_Handle["slider",vector]
                 Opposite_Handle = HANDLE_OPPOSITES[Slider_Handle+"",table]
-                Dragging_State = 1
+                Handle_Interaction_State = 1
                 Held_Holo = Nearest_Holo
                 holoUnparent(HANDLE_CENTER)
                 setHandleAlphas(0)
@@ -748,7 +765,7 @@ if( changed(PLY:keyAttack1()) ){
         }
         else{
             setHandleAlphas(50)
-            Dragging_State = 0
+            Handle_Interaction_State = 0
             Coloring_State = 0
             Held_Holo = table()
         }
