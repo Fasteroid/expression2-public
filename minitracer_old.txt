@@ -1,6 +1,6 @@
 @name Minitracer_old
 @inputs DS:wirelink
-@persist X Y RES CPU SUN:vector FOV
+@persist X Y RES CPU FOV
 @strict
 
 if (first()) {
@@ -19,8 +19,6 @@ if (first()) {
         This[1048572]=Resolution #Set new resolution on Y (Height)
         This[1048573]=Resolution #Set new resolution on X (Width)
     }
-    
-    SUN = vec(1,1,0.5):normalized()
     
     FOV = 90 # Field of view (in degrees)
 }
