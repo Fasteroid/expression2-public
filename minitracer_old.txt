@@ -13,11 +13,11 @@ if (first()) {
     
     # dumbass cheat function I stole
     function wirelink:initScreen(Resolution){
-        This[1048574]=0 #Reset Screen and whatever was on it will be cleared.
-        This[1048569]=2 #Set color mode to 3
-        This[1048575]=1 #Apply changes
-        This[1048572]=Resolution #Set new resolution on Y (Height)
-        This[1048573]=Resolution #Set new resolution on X (Width)
+        This[1048574] = 0 # Reset Screen and whatever was on it will be cleared.
+        This[1048569] = 2 # Set color mode to 2
+        This[1048575] = 1 # Apply changes
+        This[1048572] = Resolution # Set new resolution on Y (Height)
+        This[1048573] = Resolution # Set new resolution on X (Width)
     }
     
     FOV = 90 # Field of view (in degrees)
@@ -25,7 +25,6 @@ if (first()) {
 
 if (->DS) {
     if (~DS) { DS:initScreen(RES) }
-    
     
     while (opcounter() < softQuota() & cpuUsage() < CPU * 10 ^ -6) {
         # Increment coordinates, wrapping when we reach screen edges
@@ -50,6 +49,6 @@ if (->DS) {
         
         Ranger = rangerOffset(65536, entity():pos(), Fwd)
         
-        DS[Y * RES + X]= rgb2digi(turbomap(Ranger:distance() / 8192) * 255, 2)
+        DS[Y * RES + X] = rgb2digi(turbomap(Ranger:distance() / 8192) * 255, 2)
     }
 }
