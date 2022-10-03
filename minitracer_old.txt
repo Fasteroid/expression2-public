@@ -1,61 +1,54 @@
 @name Minitracer_old
 @inputs DS:wirelink
-@outputs 
-@persist X Y RES CPU SUN:vector
-@trigger 
+@persist X Y RES CPU FOV
+@strict
 
-runOnTick(1)
-
-if(first()){
-    
+if (first()) {
     #include "turbocolormap"
     
-    propSpawnUndo(0)
+    runOnTick(1)
     
-    RES = 512
-    CPU = 5000
+    RES = 512  # how many pixels
+    CPU = 5000 # how much cpu in nanoseconds to use per tick
     
     # dumbass cheat function I stole
     function wirelink:initScreen(Resolution){
-        This[1048574]=0 #Reset Screen and whatever was on it will be cleared.
-        This[1048569]=2 #Set color mode to 3
-        This[1048575]=1 #Apply changes
-        This[1048572]=Resolution #Set new resolution on Y (Height)
-        This[1048573]=Resolution #Set new resolution on X (Width)
+        This[1048574] = 0 # Reset Screen and whatever was on it will be cleared.
+        This[1048569] = 2 # Set color mode to 2
+        This[1048575] = 1 # Apply changes
+        This[1048572] = Resolution # Set new resolution on Y (Height)
+        This[1048573] = Resolution # Set new resolution on X (Width)
     }
     
-    SUN = vec(1,1,0.5):normalized()
-    
-}   
-
-
-if(changed(DS)){ DS:initScreen(RES) }
-
-
-while( opcounter()<softQuota() & cpuUsage()<CPU*10^-6 ){
-    
-    
-    #
-    ##   loop through all pixels
-    ###
-        X=X+1
-        if(X>RES){
-            X=1
-            Y=Y+1
-            if(Y>RES){
-                Y=1
-            }
-        }
-    ###
-    ##   loop through all pixels
-    #
-    
-    Fwd = (vec(0.5,(X-0.5)/RES - 0.5,(Y-0.5)/RES - 0.5)):normalized():rotate(entity():angles())
-    
-    Ranger = rangerOffset( 65536, entity():pos(), Fwd )
-    
-    DS[(RES-X)+(Y)*RES]= rgb2digi( turbomap(Ranger:distance()/8192)*255,2)
-    
+    FOV = 90 # Field of view (in degrees)
 }
 
-
+if (->DS) {
+    if (~DS) { DS:initScreen(RES) }
+    
+    while (opcounter() < softQuota() & cpuUsage() < CPU * 10 ^ -6) {
+        # Increment coordinates, wrapping when we reach screen edges
+        X = X + 1
+        if (X > RES) {
+            X = 1
+            Y = Y + 1
+            if (Y > RES) {
+                Y = 0
+            }
+        }
+        
+        # Calculate local camera direction using the pinhole camera model
+        CamScale = tan(FOV / 2)
+        CamDir = vec(
+            1,
+            (1 - 2 * (X + 0.5) / RES) * CamScale,
+            (1 - 2 * (Y + 0.5) / RES) * CamScale
+        ):normalized()
+        
+        Fwd = CamDir:rotate(entity():angles())
+        
+        Ranger = rangerOffset(65536, entity():pos(), Fwd)
+        
+        DS[Y * RES + X] = rgb2digi(turbomap(Ranger:distance() / 8192) * 255, 2)
+    }
+}
