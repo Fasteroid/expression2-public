@@ -50,7 +50,7 @@ while( opcounter()<softQuota() & cpuUsage()<CPU*10^-6 ){
     ##   loop through all pixels
     #
     
-    Fwd = (vec(RES/2,X-RES/2,RES/2-Y)):normalized():rotate(entity():angles())
+    Fwd = (vec(0.5,(X-0.5)/RES - 0.5,(Y-0.5)/RES - 0.5)):normalized():rotate(entity():angles())
     
     Ranger = rangerOffset( 65536, entity():pos(), Fwd )
     
