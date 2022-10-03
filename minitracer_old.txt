@@ -28,10 +28,10 @@ if (->DS) {
     
     while (opcounter() < softQuota() & cpuUsage() < CPU * 10 ^ -6) {
         # Increment coordinates, wrapping when we reach screen edges
-        X = X + 1
+        X++
         if (X > RES) {
-            X = 1
-            Y = Y + 1
+            X = 0
+            Y++
             if (Y > RES) {
                 Y = 0
             }
