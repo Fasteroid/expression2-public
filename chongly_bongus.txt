@@ -1,0 +1,15 @@
+@name chongly bongus
+
+if( first() ){
+    function string array:pick(){
+        local N = randint(1,This:count())
+        return This:removeString(N)
+    }
+}
+
+Begin = array("b","d","ch","g","skr")
+Mid   = array("onk","ing","ink","oink","oing","ong","ung","unk")
+End1  = array("y","ly")
+End2  = array("us","lus")
+
+print( (Begin:pick() + Mid:pick() + End1:pick() + " " + Begin:pick() + Mid:pick() + End2:pick()) )
