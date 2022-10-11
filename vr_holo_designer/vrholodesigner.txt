@@ -519,9 +519,9 @@ if( first() ){
         
     # -------- state initialization -------- #
     
-        Pos_Snap = POS_SNAP_DIVISORS[1,number]
-        Ang_Snap = ANG_SNAP_DIVISORS[1,number]
-        Scale_Snap = SCALE_SNAP_DIVISORS[1,number]
+        Pos_Snap = POS_SNAP_DIVISORS:max()
+        Ang_Snap = ANG_SNAP_DIVISORS:max()
+        Scale_Snap = SCALE_SNAP_DIVISORS:max()
         
         for(I=1, BUCKET_SATS){
             BUCKET_DATA[I,table] = table()
