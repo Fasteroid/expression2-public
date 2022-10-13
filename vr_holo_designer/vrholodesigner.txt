@@ -6,14 +6,14 @@
 @persist NULL:table
 @persist PLY:entity 
 @persist MENU_DATA:table SPAWNMENU_W SPAWNMENU_H SPAWNMENU_SCL MENU_BASE SELECT_BASE SPAWNMENU_SPACING X Y MENU_SPAWNED MENU_ENT:entity HOLO_MODELS:array HOLO_MODEL_OFFSETS:table DEFAULT_SCALE:vector
-@persist HANDLE_DATA:table HANDLE_OPPOSITES:table HANDLE_CENTER HANDLE_SCL HANDLE_COLOR:vector HIGHLIGHT_HOLO
-@persist SHREDDER_BASE SHREDDER_TOP SHREDDER_BOTTOM SHREDDER_FLASHER SHREDDER:entity
-@persist BUCKET_BASE BUCKET_PAINT BUCKET_ENT:entity BUCKET_SPAWNED BUCKET_SATS BUCKET_BRIGHTS BUCKET_SELECTOR BUCKET_LEN BUCKET_ANGLE HUE_CURRENT HSV_CURRENT:vector BUCKET_POINTER BUCKET_DATA:table BUCKET_POINTER_ENT:entity
+@persist HANDLE_DATA:table HANDLE_OPPOSITES:table HANDLE_CENTER HANDLE_SCL HANDLE_COLOR:vector
+@persist SHREDDER_BASE SHREDDER_TOP SHREDDER_BOTTOM SHREDDER:entity
+@persist BUCKET_BASE BUCKET_PAINT BUCKET_ENT:entity BUCKET_SPAWNED BUCKET_SATS BUCKET_BRIGHTS BUCKET_LEN BUCKET_ANGLE HUE_CURRENT HSV_CURRENT:vector BUCKET_POINTER BUCKET_DATA:table BUCKET_POINTER_ENT:entity
 @persist POS_SNAP_DIVISORS:array ANG_SNAP_DIVISORS:array SCALE_SNAP_DIVISORS:array
 
 # GLOBAL PERSISTS
 @persist Grab_Holos:table Grab_Holo_AvailableIDs:array Grab_Holo_MaxID
-@persist Shredding_Holos:table Shredder_Speed Shredder_Rotation
+@persist Shredding_Holos:table Shredder_Speed Shredder_Rotation Shredder_Flasher
 @persist Bucket_Flip Bucket_State
 @persist Highlight_Current:array Highlight_OldColor:array Highlight_OldAlpha:array
 @persist Hand_Local_Ang:angle Hand_Local_Pos:vector
@@ -42,7 +42,6 @@
 # |- saving [0]
 
 #include "betterhololib"
-#include "bettersoundlib"
 
 if( first() ){
     
@@ -65,7 +64,7 @@ if( first() ){
         
         POS_SNAP_DIVISORS = array(1,2,3,4)
         ANG_SNAP_DIVISORS = array(4,6,8,12,16)
-        SCALE_SNAP_DIVISORS = array() # to implement later
+        SCALE_SNAP_DIVISORS = array(1) # to implement later
         
         HOLO_MODELS = array(
             "rcube_thin",
@@ -122,7 +121,18 @@ if( first() ){
         GridPos_d_ = vec()
         GridPos_r_ = vec()
         
-    
+    # -------- variable initialization -------- #
+        
+        DEFAULT_SCALE     = vec(0.9)*SPAWNMENU_SCL-SPAWNMENU_SPACING
+        
+        Pos_Snap = POS_SNAP_DIVISORS:max()
+        Ang_Snap = ANG_SNAP_DIVISORS:max()
+        Scale_Snap = SCALE_SNAP_DIVISORS:max()
+        
+        for(I=1, BUCKET_SATS){
+            BUCKET_DATA[I,table] = table()
+        }
+
     # -------- functions -------- #
     
         # Feel free to modify this to your liking.
@@ -281,7 +291,7 @@ if( first() ){
                             
                             0:highlight(vec(),0,2) # clear any scale handle highlighting
                             holoAlpha(HANDLE_CENTER,255)
-                            holoEntity(Hovered["trueid",number]):betterSoundPlay("common/talk.wav",0.2)
+                            holoEntity(Hovered["trueid",number]):soundPlay("hover"+Hovered["trueid",number],0.2,"common/talk.wav")
                             Hovered:attachHandles()
                             updateHandles(DEFAULT_SCALE)
                             
@@ -358,7 +368,7 @@ if( first() ){
                
                 # attach handles if applicable 
                 if( Target_Use["trueid",number] & Handle_Parent!=Target_Use ){
-                    Target_Use["ent",entity]:betterSoundPlay("common/talk.wav",0.2)
+                    Target_Use["ent",entity]:soundPlay("hover"+Target_Use["trueid",number],0.2,"common/talk.wav")
                     Target_Use:attachHandles()
                     updateHandles(Target_Use["scale",vector])
                 }
@@ -378,7 +388,6 @@ if( first() ){
         
         function action_holdingScaleHandle(){
             
-            local H = Target_Use["ent",entity]
             local O = Opposite_Handle["ent",entity]
             
             local HandOnAxis = O:toLocal( Hand_pos_+Hand_Local_Pos )*positive(Target_M1["slider",vector])
@@ -425,8 +434,9 @@ if( first() ){
             local ColorData = BUCKET_DATA[BucketYaw,table][BucketZ,table]
             
             if(changed(ColorData["trueid",number])){
-                Lol = BUCKET_ENT:betterSoundPlay("player/footsteps/gravel"+randint(1,4)+".wav",0.2)
-                soundPitch(Lol,255)
+                local SoundN = randint(1,4)
+                BUCKET_ENT:soundPlay("splat"+SoundN,0.2,"player/footsteps/gravel"+SoundN)
+                soundPitch("splat"+SoundN,255)
             }
     
             if(Bucket_Flip==BUCKET_BRIGHTS){
@@ -452,7 +462,7 @@ if( first() ){
                     NewColor = holoEntity(BUCKET_PAINT):getColor()
                     if( BucketVictim:getColor() != NewColor ){
                         holoColor(Target_Use["trueid",number],NewColor)
-                        BUCKET_ENT:betterSoundPlay("ambient/levels/canals/toxic_slime_gurgle5.wav",1)
+                        BUCKET_ENT:soundPlay("dunk",0.2,"ambient/levels/canals/toxic_slime_gurgle5.wav")
                     }
                 }
                 
@@ -495,7 +505,6 @@ if( first() ){
         
         HANDLE_CENTER = holoAlloc()
         holoMaterial(HANDLE_CENTER,"models/wireframe")
-        DEFAULT_SCALE = vec(0.9)*SPAWNMENU_SCL-SPAWNMENU_SPACING
         # first, make all the draggable handles
       
         for(I=1,Sliders:count()){
@@ -515,16 +524,6 @@ if( first() ){
             HANDLE_DATA[I,table] = Holo
             Opp = round(-Handle_Axis)
             HANDLE_OPPOSITES[ Opp+"", table ] = Holo
-        }
-        
-    # -------- state initialization -------- #
-    
-        Pos_Snap = POS_SNAP_DIVISORS:max()
-        Ang_Snap = ANG_SNAP_DIVISORS:max()
-        Scale_Snap = SCALE_SNAP_DIVISORS:max()
-        
-        for(I=1, BUCKET_SATS){
-            BUCKET_DATA[I,table] = table()
         }
     
     # -------- important holograms -------- #
@@ -705,7 +704,7 @@ if( first() ){
     }
     
     # this needs reworking for scaling holos
-    # Hand_pos_ = round( (Hand_pos_-entity():pos() - SPAWNMENU_SCL*0.5)/(SPAWNMENU_SCL/Pos_Snap) ) * (SPAWNMENU_SCL/Pos_Snap) + entity():pos() + SPAWNMENU_SCL*0.5
+    Hand_pos_ = round( (Hand_pos_-entity():pos() - SPAWNMENU_SCL*0.5)/(SPAWNMENU_SCL/Pos_Snap) ) * (SPAWNMENU_SCL/Pos_Snap) + entity():pos() + SPAWNMENU_SCL*0.5
     
     local Divisor = 360/Ang_Snap
     Hand_ang_ = round( Hand_ang_/Divisor ) * Divisor
@@ -744,7 +743,7 @@ if( changed(PLY:keyAttack1()) ){ # on m1 change
             
             case M1_ScaleHandle,
                 Target_M1["trueid",number]:highlight( vec(255,0,0), 150, 2) # change to red
-                Target_M1["ent",entity]:betterSoundPlay("common/wpn_select.wav",0.5)
+                Target_M1["ent",entity]:soundPlay("use"+Target_M1["trueid",number],0.5,"common/wpn_select.wav")
                 Hand_Local_Pos = Target_M1["ent",entity]:pos() - Hand_pos_
                 Handle_Axis = Target_M1["slider",vector]
                 Opposite_Handle = HANDLE_OPPOSITES[Handle_Axis+"",table]
@@ -822,7 +821,8 @@ if( changed(PLY:keyUse()) ){ # on use change
                     holoFreeGrabbable(Target_Use)
                 }
                 elseif(Shredder_flash_){ # queue it for deletion
-                    SHREDDER:betterSoundPlay("player/footsteps/ice"+randint(2,3)+".wav",1)
+                    local SoundN = randint(2,3)
+                    SHREDDER:soundPlay("trash"+SoundN,1,"player/footsteps/ice"+SoundN+".wav")
                     holoShredGrabbable(Target_Use)
                 }
                 Action_Holding = 0
@@ -877,11 +877,11 @@ if( changed(PLY:keyUse()) ){ # on use change
 
 
 # -------- Shredder runOnTick -------- #
-    if(Shredder_flash_==1 | (SHREDDER_FLASHER%1 != 0) ){
-        SHREDDER_FLASHER = round( ((SHREDDER_FLASHER+0.02)%1)*50 )*0.02
+    if(Shredder_flash_==1 | (Shredder_Flasher%1 != 0) ){
+        Shredder_Flasher = round( ((Shredder_Flasher+0.02)%1)*50 )*0.02
     }
 
-    holoColor(SHREDDER_BASE,vec(40)+vec(115)*(sin(SHREDDER_FLASHER*180)^2))
+    holoColor(SHREDDER_BASE,vec(40)+vec(115)*(sin(Shredder_Flasher*180)^2))
 
     for(I=Shredding_Holos:count(),1,-1){
         
@@ -981,12 +981,13 @@ if( changed(owner():lastSaidWhen()) ){
                          "))}\n"
             
             fileWrite(">e2shared/vrmodels/"+S[2,string]+".txt",Code)
-            owner():betterSoundPlay("buttons/button9.wav",1)
+            owner():soundPlay("save",1,"buttons/button9.wav")
             
         }
         else{
-            owner():betterSoundPlay("buttons/button10.wav",1)    
+            owner():soundPlay("save",1,"buttons/button10.wav") 
         }
     }
     
 }
+
