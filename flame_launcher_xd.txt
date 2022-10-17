@@ -1,0 +1,156 @@
+@name Flame Launcher xd
+@inputs 
+@outputs 
+@persist Lasers:table LASERSPEED EXPLOSIVES DISTANCE MODEL:string MODE Next HolosCreated:array HolosUsed:array Fire R:ranger Burst Flinch:angle FlinchOffset:angle
+@trigger 
+runOnTick(1)
+if( first() ){
+    
+    owner():soundPlay(1,0,"ambient/fire/fire_big_loop1.wav")
+    propSpawnASync(1)
+    LASERSPEED = 15
+    DISTANCE = 500
+    MODE = 1
+    MODEL = "models/props_phx/oildrum001_explosive.mdl"
+    
+    Burst = -1
+    
+    function number getNextHoloID(){
+        for(T=HolosCreated:count(),1,-1){
+            if(!HolosUsed[T,number]){
+                HolosUsed[T,number] = 1
+                return T
+            }
+        }
+        return HolosCreated:count()+1
+    }
+
+
+    function initLaser(Pos:vector,Dir:vector){
+        
+        Laser = table()
+        Next = getNextHoloID()
+        if(!HolosCreated[Next,number]){
+            holoCreate(Next)
+            holoColor(Next,vec(0))
+            holoAlpha(Next,0)
+            holoScale(Next,vec(1,1,0.1)*random(0.9,5))
+            holoDisableShading(Next,1)
+            holoModel(Next,"icosphere3")
+            HolosCreated[Next,number]=1
+        }
+        holoEntity(Next):ignite()
+        Laser["h",number] = Next
+        Laser["p",vector] = Pos
+        Laser["v",vector] = Dir+vec(0,0,0.05)
+        Laser["d",number] = 0
+        Laser["t",number] = 0
+        Lasers:pushTable(Laser)
+        
+    }
+    
+    function number advanceLaser(Laser:table){
+
+        Laser["t",number] = Laser["t",number] + 1
+        if( !Laser["d",number] ){
+            rangerFilter(owner())
+            R = rangerOffset(LASERSPEED,Laser["p",vector],-Laser["v",vector])
+            if(!R:startSolid() & !R:hit()){
+                
+                if( !holoEntity(Laser["h",number]):isValid() ){ return 0 }
+                
+                Laser["p",vector] = Laser["p",vector] + Laser["v",vector] * LASERSPEED
+                Laser["v",vector] = Laser["v",vector] - vec(0,0,0.001*LASERSPEED)
+                
+                if(Laser["t",number]==2){
+                    holoEntity(Laser["h",number]):ignite()
+                }
+                
+                holoPos(Laser["h",number],Laser["p",vector])
+                holoAng(Laser["h",number],Laser["v",vector]:toAngle()+ang(90,0,0))
+                
+                return 1
+            }
+            else{
+                Laser["d",number] = 1
+                AngFinder = rangerOffset(LASERSPEED,R:position()-Laser["v",vector],Laser["v",vector])
+                holoPos(Laser["h",number],R:position()+AngFinder:hitNormal())
+                holoAng(Laser["h",number],AngFinder:hitNormal():toAngle()+ang(90,0,0))
+                holoAlpha(Laser["h",number],200)
+                Temp = R:entity()
+                if(Temp:isValid() & Temp:owner():isValid()){
+                    Temp:soundPlay(Temp:id()+"",0.1,"ambient/fire/fire_big_loop1.wav")    
+                    Temp:ignite()
+                }
+            }
+        }
+        
+    return 0
+             
+    }
+    
+}
+
+
+for(I=Lasers:count(),1,-1){
+    L = Lasers[I,table]
+    if( !advanceLaser(L) ){
+        if(R:entity():isValid()){
+            HolosUsed[ L["h",number], number ] = 0
+            if( holoEntity(L["h",number]):isValid() ){ 
+                holoEntity(L["h",number]):extinguish()
+            }
+            holoAlpha(L["h",number],0)
+            HolosUsed[L["h",number],number] = 0
+            L["t",number] = 1000
+            Lasers:remove(I)
+        }
+        elseif(L["t",number]>200){
+            if( holoEntity(L["h",number]):isValid() ){ 
+                holoEntity(L["h",number]):extinguish()
+            }
+            holoAlpha(L["h",number],0)
+            HolosUsed[L["h",number],number] = 0
+            Lasers:remove(I)
+        }
+    }
+}
+
+
+K2 = owner():keyAttack2()
+K1 = owner():keyAttack1()
+Fire = (Fire+1)%3
+
+if(owner():weapon():type()=="weapon_physcannon"){
+    soundVolume(1,K2*100)
+    if(K2 & Fire == 1){
+        NextHolo = Lasers:count()
+        initLaser(owner():shootPos(),owner():eye():rotate(ang(random(-5,5),random(-2,2),0)))
+    }
+    if(changed(K1) & K1 & Burst==-1){
+        timer("burst",1000)
+        owner():soundPlay(2,0,"ambient/fire/ignite.wav")
+        owner():soundPlay(3,0,"ambient/explosions/exp4.wav")
+        Burst = 10
+        FlinchOffset = ang(random(5,0),random(-5,5),0)
+        Flinch = owner():eyeAngles() 
+        for(I=1,18){
+            NextHolo = Lasers:count()
+            initLaser(owner():shootPos(),owner():eye()+randvec()*0.1*random())
+        }
+        if(owner():isOnGround()){
+            owner():plyApplyForce(-owner():eye():setZ(0):normalized()*400)
+        }
+    }
+}
+else{
+    soundVolume(1,0)    
+}
+
+if(clk("burst")){
+    Burst = -1  
+}
+if(Burst>0){
+    Burst--
+    owner():plySetAng(Flinch + FlinchOffset*(1-Burst/10))
+}
