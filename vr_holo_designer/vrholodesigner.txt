@@ -27,7 +27,7 @@
 
 # ACTION & STATE ENUMS
 @persist USE_GrabbableHolo                                         USE_MenuHolo
-@persist                     M1_BucketPointer    M1_ScaleHandle                  M1_Slider
+@persist M1_Duplicate        M1_BucketPointer    M1_ScaleHandle                  M1_Slider
 @persist HOLD_GrabbableHolo  HOLD_BucketPointer  HOLD_ScaleHandle                HOLD_Slider
 
 #include "betterhololib"
@@ -345,6 +345,7 @@ if( first() ){
         M1_ScaleHandle    = 2
         M1_BucketPointer  = 3
         M1_Slider         = 5
+        M1_Duplicate      = 1
         
         HOLD_GrabbableHolo = 1
         HOLD_ScaleHandle   = 2
@@ -927,12 +928,16 @@ if( changed(PLY:keyAttack1()) ){ # on m1 change
                     
                     holoUnparent(HANDLE_CENTER)
                 }
-                #setHandleAlphas(0)
             break
             
             case M1_Slider,
                 Target_M1["slider_ent",entity]:soundPlay("use_slider_"+Target_M1["name",string],0.5,"common/wpn_select.wav")
                 Action_Holding = HOLD_Slider
+            break
+            
+            case M1_Duplicate,
+                local Tmp = holoCreateGrabbable( Target_Use )
+                Tmp["ent",entity]:soundPlay("duplicate"+Tmp["trueid",number],1,"ambient/water/drip2.wav")
             break
             
         }
@@ -990,6 +995,7 @@ if( changed(PLY:keyUse()) ){ # on use change
                     0:highlight( vec(), 255, 2) # un-highlight any scale handles
                     
                     Action_Holding = HOLD_GrabbableHolo
+                    Action_M1      = M1_Duplicate
                 }
                 
             break
