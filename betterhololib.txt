@@ -13,6 +13,10 @@
 
 if( first() ){
     
+    # until vurv adds a way to ignore warnings, this is needed
+    BETTERHOLO_AVAILABLE = array()
+    BETTERHOLO_MAX = 0
+    
     ### INTERNAL ##
     ## 
     #   nextHoloID()
