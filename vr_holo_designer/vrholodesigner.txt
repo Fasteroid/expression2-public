@@ -5,11 +5,12 @@
 # GLOBAL CONSTANTS
 @persist NULL:table
 @persist PLY:entity 
-@persist MENU_DATA:table SPAWNMENU_W SPAWNMENU_H SPAWNMENU_SCL MENU_BASE SELECT_BASE SPAWNMENU_SPACING X Y MENU_SPAWNED MENU_ENT:entity HOLO_MODELS:array HOLO_MODEL_OFFSETS:table DEFAULT_SCALE:vector
-@persist HANDLE_DATA:table HANDLE_OPPOSITES:table HANDLE_CENTER HANDLE_SCL HANDLE_COLOR:vector
+@persist MENU_DATA:table SPAWNMENU_W SPAWNMENU_H SPAWNMENU_SCL MENU_BASE SELECT_BASE SPAWNMENU_SPACING X Y MENU_SPAWNED MENU_ENT:entity HOLO_MODELS:array HOLO_MODEL_OFFSETS:table DEFAULT_SCALE:vector DEFAULT_SIZE
+@persist HANDLE_DATA:table HANDLE_OPPOSITES:table HANDLE_CENTER HANDLE_SCL HANDLE_COLOR:vector SLIDER_HOVER_DISTANCE
 @persist SHREDDER_BASE SHREDDER_TOP SHREDDER_BOTTOM SHREDDER:entity
 @persist BUCKET_BASE BUCKET_PAINT BUCKET_ENT:entity BUCKET_SPAWNED BUCKET_SATS BUCKET_BRIGHTS BUCKET_LEN BUCKET_ANGLE HUE_CURRENT HSV_CURRENT:vector BUCKET_POINTER BUCKET_DATA:table BUCKET_POINTER_ENT:entity
-@persist POS_SNAP_DIVISORS:array ANG_SNAP_DIVISORS:array SCALE_SNAP_DIVISORS:array
+@persist POS_SNAP_DIVISORS:array ANG_SNAP_DIVISORS:array SCL_SNAP_DIVISORS:array
+@persist SLIDER_DATA:table SLIDER_NOTCHES_DONE SLIDER_SIZE SLIDER_BORDER
 
 # GLOBAL PERSISTS
 @persist Grab_Holos:table Grab_Holo_AvailableIDs:array Grab_Holo_MaxID
@@ -18,7 +19,6 @@
 @persist Highlight_Current:array Highlight_OldColor:array Highlight_OldAlpha:array
 @persist Hand_Local_Ang:angle Hand_Local_Pos:vector
 @persist Handle_Axis:vector Opposite_Handle:table Handle_Parent:table
-@persist Pos_Snap Ang_Snap Scale_Snap
 
 # ACTIONS & STATES
 @persist Target_Use:table  Target_M1:table
@@ -27,19 +27,8 @@
 
 # ACTION & STATE ENUMS
 @persist USE_GrabbableHolo                                         USE_MenuHolo
-@persist                     M1_BucketPointer    M1_ScaleHandle
-@persist HOLD_GrabbableHolo  HOLD_BucketPointer  HOLD_ScaleHandle
-
-### PLANNED ADDITIONAL FEATURES
-
-# sliders for snapping control [~]
-
-# save button [ ]
-
-# model loader library [0]
-# |- make loading async! [0]
-# |- #include compatibility [0]
-# |- saving [0]
+@persist                     M1_BucketPointer    M1_ScaleHandle                  M1_Slider
+@persist HOLD_GrabbableHolo  HOLD_BucketPointer  HOLD_ScaleHandle                HOLD_Slider
 
 #include "betterhololib"
 
@@ -61,53 +50,56 @@ if( first() ){
         BUCKET_SATS = 6
         BUCKET_BRIGHTS = 6
         BUCKET_ANGLE = 40
-        
-        POS_SNAP_DIVISORS = array(1,2,3,4)
-        ANG_SNAP_DIVISORS = array(4,6,8,12,16)
-        SCALE_SNAP_DIVISORS = array(1) # to implement later
+
+        # snap divisors; bigger = more precise; must be real integers
+        # must be in ascending order to work correctly
+        # TODO: automatic sorting that won't tick quota the chip
+        POS_SNAP_DIVISORS = array(1,2,4,8)
+        ANG_SNAP_DIVISORS = array(1,2,3,4,5,6,8,12,15)
+        SCL_SNAP_DIVISORS = array(1,2,4,8)
         
         HOLO_MODELS = array(
-            "rcube_thin",
-            "rcube",
-            "rcube_thick",
-            "rcylinder_thin",
-            "rcylinder",
             "rcylinder_thick",
-            "hq_rcube_thin",
-            "hq_rcube",
-            "hq_rcube_thick",
-            "hq_rcylinder_thin",
-            "hq_rcylinder",
+            "rcylinder",
+            "rcylinder_thin",
+            "rcube_thick",
+            "rcube",
+            "rcube_thin",
             "hq_rcylinder_thick",
-            "plane",
-            "cplane",
-            "cube",
-            "hq_tube_thin",
-            "hq_tube",
+            "hq_rcylinder",
+            "hq_rcylinder_thin",
+            "hq_rcube_thick",
+            "hq_rcube",
+            "hq_rcube_thin",
             "hq_tube_thick",
-            "icosphere",
-            "icosphere2",
-            "icosphere3",
-            "torus",
-            "torus2",
+            "hq_tube",
+            "hq_tube_thin",
+            "cube",
+            "cplane",
+            "plane",
             "torus3",
-            "cone",
-            "pyramid",
-            "tetra",
-            "hq_cone",
-            "prism",
+            "torus2",
+            "torus",
+            "icosphere3",
+            "icosphere2",
+            "icosphere",
             "right_prism",
-            "hq_dome",
-            "hq_icosphere",
-            "hq_cylinder",
-            "hq_torus",
+            "prism",
+            "hq_cone",
+            "tetra",
+            "pyramid",
+            "cone",
+            "hq_torus_thick",
             "hq_torus_oldsize",
-            "hq_torus_thick"
+            "hq_torus",
+            "hq_cylinder",
+            "hq_icosphere",
+            "hq_dome"
         )
         
         HOLO_MODEL_OFFSETS = table(
             "right_prism" = ang(-90,0,90),
-            "prism" = ang(90,90,90),
+            "prism" = ang(0,90,0),
             "plane" = ang(-45,0,0),
             "cplane" = ang(-45,0,0)
         )
@@ -118,16 +110,24 @@ if( first() ){
         # declared up here (w/ dummy values) so the functions below can use them
         Hand_pos_  = vec()
         Hand_ang_  = ang()
-        GridPos_d_ = vec()
-        GridPos_r_ = vec()
+        GridPos_x_ = 0
+        GridPos_y_ = 0
+        GridPos_z_ = 0
         
     # -------- variable initialization -------- #
+    
+        # don't actually call this; these start as @persist defaults
+        function removeUninitializedWarnings(){
+            BUCKET_ENT = noentity() HANDLE_CENTER = 0 BUCKET_POINTER = 0 BUCKET_LEN = 0 HUE_CURRENT = 0 BUCKET_PAINT = 0 SHREDDER_BASE= 0 MENU_SPAWNED = 0 BUCKET_SPAWNED = 0 NULL = table() BUCKET_DATA = table() HANDLE_DATA = table() MENU_DATA = table() HANDLE_OPPOSITES = table() DEFAULT_SCALE = vec(0.9)*SPAWNMENU_SCL-SPAWNMENU_SPACING Grab_Holos = table() Shredding_Holos = table() Opposite_Handle = NULL Grab_Holo_AvailableIDs = array() Highlight_Current = array() Highlight_OldColor = array() Highlight_OldAlpha = array() Bucket_Flip = 0 Grab_Holo_MaxID = 0 Action_Holding = 0 Shredder_Flasher = 0 Shredder_Speed= 0 Shredder_Rotation = 0 Hand_Local_Pos = vec() Hand_Local_Ang = ang() SLIDER_NOTCHES_DONE = 0
+        }
         
-        DEFAULT_SCALE     = vec(0.9)*SPAWNMENU_SCL-SPAWNMENU_SPACING
+        # cached values; don't touch these
+        DEFAULT_SCALE  = vec(0.9)*SPAWNMENU_SCL-SPAWNMENU_SPACING
+        DEFAULT_SIZE = DEFAULT_SCALE[1]
         
-        Pos_Snap = POS_SNAP_DIVISORS:max()
-        Ang_Snap = ANG_SNAP_DIVISORS:max()
-        Scale_Snap = SCALE_SNAP_DIVISORS:max()
+        SLIDER_SIZE = HANDLE_SCL*0.5
+        SLIDER_BORDER = SLIDER_SIZE + SPAWNMENU_SPACING
+        SLIDER_HOVER_DISTANCE = 0.75
         
         for(I=1, BUCKET_SATS){
             BUCKET_DATA[I,table] = table()
@@ -141,6 +141,26 @@ if( first() ){
             local MONTHS = array("january","february","march","april","may","june","july","august","september","october","november","december")
             local D = date()
             return MONTHS[ D["month",number], string ] + " " + D["day",number] + " " + D["year",number]
+        }
+        
+        function number array:binarySearchClosest(Target){
+            local L = 1
+            local R = This:count()
+            while( L+1 < R ){
+                local C = floor( (L+R)/2 )
+                if(This[C,number] < Target){
+                    L = C
+                }
+                else {
+                    R = C
+                }
+            }
+            if( abs(This[L,number] - Target) < abs(This[R,number] - Target) ){
+                return This[L,number]
+            }
+            else{
+                return This[R,number]
+            }
         }
         
         function updateHandles(Scale:vector){
@@ -257,6 +277,66 @@ if( first() ){
             return 0
         }
         
+        function number table:exists(Y,X){
+            return This:exists(Y) & This[Y,table]:exists(X)
+        }
+
+        function generateSlider(Name:string, Center:vector, Values:array){
+            
+            local MaxPos = 0.9*SPAWNMENU_SCL - SLIDER_BORDER/2
+            
+            local SLIDER_BASE = holoAlloc()
+            holoPos(SLIDER_BASE, entity():toWorld(Center))
+            holoScaleUnits(SLIDER_BASE, vec(0.01,1.8*SPAWNMENU_SCL,SLIDER_BORDER))
+            holoColor(SLIDER_BASE,vec(10,11,12),100)
+            holoParent(SLIDER_BASE,MENU_BASE)
+            
+            local SLIDER_ACCENT = holoAlloc()
+            holoPos(SLIDER_ACCENT, entity():toWorld(Center+vec(0.25,0,0)))
+            holoScaleUnits(SLIDER_ACCENT, vec(0.01,1.8*SPAWNMENU_SCL - SLIDER_SIZE,SLIDER_SIZE/2))
+            holoColor(SLIDER_ACCENT,vec(40),150)
+            holoParent(SLIDER_ACCENT,SLIDER_BASE)
+            
+            local SLIDER = holoAlloc()
+            holoPos(SLIDER, entity():toWorld(Center+vec(SLIDER_HOVER_DISTANCE,MaxPos,0)))
+            holoScaleUnits(SLIDER, vec(0.5,SLIDER_SIZE,SLIDER_SIZE))
+            holoParent(SLIDER,SLIDER_BASE)
+            
+            local Temp = holoEntity(SLIDER)
+            Temp["slider_context",string] = Name # so we can find our data later
+            
+            local Max = Values:max()
+            local Min = Values:min()
+            
+            SLIDER_DATA[Name,table] = table(
+                "name" = Name,
+                "values" = Values,
+                "anim_value" = Max,
+                "value"  = Max,
+                "max"    = Max,
+                "min"    = Min,
+                "range"  = Max-Min,
+                "maxpos" = MaxPos,
+                "notches" = 0,
+                # ---------------------
+                "slider_base" = SLIDER_BASE,
+                "slider" = SLIDER,
+                "slider_accent" = SLIDER_ACCENT,
+                "slider_ent" = holoEntity(SLIDER),
+                "slider_base_ent" = holoEntity(SLIDER_BASE)
+            )
+        }
+        
+        function number table:sliderToWorld(Value){
+            Value = (Value - This["min",number]) / This["range",number] # 0-1
+            return  (Value - 0.5)*2*This["maxpos",number]               # local space
+        }
+        
+        function number table:worldToSlider(Pos){
+            Pos = clamp( (Pos/This["maxpos",number])*0.5 + 0.5, 0, 1) # 0-1
+            return This["min",number] + Pos*This["range",number]       # min-max
+        }
+        
     # -------- ACTION_Enums -------- #
         
         USE_GrabbableHolo = 1
@@ -264,10 +344,12 @@ if( first() ){
         
         M1_ScaleHandle    = 2
         M1_BucketPointer  = 3
+        M1_Slider         = 5
         
         HOLD_GrabbableHolo = 1
         HOLD_ScaleHandle   = 2
         HOLD_BucketPointer = 3
+        HOLD_Slider        = 5
 
     # -------- Actions -------- #
     
@@ -280,9 +362,9 @@ if( first() ){
             Target_Use = NULL
                 
             # ---- handle highlighting the template holograms on the spawnmenu
-                if( (abs(GridPos_d_[1])<=(SPAWNMENU_SCL-SPAWNMENU_SPACING)*0.5) & (abs(GridPos_d_[2])<=(SPAWNMENU_SCL-SPAWNMENU_SPACING)*0.5) ){
+                if( GridPos_z_==0 ){
                     
-                    local Hovered = MENU_DATA[ GridPos_r_+"", table ]
+                    local Hovered = MENU_DATA[GridPos_y_, table][GridPos_x_, table]
                     local HLChange = Hovered["trueid",number]:highlight( vec(255), 255, 0 )
                     
                     if( Hovered["trueid",number] ){
@@ -305,10 +387,28 @@ if( first() ){
                     }
                     
                 }
+                else{
+                    0:highlight(vec(),0,0) # clear any scale handle highlighting    
+                }
             # ----
             
-            # ---- handle highlighting the pointer on the paint bucket
-                # TODO: aside from the template holos, handle all other highlightable UI elements here
+            # ---- handle misc UI elements
+            
+                foreach(Name:string, T:table = SLIDER_DATA){
+                    if( T["slider_ent",entity]:pos():distance2(Hand_pos_) < (HANDLE_SCL/2)^2 ){
+                        
+                          Action_Use = 0
+                          Action_M1  = M1_Slider
+                          Target_M1  = T
+                        
+                        T["slider_accent",number]:highlight(vec(255), 150, 3)
+                        
+                        return
+                    }
+                }
+                # if we got here, nothing should be highlighted
+                0:highlight(vec(), 255, 3)
+                
                 if(holoEntity(BUCKET_POINTER):pos():distance(Hand_pos_) < BUCKET_LEN*1.25){
                     
                       Action_Use = 0
@@ -389,8 +489,9 @@ if( first() ){
         function action_holdingScaleHandle(){
             
             local O = Opposite_Handle["ent",entity]
-            
+            local Snap  = SLIDER_DATA["scl",table]["value",number]
             local HandOnAxis = O:toLocal( Hand_pos_+Hand_Local_Pos )*positive(Target_M1["slider",vector])
+            HandOnAxis = round(HandOnAxis / DEFAULT_SIZE * Snap ) * DEFAULT_SIZE / Snap
             local HandOnWorldAxis = O:toWorld(HandOnAxis)
             local Center = (HandOnWorldAxis+Opposite_Handle["ent",entity]:pos())*0.5
             local Scale = Target_Use["scale",vector]*(1-positive(Target_M1["slider",vector])) + HandOnAxis*Target_M1["slider",vector]
@@ -435,7 +536,7 @@ if( first() ){
             
             if(changed(ColorData["trueid",number])){
                 local SoundN = randint(1,4)
-                BUCKET_ENT:soundPlay("splat"+SoundN,0.2,"player/footsteps/gravel"+SoundN)
+                BUCKET_ENT:soundPlay("splat"+SoundN,0.2,"player/footsteps/gravel"+SoundN+".wav")
                 soundPitch("splat"+SoundN,255)
             }
     
@@ -462,7 +563,7 @@ if( first() ){
                     NewColor = holoEntity(BUCKET_PAINT):getColor()
                     if( BucketVictim:getColor() != NewColor ){
                         holoColor(Target_Use["trueid",number],NewColor)
-                        BUCKET_ENT:soundPlay("dunk",0.2,"ambient/levels/canals/toxic_slime_gurgle5.wav")
+                        BUCKET_ENT:soundPlay("dunk",0.2,"player/footsteps/mud2.wav")
                     }
                 }
                 
@@ -483,9 +584,27 @@ if( first() ){
             # ----
             
             # move the holo
+            
+            local Snap_Pos = SLIDER_DATA["pos",table]["value",number]
+            local Snap_Ang = SLIDER_DATA["ang",table]["value",number]
+            
             Worlds = toWorldPosAng(Hand_Local_Pos,Hand_Local_Ang,Hand_pos_,Hand_ang_)
-            holoPos(Target_Use["trueid",number],Worlds[1,vector])
-            holoAng(Target_Use["trueid",number],Worlds[2,angle])
+            holoPos(Target_Use["trueid",number],round(Worlds[1,vector] * Snap_Pos / DEFAULT_SIZE) * DEFAULT_SIZE / Snap_Pos)
+            holoAng(Target_Use["trueid",number],round(Worlds[2,angle] * Snap_Ang / 90 ) * 90 / Snap_Ang)
+            
+        }
+        # ------------
+        
+
+        function action_holdingSlider(){
+            
+            local P = Target_M1["slider_base_ent",entity]:toLocal( Hand_pos_ ):y()
+            P = Target_M1:worldToSlider(P)
+            
+            local Nearest = Target_M1["values",array]:binarySearchClosest(P)
+            
+            Target_M1["value",number] = Nearest
+            Target_M1["anim_value",number] = Target_M1["anim_value",number]*0.99 + P*0.01
             
         }
         # ------------
@@ -531,9 +650,16 @@ if( first() ){
         MENU_BASE = holoAlloc()
         holoParent(MENU_BASE,entity())
         holoColor(MENU_BASE,vec(10,11,12),100)
+    
+        SPAWNMENU_H = ceil(HOLO_MODELS:count() / SPAWNMENU_W)
+        holoScaleUnits( MENU_BASE, vec(0,SPAWNMENU_W,SPAWNMENU_H)*SPAWNMENU_SCL )
+        holoPos(MENU_BASE,entity():pos()+vec(0,0,(SPAWNMENU_H/2)*SPAWNMENU_SCL))
+        
+        MENU_ENT = holoEntity(MENU_BASE)
+        
+        DeleterCenter = vec(SPAWNMENU_SCL*0.6,(SPAWNMENU_W+0.2+1.5)*SPAWNMENU_SCL*0.5,SPAWNMENU_H*SPAWNMENU_SCL*0.5)
         
         SHREDDER_BASE = holoAlloc()
-        DeleterCenter = vec(0,(SPAWNMENU_W+0.2+1.5)*-SPAWNMENU_SCL*0.5,SPAWNMENU_SCL*0.6)
         holoPos(SHREDDER_BASE,entity():toWorld( DeleterCenter ))
         holoScaleUnits(SHREDDER_BASE,vec(1.5,1.5,0.75)*SPAWNMENU_SCL)
         holoModel(SHREDDER_BASE,"hq_stube_thin")
@@ -560,6 +686,7 @@ if( first() ){
         holoParent(SHREDDER_BOTTOM,SHREDDER_BASE)
         holoParent(SHREDDER_BASE,MENU_BASE)
         
+        holoAng(SHREDDER_BASE,MENU_ENT:toWorld(ang(90,0,0)))       
         SHREDDER = holoEntity(SHREDDER_BASE)
         
         BUCKET_BASE = holoAlloc()
@@ -568,15 +695,15 @@ if( first() ){
         holoModel(BUCKET_BASE,"hq_tube_thin")
         holoScaleUnits(BUCKET_BASE,vec(1.8,1.8,1.8)*SPAWNMENU_SCL)
         holoMaterial(BUCKET_BASE,"pac/default")
+        BUCKET_ENT = holoEntity(BUCKET_BASE)
         
         BUCKET_PAINT = holoAlloc()
         holoParent(BUCKET_PAINT,BUCKET_BASE)
-        holoPos(BUCKET_PAINT,entity():toWorld(BucketCenter-vec(0,0,0.2)*SPAWNMENU_SCL))
+        holoPos(BUCKET_PAINT,entity():toWorld(BucketCenter-vec(0,0,0.1)*SPAWNMENU_SCL))
         holoModel(BUCKET_PAINT,"hq_cylinder")
         holoScaleUnits(BUCKET_PAINT,vec(1.7,1.7,1.6)*SPAWNMENU_SCL)    
         holoMaterial(BUCKET_PAINT,"models/shiny")
-        
-        BUCKET_ENT = holoEntity(BUCKET_BASE)
+        holoParent(BUCKET_BASE,MENU_BASE)
         
         SidelenSolverPt = vec2(cos(BUCKET_ANGLE/(BUCKET_SATS-1)),sin(BUCKET_ANGLE/(BUCKET_SATS-1)))
         BUCKET_LEN = SidelenSolverPt[2] * (1/SidelenSolverPt[1]) * SPAWNMENU_SCL
@@ -589,23 +716,49 @@ if( first() ){
         BUCKET_POINTER_ENT = holoEntity(BUCKET_POINTER)
         
         X=Y=0
-        SPAWNMENU_H = ceil(HOLO_MODELS:count() / SPAWNMENU_W)
-        holoScaleUnits( MENU_BASE, vec(SPAWNMENU_H,SPAWNMENU_W,0)*SPAWNMENU_SCL )
         
-        holoPos(MENU_BASE,entity():pos()+vec(0,0,(SPAWNMENU_H/2)*SPAWNMENU_SCL))
-        holoAng(MENU_BASE,ang(-90,entity():angles():yaw()+180,0))
+        SlidersCenter = vec(0,BucketCenter[2],SPAWNMENU_SCL*(SPAWNMENU_H-0.5))
+        HelperHoloSize = SLIDER_BORDER*2/3
+        SliderHelperOffset = vec(0,-0.9*SPAWNMENU_SCL - HelperHoloSize/2 - SPAWNMENU_SPACING,0)
         
-        MENU_ENT = holoEntity(MENU_BASE)
+        SliderHelper = holoAlloc( entity():toWorld(SlidersCenter + SliderHelperOffset + vec(0,-HelperHoloSize/8,HelperHoloSize/8)) )
+        holoAlpha(SliderHelper,150)
+        holoScaleUnits(SliderHelper, vec(HelperHoloSize))
+        holoParent(SliderHelper,MENU_BASE)
         
-        holoParent(BUCKET_BASE,MENU_BASE)
+        SliderHelper = holoAlloc( entity():toWorld(SlidersCenter + SliderHelperOffset + vec(0,HelperHoloSize/8,-HelperHoloSize/8)) )
+        holoScaleUnits(SliderHelper, vec(HelperHoloSize))
+        holoParent(SliderHelper,MENU_BASE)
         
-        SlidersCenter = vec(0,-(SPAWNMENU_W+0.6+1.5)*SPAWNMENU_SCL*0.5,SPAWNMENU_SCL*(SPAWNMENU_H-0.5))
+        generateSlider("pos", SlidersCenter, POS_SNAP_DIVISORS)
         
-        SNAP_SLIDER = holoAlloc()
-        holoPos(SNAP_SLIDER, entity():toWorld(SlidersCenter))
-        holoScaleUnits(SNAP_SLIDER, vec(0,2,0.5)*SPAWNMENU_SCL)
-        holoColor(SNAP_SLIDER,vec(10,11,12),100)
+        SlidersCenter = vec(0,BucketCenter[2],SPAWNMENU_SCL*(SPAWNMENU_H-1))
         
+        SliderHelper = holoAlloc( entity():toWorld(SlidersCenter + SliderHelperOffset) )
+        holoAlpha(SliderHelper,150)
+        holoScaleUnits(SliderHelper, vec(HelperHoloSize*1.2))
+        holoParent(SliderHelper,MENU_BASE)
+        
+        SliderHelper = holoAlloc( entity():toWorld(SlidersCenter + SliderHelperOffset) )
+        holoScaleUnits(SliderHelper, vec(HelperHoloSize*1.2))
+        holoAng(SliderHelper,entity():toWorld(ang(0,0,45)))
+        holoParent(SliderHelper,MENU_BASE)
+        
+        generateSlider("ang", SlidersCenter, ANG_SNAP_DIVISORS)
+        
+        SlidersCenter = vec(0,BucketCenter[2],SPAWNMENU_SCL*(SPAWNMENU_H-1.5))
+        
+        SliderHelper = holoAlloc( entity():toWorld(SlidersCenter + SliderHelperOffset) )
+        holoAlpha(SliderHelper,150)
+        holoScaleUnits(SliderHelper, vec(HelperHoloSize*1.33))
+        holoParent(SliderHelper,MENU_BASE)
+        
+        SliderHelper = holoAlloc( entity():toWorld(SlidersCenter + SliderHelperOffset) )
+        holoScaleUnits(SliderHelper, vec(HelperHoloSize*1.33,HelperHoloSize*0.9,HelperHoloSize*0.9))
+        holoParent(SliderHelper,MENU_BASE)
+        
+        generateSlider("scl", SlidersCenter, SCL_SNAP_DIVISORS)
+
 }
 
 
@@ -613,16 +766,17 @@ if( first() ){
 
     # template holos
     while( MENU_SPAWNED < HOLO_MODELS:count() & holoCanCreate() ){
+        
         MENU_SPAWNED++
         local MDL = HOLO_MODELS[MENU_SPAWNED,string]
         local Background = holoAlloc()
         local Holo = holoAlloc()
-        if(MENU_SPAWNED==1){
-            SELECT_BASE = Background
+        
+        if( !MENU_DATA:exists(Y) ){
+            MENU_DATA[Y,table] = table()
         }
         
-        local IndexPos = vec(Y,X,0)
-        local Pos = MENU_ENT:toWorld( IndexPos*SPAWNMENU_SCL - vec(SPAWNMENU_H-1,SPAWNMENU_W-1,0)*0.5*SPAWNMENU_SCL + vec(0,0,1) )
+        local Pos = MENU_ENT:toWorld( vec(0,X,Y)*SPAWNMENU_SCL - vec(0,SPAWNMENU_W-1,SPAWNMENU_H-1)*0.5*SPAWNMENU_SCL + vec(1,0,0) )
         
         holoModel(Holo,MDL)
     
@@ -630,18 +784,21 @@ if( first() ){
         holoColor(Holo,vec(60))
         holoMaterial(Holo,"pac/default")    
     
-        holoScaleUnits(Background,vec(1,1,0)*(SPAWNMENU_SCL-SPAWNMENU_SPACING))        
+        holoScaleUnits(Background,vec(0,1,1)*(SPAWNMENU_SCL-SPAWNMENU_SPACING))        
         holoScaleUnits(Holo,DEFAULT_SCALE)        
     
         holoPos(Background,Pos)
-        holoPos(Holo,Pos+MENU_ENT:toWorldAxis(vec(0,0,SPAWNMENU_SCL*0.5)))
+        holoPos(Holo,Pos+MENU_ENT:toWorldAxis(vec(SPAWNMENU_SCL*0.5,0,0)))
         
-        holoAng(Holo,MENU_ENT:toWorld(ang(90,0,0) + HOLO_MODEL_OFFSETS[MDL,angle]))
-        holoAng(Background,MENU_ENT:angles())
+        holoAng(Holo,MENU_ENT:toWorld(ang(0,180,0) + HOLO_MODEL_OFFSETS[MDL,angle]))
+        #holoAng(Background,MENU_ENT:angles())
         
         holoParent(Background,MENU_BASE)
         holoParent(Holo,MENU_BASE)
-        local Index = IndexPos+""
+        
+        if(MENU_SPAWNED==1){
+            SELECT_BASE = Background
+        }
         
         local HoloTable = table(
             "trueid" = Holo,
@@ -651,7 +808,7 @@ if( first() ){
             "ismenu" = 1
         )
         
-        MENU_DATA[Index,table] = HoloTable
+        MENU_DATA[Y,table][X,table] = HoloTable
         
         X=(X+1)%SPAWNMENU_W
         if(!X){Y++}   
@@ -688,6 +845,25 @@ if( first() ){
         X=(X+1)%BUCKET_SATS
         if(!X){Y++}   
     }
+    
+    # slider notches
+    if( !SLIDER_NOTCHES_DONE ){
+        foreach(Name:string, T:table = SLIDER_DATA){
+            local Values = T["values",array]
+            while( holoCanCreate() & (T["notches",number] < Values:count()) ){
+                
+                T["notches",number] = T["notches",number] + 1
+                
+                local H = holoAlloc( T["slider_base_ent",entity]:toWorld(vec(0.5, T:sliderToWorld(Values[ T["notches",number], number]), 0)) )
+                holoScaleUnits(H, vec(0.01,SLIDER_SIZE/4,SLIDER_SIZE/4))
+                holoParent(H,T["slider_base",number])
+                
+            }
+            if( holoCanCreate() ){
+                SLIDER_NOTCHES_DONE = 1
+            }
+        }
+    }
 # -------- End Menu Element Spawning -------- #
 
 
@@ -703,15 +879,12 @@ if( first() ){
         Hand_ang_ = PLY:eyeAngles()
     }
     
-    # this needs reworking for scaling holos
-    Hand_pos_ = round( (Hand_pos_-entity():pos() - SPAWNMENU_SCL*0.5)/(SPAWNMENU_SCL/Pos_Snap) ) * (SPAWNMENU_SCL/Pos_Snap) + entity():pos() + SPAWNMENU_SCL*0.5
-    
-    local Divisor = 360/Ang_Snap
-    Hand_ang_ = round( Hand_ang_/Divisor ) * Divisor
-    
     local GridPos = holoEntity(SELECT_BASE):toLocal(Hand_pos_)
-    GridPos_r_ = round(GridPos/SPAWNMENU_SCL-vec(0,0,0.5))
-    GridPos_d_ = GridPos-(GridPos_r_)*SPAWNMENU_SCL
+          GridPos = round(GridPos/SPAWNMENU_SCL-vec(0.5,0,0))
+    GridPos_x_ = GridPos[2]
+    GridPos_y_ = GridPos[3]
+    GridPos_z_ = GridPos[1]
+
 ##
 ### global transients
 
@@ -724,6 +897,8 @@ switch( Action_Holding ){
     case HOLD_GrabbableHolo, action_holdingGrabbableHolo() break
     
     case HOLD_ScaleHandle, action_holdingScaleHandle() break
+    
+    case HOLD_Slider, action_holdingSlider() break
     
 }
 
@@ -742,15 +917,22 @@ if( changed(PLY:keyAttack1()) ){ # on m1 change
             break
             
             case M1_ScaleHandle,
-                Target_M1["trueid",number]:highlight( vec(255,0,0), 150, 2) # change to red
-                Target_M1["ent",entity]:soundPlay("use"+Target_M1["trueid",number],0.5,"common/wpn_select.wav")
-                Hand_Local_Pos = Target_M1["ent",entity]:pos() - Hand_pos_
-                Handle_Axis = Target_M1["slider",vector]
-                Opposite_Handle = HANDLE_OPPOSITES[Handle_Axis+"",table]
-                Action_Holding = HOLD_ScaleHandle
-                
-                holoUnparent(HANDLE_CENTER)
+                if( !Action_Holding ){ # this should never trigger if we're holding something
+                    Target_M1["trueid",number]:highlight( vec(255,0,0), 150, 2) # change to red
+                    Target_M1["ent",entity]:soundPlay("use"+Target_M1["trueid",number],0.5,"common/wpn_select.wav")
+                    Hand_Local_Pos = Target_M1["ent",entity]:pos() - Hand_pos_
+                    Handle_Axis = Target_M1["slider",vector]
+                    Opposite_Handle = HANDLE_OPPOSITES[Handle_Axis+"",table]
+                    Action_Holding = HOLD_ScaleHandle
+                    
+                    holoUnparent(HANDLE_CENTER)
+                }
                 #setHandleAlphas(0)
+            break
+            
+            case M1_Slider,
+                Target_M1["slider_ent",entity]:soundPlay("use_slider_"+Target_M1["name",string],0.5,"common/wpn_select.wav")
+                Action_Holding = HOLD_Slider
             break
             
         }
@@ -769,6 +951,10 @@ if( changed(PLY:keyAttack1()) ){ # on m1 change
                 Action_Holding = 0
             break
             
+            case HOLD_Slider, 
+                Action_Holding = 0
+            break
+            
         }
      
     }
@@ -784,20 +970,27 @@ if( changed(PLY:keyUse()) ){ # on use change
             
             case USE_MenuHolo,
             
-                Target_Use = holoCreateGrabbable( Target_Use )
+                if( !Action_Holding ){
+                    Target_Use = holoCreateGrabbable( Target_Use )
+                }
                 # continue on to USE_GrabbableHolo case!
                 
             case USE_GrabbableHolo,
-                
-                Locals = toLocalPosAng(Target_Use["ent",entity]:pos(),Target_Use["ent",entity]:angles(),Hand_pos_,Hand_ang_)
-                Hand_Local_Pos = Locals[1,vector]
-                Hand_Local_Ang = Locals[2,angle]
-                
-                holoPos(HANDLE_CENTER,Target_Use["ent",entity]:pos())
-                holoAng(HANDLE_CENTER,Target_Use["ent",entity]:angles())
-                holoParent(HANDLE_CENTER,Target_Use["trueid",number])
-                
-                Action_Holding = HOLD_GrabbableHolo
+            
+                if( !Action_Holding ){ # this should never trigger if we're holding something
+                    Locals = toLocalPosAng(Target_Use["ent",entity]:pos(),Target_Use["ent",entity]:angles(),Hand_pos_,Hand_ang_)
+
+                    Hand_Local_Pos = Locals[1,vector]
+                    Hand_Local_Ang = Locals[2,angle]
+                    
+                    holoPos(HANDLE_CENTER,Target_Use["ent",entity]:pos())
+                    holoAng(HANDLE_CENTER,Target_Use["ent",entity]:angles())
+                    holoParent(HANDLE_CENTER,Target_Use["trueid",number])
+                    
+                    0:highlight( vec(), 255, 2) # un-highlight any scale handles
+                    
+                    Action_Holding = HOLD_GrabbableHolo
+                }
                 
             break
             
@@ -817,7 +1010,7 @@ if( changed(PLY:keyUse()) ){ # on use change
         switch( Action_Holding ){
             
             case HOLD_GrabbableHolo,
-                if( Target_Use["trueid",number] & MENU_DATA:exists(GridPos_r_+"") ){ # they dropped it back in the menu, oops
+                if( Target_Use["trueid",number] & GridPos_z_==0 & MENU_DATA:exists(GridPos_y_,GridPos_x_) ){ # they dropped it back in the menu, oops
                     holoFreeGrabbable(Target_Use)
                 }
                 elseif(Shredder_flash_){ # queue it for deletion
@@ -921,6 +1114,24 @@ if( changed(PLY:keyUse()) ){ # on use change
     holoColor(SHREDDER_TOP,DeletColor)
     holoColor(SHREDDER_BOTTOM,DeletColor)
 # -------- End Shredder runOnTick -------- #
+
+
+# -------- Slider runOnTick -------- #
+
+    foreach(Name:string, T:table = SLIDER_DATA){
+        
+        local Value = T["anim_value",number]
+        
+        Value = Value*0.9 + T["value",number]*0.1 # interpolate
+        T["anim_value",number] = Value # write back
+        
+        Value = (Value - T["min",number]) / T["range",number] # 0-1
+        Value = (Value - 0.5)*2*T["maxpos",number] # local space
+        
+        holoPos(T["slider",number], T["slider_base_ent",entity]:toWorld( vec(SLIDER_HOVER_DISTANCE,Value,0) ))
+    }
+
+# -------- End Slider runOnTick -------- #
 
 
 # -------- Saving Stuff -------- #
