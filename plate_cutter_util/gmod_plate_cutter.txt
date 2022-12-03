@@ -64,6 +64,10 @@ if( first() ){
         return vec(0)
     }
     
+    function vector signvec(V:vector){
+        return vec( sign(V:x()), sign(V:y()), sign(V:z()) )
+    }
+    
     propSpawnUndo(1)
     holoCreate(0)
     holoColor(0,vec(255,255,0),100)
@@ -416,7 +420,7 @@ if( first() ){
             
             if( changed(SpawnComplement) ){
                 holoVisible(4,players(),1)
-                local Quadrant = sign( SpawnComplement-ModePersist["complement",vector] + vec(1,1,0)*0.1 )
+                local Quadrant = signvec( SpawnComplement-ModePersist["complement",vector] + vec(1,1,0)*0.1 )
                 holoPos(4,Entity:toWorld((Quadrant * UNIT_SIZE * 32 * 8 + (ModePersist["pos",vector]) * UNIT_SIZE + FlatMin):setZ(0)))
                 
                 local ClipPos = (SpawnComplement)*UNIT_SIZE - FlatMin + Quadrant * UNIT_SIZE * 0
@@ -551,7 +555,7 @@ if( first() ){
             if( changed(SpawnComplement) ){
                 
                 holoVisible(4,players(),1)
-                local Quadrant = sign( SpawnComplement-ModePersist["local",vector] + vec(1,1,0)*0.1 )
+                local Quadrant = signvec( SpawnComplement-ModePersist["local",vector] + vec(1,1,0)*0.1 )
                 holoPos(4,Entity:toWorld((Quadrant * UNIT_SIZE * 32 * 8 + (ModePersist["pos",vector]) * UNIT_SIZE + FlatMin):setZ(0)))
                 
                 local ClipPos = (SpawnComplement)*UNIT_SIZE - FlatMin + Quadrant * UNIT_SIZE * 0
