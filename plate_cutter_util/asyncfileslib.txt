@@ -44,11 +44,11 @@ if( first() ){
         )
         ASYNCFILES_QUEUE_UP:pushTable(Call)
     }
-    #
-    ## CALLBACK EXAMPLE
-    # FileData will be the data from the loaded file
-    # FileName will be the name of the loaded file
-    #
+    ##
+    #  CALLBACK EXAMPLE
+    #    FileData is the data from the file
+    #    FileName is the name of the file loaded
+    ##
     function onFileLoaded( FileData:string, FileName:string ){
         print("Default async load callback: "+FileName+" successfully loaded!", FileData)
     }
