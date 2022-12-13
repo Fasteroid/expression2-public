@@ -1,8 +1,8 @@
 @name F=MA Compliant Physgun
 @inputs 
 @outputs 
-@persist BeamLength HeldEntity:entity HeldLocalPos:vector InitialGrabYaw InitialGrabAng:angle InitialGrabQuat:quaternion Holding PLAYER_MASS WORLD_MASS Respawning
-@persist OwnerEyeAng:angle Attack1
+@persist BeamLength HeldEntity:entity HeldLocalPos:vector InitialGrabYaw InitialGrabAng:angle InitialGrabQuat:quaternion Holding PLAYER_MASS WORLD_MASS Respawning WheelState
+@persist Attack1
 @persist [Chip,Owner]:entity TickInterval
 @model models/hunter/misc/sphere025x025.mdl
 
@@ -12,8 +12,6 @@
     ##############################
 
 if( first() ){
-    
-    runOnTick(1)
     
     PLAYER_MASS = 150
     WORLD_MASS = 1500
@@ -35,162 +33,173 @@ if( first() ){
         This:applyTorque((Torque*100-This:angVelVector()*10)*This:inertia()*min(3,500/This:mass()))
     }
     
+    function supressInitializationWarnings(){
+        BeamLength = 0 Respawning = 0 Holding = 0 HeldEntity = noentity() 
+    }
+    
 }
 
-if( keyClk() ){ # default wheel speed is 5
-    Key = keyClkPressed()
-    if( Key == "mouse_wheel_up" ){
-        BeamLength = clamp( BeamLength + 5, 40, 4096 )
+event keyPressed(E:entity, Key:string, Pressed:number, Enum:string){
+    Enum = Enum # stupid discarded variable warning
+    if( E == Owner ){
+        if( Key == "mouse_wheel_up" ){
+            WheelState = Pressed
+        }
+        if( Key == "mouse_wheel_down" ){
+            WheelState = -Pressed
+        }
     }
-    if( Key == "mouse_wheel_down" ){
-        BeamLength = clamp( BeamLength - 5, 40, 4096 )  
-    }
-    exit()
 }
 
-if( Owner:weapon():type() == "weapon_physgun" & !Respawning ) {
+event tick(){
     
-    Attack1 = Owner:keyAttack1()
-    Chip:propDraw(!Attack1)
-    Attack2 = Owner:keyAttack2()
-    Reload  = Owner:keyReload()
+    BeamLength = clamp( BeamLength + WheelState * 5, 40, 4096 )  
     
-    Chip:propNotSolid(Attack1)
-    
-    rangerFilter( array(Owner,Chip) )
-    EyeTrace = rangerOffset( 8192, Owner:shootPos() + Owner:vel() * TickInterval * 1.5, Owner:eye() )
-    
-    ###  Other misc fixes
-    ##
-        # ATTEMPT to fix props spawning inside our face
-        local SpawnedProp = EyeTrace:entity()
-        if( SpawnedProp:isValidPhysics() & (SpawnedProp:pos()-Owner:shootPos()==vec()) ){ # no chance a prop just got here by accident
-            local BoxSize = SpawnedProp:boxSize():rotate(SpawnedProp:angles())
-            
-            rangerPersist(1)
-            rangerFilter( array(SpawnedProp,Owner,Chip) )
-            local SpawnTrace = rangerOffset( 4096, Owner:shootPos() + Owner:vel() * TickInterval * 1.5, Owner:eye() )
-            local SpawnPos = SpawnTrace:position() + SpawnTrace:hitNormal()*BoxSize*0.5
-            local FloorTrace = rangerOffset( BoxSize:z(), SpawnPos + SpawnTrace:hitNormal(), vec(0,0,-1) )
-            local PropBottomOffset = SpawnedProp:boxMin():rotate(SpawnedProp:angles())*vec(0,0,1)
-            rangerPersist(0)
-            if(FloorTrace:hit()){ SpawnPos = FloorTrace:position() - PropBottomOffset }
-            
-            SpawnedProp:setPos( SpawnPos ) # move it to where garry's code would have spawned it
-        }
+    if( Owner:weapon():type() == "weapon_physgun" & !Respawning ) {
         
-        # fix the 'unfreeze connected' behavior
-        if( changed( Reload ) & Reload ){
-            local Ents = EyeTrace:entity():getConnectedEntities()
-            foreach(N,Ent:entity=Ents){
-                Ent:propFreeze(0)    
+        Attack1 = Owner:keyAttack1()
+        Chip:propDraw(!Attack1)
+        Attack2 = Owner:keyAttack2()
+        Reload  = Owner:keyReload()
+        
+        Chip:propNotSolid(Attack1)
+        
+        rangerFilter( array(Owner,Chip) )
+        EyeTrace = rangerOffset( 8192, Owner:shootPos() + Owner:vel() * TickInterval * 1.5, Owner:eye() )
+        
+        ###  Other misc fixes
+        ##
+            # ATTEMPT to fix props spawning inside our face
+            local SpawnedProp = EyeTrace:entity()
+            if( SpawnedProp:isValidPhysics() & (SpawnedProp:pos()-Owner:shootPos()==vec()) ){ # no chance a prop just got here by accident
+                local BoxSize = SpawnedProp:boxSize():rotate(SpawnedProp:angles())
+                
+                rangerPersist(1)
+                rangerFilter( array(SpawnedProp,Owner,Chip) )
+                local SpawnTrace = rangerOffset( 4096, Owner:shootPos() + Owner:vel() * TickInterval * 1.5, Owner:eye() )
+                local SpawnPos = SpawnTrace:position() + SpawnTrace:hitNormal()*BoxSize*0.5
+                local FloorTrace = rangerOffset( BoxSize:z(), SpawnPos + SpawnTrace:hitNormal(), vec(0,0,-1) )
+                local PropBottomOffset = SpawnedProp:boxMin():rotate(SpawnedProp:angles())*vec(0,0,1)
+                rangerPersist(0)
+                if(FloorTrace:hit()){ SpawnPos = FloorTrace:position() - PropBottomOffset }
+                
+                SpawnedProp:setPos( SpawnPos ) # move it to where garry's code would have spawned it
             }
-        }
-    ##
-    ###
-        
-    
-    ###  Detect entity holding / dropping
-    ##
-        if( changed( Attack2 ) & Attack2 ){
-            if(Holding){
-                HeldEntity:propFreeze(1)    
-            }
-            Holding = 0    
-        }
-        
-        if( changed( Attack1 ) | !Holding ){
-            if( Attack1 ){
-                HeldEntity = EyeTrace:entity()
-                if( HeldEntity:isValid() & HeldEntity:owner():trusts(Owner) ){
-                    Holding = 1
-                    HeldEntity:propFreeze(0)
-                    HeldLocalPos = HeldEntity:toLocal( EyeTrace:pos() )
-                    InitialGrabQuat = quat( Chip:angles() )
-                    InitialGrabYaw  = Owner:angles()[2]
-                    InitialGrabAng  = HeldEntity:angles()
-                    BeamLength = EyeTrace:distance()      
-                }
-                elseif( HeldEntity == world() ){
-                    Holding = 2
-                    HeldLocalPos = EyeTrace:pos()
-                    BeamLength = EyeTrace:distance()              
+            
+            # fix the 'unfreeze connected' behavior
+            if( changed( Reload ) & Reload ){
+                local Ents = EyeTrace:entity():getConnectedEntities()
+                foreach(N,Ent:entity=Ents){
+                    Ent:propFreeze(0)    
                 }
             }
-            else{
+        ##
+        ###
+            
+        
+        ###  Detect entity holding / dropping
+        ##
+            if( changed( Attack2 ) & Attack2 ){
+                if(Holding){
+                    HeldEntity:propFreeze(1)    
+                }
                 Holding = 0    
             }
-        }
-    ##
-    ###
-    if( Holding & !Respawning ){
-        switch( Holding ){
-            case 1,
-                Mul = clamp(HeldEntity:mass(),0,1000)
-                BeamEndPos = HeldEntity:toWorld( HeldLocalPos )
-                
-                Force      = Owner:shootPos() + Owner:eye() * BeamLength - BeamEndPos # initial force
-                Force     -= HeldEntity:pointVel( HeldLocalPos ) * 0.1
-                Force     -= HeldEntity:vel() * 0.05
-                Force     += Owner:vel()*0.05
-                Force     *= Mul
-                
-                TargetAng = InitialGrabAng
-                CursedQuatThing = quat( Chip:angles():rotateAroundAxis( vec(0,0,1), Owner:angles()[2] - InitialGrabYaw ) ) / InitialGrabQuat
-                TargetAng = TargetAng:rotateAroundAxis( rotationAxis(CursedQuatThing), rotationAngle(CursedQuatThing) )
-                
-                Owner:plyApplyForce( -Force / PLAYER_MASS - Owner:vel()*0.00004*Mul )
-                
-                rangerFilter( array(Owner,Chip) )
-                GroundTest = rangerOffsetHull(1,Owner:pos(),vec(0,0,-1),Owner:aabbMin(),Owner:aabbMax())
-                GroundTest:entity():applyOffsetForce( -Force, GroundTest:position() )
-                
-                HeldEntity:perfectAngForce( TargetAng )
-                HeldEntity:applyOffsetForce( Force, BeamEndPos )    
-                
-            break
-            case 2,
-                BeamEndPos = HeldLocalPos
             
-                Force      = Owner:shootPos() + Owner:eye() * BeamLength - BeamEndPos # initial force
-                Force     += Owner:vel()*0.05
-                Force     *= WORLD_MASS # world is extremely heavy
+            if( changed( Attack1 ) | !Holding ){
+                if( Attack1 ){
+                    HeldEntity = EyeTrace:entity()
+                    if( HeldEntity:isValid() & HeldEntity:owner():trusts(Owner) ){
+                        Holding = 1
+                        HeldEntity:propFreeze(0)
+                        HeldLocalPos = HeldEntity:toLocal( EyeTrace:pos() )
+                        InitialGrabQuat = quat( Chip:angles() )
+                        InitialGrabYaw  = Owner:angles()[2]
+                        InitialGrabAng  = HeldEntity:angles()
+                        BeamLength = EyeTrace:distance()      
+                    }
+                    elseif( HeldEntity == world() ){
+                        Holding = 2
+                        HeldLocalPos = EyeTrace:pos()
+                        BeamLength = EyeTrace:distance()              
+                    }
+                }
+                else{
+                    Holding = 0    
+                }
+            }
+        ##
+        ###
+        if( Holding & !Respawning ){
+            switch( Holding ){
+                case 1,
+                    Mul = clamp(HeldEntity:mass(),0,1000)
+                    BeamEndPos = HeldEntity:toWorld( HeldLocalPos )
+                    
+                    Force      = Owner:shootPos() + Owner:eye() * BeamLength - BeamEndPos # initial force
+                    Force     -= HeldEntity:pointVel( HeldLocalPos ) * 0.1
+                    Force     -= HeldEntity:vel() * 0.05
+                    Force     += Owner:vel()*0.05
+                    Force     *= Mul
+                    
+                    TargetAng = InitialGrabAng
+                    CursedQuatThing = quat( Chip:angles():rotateAroundAxis( vec(0,0,1), Owner:angles()[2] - InitialGrabYaw ) ) / InitialGrabQuat
+                    TargetAng = TargetAng:rotateAroundAxis( rotationAxis(CursedQuatThing), rotationAngle(CursedQuatThing) )
+                    
+                    Owner:plyApplyForce( -Force / PLAYER_MASS - Owner:vel()*0.00004*Mul )
+                    
+                    rangerFilter( array(Owner,Chip) )
+                    GroundTest = rangerOffsetHull(1,Owner:pos(),vec(0,0,-1),Owner:aabbMin(),Owner:aabbMax())
+                    GroundTest:entity():applyOffsetForce( -Force, GroundTest:position() )
+                    
+                    HeldEntity:perfectAngForce( TargetAng )
+                    HeldEntity:applyOffsetForce( Force, BeamEndPos )    
+                    
+                break
+                case 2,
+                    BeamEndPos = HeldLocalPos
                 
-                Owner:plyApplyForce( -Force / PLAYER_MASS )            
-            break
+                    Force      = Owner:shootPos() + Owner:eye() * BeamLength - BeamEndPos # initial force
+                    Force     += Owner:vel()*0.05
+                    Force     *= WORLD_MASS # world is extremely heavy
+                    
+                    Owner:plyApplyForce( -Force / PLAYER_MASS )            
+                break
+            }
+        }
+        elseif(Attack1){
+            BeamEndPos = EyeTrace:pos()
+        }
+        else{
+            BeamEndPos = Owner:shootPos() + Owner:vel() * TickInterval * 2
+        }
+        
+        IsRotating = Holding & Owner:keyUse()
+        Chip:propFreeze( !IsRotating )        
+        
+        if(IsRotating){
+            InitialGrabYaw = Owner:angles()[2]
+        }
+        
+        Chip:setPos( BeamEndPos )
+    
+    }
+    else{
+        Chip:propNotSolid(1)    
+    }
+    
+    if( changed(Owner:isAlive()) ){
+        if( !Owner:isAlive() ){
+            Holding = 0
+            Respawning = 1
+        }
+        else{
+            timer("doneRespawn",250)
         }
     }
-    elseif(Attack1){
-        BeamEndPos = EyeTrace:pos()
-    }
-    else{
-        BeamEndPos = Owner:shootPos() + Owner:vel() * TickInterval * 2
-    }
     
-    IsRotating = Holding & Owner:keyUse()
-    Chip:propFreeze( !IsRotating )        
-    
-    if(IsRotating){
-        InitialGrabYaw = Owner:angles()[2]
+    if( clk("doneRespawn") ){
+        Respawning = 0
     }
-    
-    Chip:setPos( BeamEndPos )
 
-}
-else{
-    Chip:propNotSolid(1)    
-}
-
-if( changed(Owner:isAlive()) ){
-    if( !Owner:isAlive() ){
-        Holding = 0
-        Respawning = 1
-    }
-    else{
-        timer("doneRespawn",250)
-    }
-}
-
-if( clk("doneRespawn") ){
-    Respawning = 0
 }
