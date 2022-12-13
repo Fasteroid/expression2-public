@@ -34,8 +34,6 @@
 
 if( first() ){
     
-    runOnTick(1)
-    
     # -------- GLOBAL_CONSTANTS -------- #
     
         PLY = findPlayerByName("fast")   
@@ -117,8 +115,8 @@ if( first() ){
     # -------- variable initialization -------- #
     
         # don't actually call this; these start as @persist defaults
-        function removeUninitializedWarnings(){
-            BUCKET_ENT = noentity() HANDLE_CENTER = 0 BUCKET_POINTER = 0 BUCKET_LEN = 0 HUE_CURRENT = 0 BUCKET_PAINT = 0 SHREDDER_BASE= 0 MENU_SPAWNED = 0 BUCKET_SPAWNED = 0 NULL = table() BUCKET_DATA = table() HANDLE_DATA = table() MENU_DATA = table() HANDLE_OPPOSITES = table() DEFAULT_SCALE = vec(0.9)*SPAWNMENU_SCL-SPAWNMENU_SPACING Grab_Holos = table() Shredding_Holos = table() Opposite_Handle = NULL Grab_Holo_AvailableIDs = array() Highlight_Current = array() Highlight_OldColor = array() Highlight_OldAlpha = array() Bucket_Flip = 0 Grab_Holo_MaxID = 0 Action_Holding = 0 Shredder_Flasher = 0 Shredder_Speed= 0 Shredder_Rotation = 0 Hand_Local_Pos = vec() Hand_Local_Ang = ang() SLIDER_NOTCHES_DONE = 0
+        function supressInitializationWarnings(){
+            BUCKET_ENT = noentity() HANDLE_CENTER = 0 BUCKET_POINTER = 0 BUCKET_LEN = 0 HUE_CURRENT = 0 BUCKET_PAINT = 0 SHREDDER_BASE= 0 MENU_SPAWNED = 0 BUCKET_SPAWNED = 0 NULL = table() BUCKET_DATA = table() HANDLE_DATA = table() MENU_DATA = table() HANDLE_OPPOSITES = table() DEFAULT_SCALE = vec(0.9)*SPAWNMENU_SCL-SPAWNMENU_SPACING Grab_Holos = table() Shredding_Holos = table() Opposite_Handle = NULL Grab_Holo_AvailableIDs = array() Highlight_Current = array() Highlight_OldColor = array() Highlight_OldAlpha = array() Bucket_Flip = 0 Grab_Holo_MaxID = 0 Action_Holding = 0 Shredder_Flasher = 0 Shredder_Speed= 0 Shredder_Rotation = 0 Hand_Local_Pos = vec() Hand_Local_Ang = ang() SLIDER_NOTCHES_DONE = 0 MENU_BASE = 0 SLIDER_DATA = table()
         }
         
         # cached values; don't touch these
@@ -762,7 +760,7 @@ if( first() ){
 
 }
 
-
+event tick(){
 # -------- Menu Element Spawning -------- #
 
     # template holos
@@ -1138,12 +1136,15 @@ if( changed(PLY:keyUse()) ){ # on use change
     }
 
 # -------- End Slider runOnTick -------- #
-
+}
 
 # -------- Saving Stuff -------- #
-if( changed(owner():lastSaidWhen()) ){
+event chat(Ply:entity, Text:string, Team:number){
+    Team = Team # stupid variable discard error
+
+    if(Ply != owner()){ exit() }
     
-    S = owner():lastSaid():explode(" ")
+    S = Text:explode(" ")
     
     if(S[1,string] == ".s"){
         if( S[2,string] != "" ){
