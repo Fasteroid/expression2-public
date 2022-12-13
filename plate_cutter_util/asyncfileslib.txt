@@ -21,6 +21,14 @@ if( first() ){
     #[]#  ASYNCFILES_ROOT           = ">e2shared/"   # default root directory
     #[]#  ASYNCFILES_CURRENT_UPLOAD = "none"         # name of file currently uploading
     ####  
+    
+    function supressInitializationWarnings(){
+        ASYNCFILES_QUEUE_UP = table() ASYNCFILES_QUEUE_DOWN = table() ASYNCFILES_ISLOADING = 0
+    }
+    
+    function suppressUnusedWarnings(){
+        ASYNCFILES_CURRENT_UPLOAD = ASYNCFILES_CURRENT_UPLOAD
+    }
      
     ###############
     ## 
@@ -28,7 +36,7 @@ if( first() ){
     #     Queues reading of a Filepath in ASYNCFILES_ROOT.
     #     Runs the set callback function when it finishes loading.
     #
-    function fileLoadASync(Filepath:string,Callback:string){
+    function fileLoadASync( Filepath:string,Callback:string ){
         if(Callback==""){ Callback = "onFileLoaded" }
         Call = table(
             "file" = ASYNCFILES_ROOT+Filepath,
@@ -36,13 +44,13 @@ if( first() ){
         )
         ASYNCFILES_QUEUE_UP:pushTable(Call)
     }
-    ##
-    #  Callback Example
-    #    FileData is the data from the file
-    #    FileName is the name of the file loaded
-    ##
+    #
+    ## CALLBACK EXAMPLE
+    # FileData will be the data from the loaded file
+    # FileName will be the name of the loaded file
+    #
     function onFileLoaded( FileData:string, FileName:string ){
-        print("Default async load callback: "+FileName+" successfully loaded!")
+        print("Default async load callback: "+FileName+" successfully loaded!", FileData)
     }
     
     ###############
@@ -64,18 +72,7 @@ if( first() ){
     #     Processes current upload list and runs attached callbacks
     #
     function fileProcessLoad(){
-        if(fileClk()){
-            if(fileStatus()!=_FILE_OK){
-                print(_HUD_PRINTCONSOLE,"WARNING: file '"+ASYNCFILES_QUEUE_UP[1,table]["file",string]+"' failed to upload!")
-            }
-            else{
-                print(_HUD_PRINTCONSOLE,"File '"+ASYNCFILES_QUEUE_UP[1,table]["file",string]+"' successfully uploaded!")                
-            }
-            ASYNCFILES_QUEUE_UP:removeTable(1)["callback",string](fileRead(),ASYNCFILES_CURRENT_UPLOAD) # execute the callback :D
-            ASYNCFILES_ISLOADING = 0 # ready up
-            ASYNCFILES_CURRENT_UPLOAD = "none"
-        }
-        elseif(fileCanLoad() & ASYNCFILES_QUEUE_UP:count() & !ASYNCFILES_ISLOADING){
+        if(fileCanLoad() & ASYNCFILES_QUEUE_UP:count() & !ASYNCFILES_ISLOADING){
             print(_HUD_PRINTCONSOLE,"Starting file upload: '"+ASYNCFILES_QUEUE_UP[1,table]["file",string]+"'")
             fileLoad(ASYNCFILES_QUEUE_UP[1,table]["file",string])
             ASYNCFILES_ISLOADING = 1
@@ -100,9 +97,25 @@ if( first() ){
         selfDestruct()
         error("This is a library; #include it in something.")
     }
-                
+    
 }
-fileProcessLoad()
-fileProcessWrite()
 
+event fileLoaded(Name:string, Data:string){
+    print(_HUD_PRINTCONSOLE,"File '"+Name+"' successfully uploaded!")  
+    ASYNCFILES_QUEUE_UP:removeTable(1)["callback",string](Data,Name) # execute the callback :D
+    ASYNCFILES_ISLOADING = 0 # ready up
+    ASYNCFILES_CURRENT_UPLOAD = "none" 
+}
+
+event fileErrored(Name:string, Error:number){
+    print(_HUD_PRINTCONSOLE,"WARNING: file '"+Name+"' failed to upload: " + Error)
+    ASYNCFILES_QUEUE_UP:removeTable(1)
+    ASYNCFILES_ISLOADING = 0 # ready up
+    ASYNCFILES_CURRENT_UPLOAD = "none"
+}
+
+event tick(){
+    fileProcessLoad()
+    fileProcessWrite()
+} 
 

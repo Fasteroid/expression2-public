@@ -1,16 +1,21 @@
 @name Gmod Plate Database Sorted
 @inputs 
 @outputs 
-@persist PLATES:table UNIT_SIZE YDims:array
+@persist PLATES:table
 @trigger
 
 #include "plate_cutter_util/asyncfileslib"
 
 if( first() ){
     
-    runOnTick(1)
-    UNIT_SIZE = 11.866406917572 * 0.9995
-        
+    function onLoad(Data:string,Name:string){
+        Name = Name # stupid warnings!
+        PLATES = vonDecodeTable(Data)
+        print("PLATES loaded")
+        #printTable(PLATES)
+    }
+    fileLoadASync("hunterplates_sorted.txt","onLoad")
+    
     function table getClosestFit(TX,TY){
         for(I=1,PLATES:count()){
             local Plate = PLATES[I,table]
@@ -19,15 +24,7 @@ if( first() ){
             if(Plate["x",number]>TX){ continue }
             return Plate
         }
-        Cutting = 0
         error("CRITICAL FAILURE: Database contained no appropriate props for a "+TX+"x"+TY+" hole.")
     }
-    
-    function onLoad(Data:string,Name:string){
-        PLATES = vonDecodeTable(Data)
-        print("PLATES loaded")
-        #printTable(PLATES)
-    }
-    fileLoadASync("hunterplates_sorted.txt","onLoad")
     
 }

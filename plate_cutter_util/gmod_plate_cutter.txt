@@ -1,9 +1,9 @@
-@name Gmod Hunter Plate Cutter v2.7
+@name Gmod Hunter Plate Cutter v2.8
 @inputs 
 @outputs 
-@persist Ang Busy Mask:table RemoveThis:entity Entity:entity Mode:string Owner:entity ChangedMode Modes:table Helps:table GridEnabled
+@persist Ang Busy Entity:entity Mode:string Owner:entity Modes:table Helps:table GridEnabled
 @persist ModeState ModePersist:table PropData:table
-@persist ExtensionPlane:entity ShouldDelete
+@persist ShouldDelete
 @persist [FlatMin,FlatSize,Forward,Up,SpawnComplement,WorldPos,SpawnPos]:vector Valid TileAng:angle
 @model models/hunter/blocks/cube025x025x025.mdl
 
@@ -36,6 +36,12 @@ if( first() ){
     )
     
     ModeState = 0
+    
+    UNIT_SIZE = 11.866406917572 * 0.9995
+    
+    function supressInitializationWarnings(){
+        Entity = noentity() PropData = table() Ang = 0 ModePersist = table()
+    }
     
     print("--------------------------------------------------\n---           Fast's Hunter Plate Cutter           ---\n--------------------------------------------------\n")
     print("/help \t\t| How to use current mode")
@@ -113,7 +119,7 @@ if( first() ){
         holoEntity(4):setRenderMode(9)
     }
 
-    runOnTick(1)
+    #runOnTick(1)
     
     
     #########################
@@ -179,7 +185,6 @@ if( first() ){
         
         AimPos = rayPlaneIntersect(Owner:shootPos(),Owner:eye(),Entity:pos(),Entity:up())
         
-        local LocalAim = Entity:toLocal( AimPos + Entity:boxCenter() ) / UNIT_SIZE
         Forward = Entity:up()
         Up      = Entity:right()
         
@@ -234,7 +239,7 @@ if( first() ){
     }
     
     function vector entity:getBadHeightFix(){
-        return Entity:boxCenter()*vec(0,0,1)  
+        return This:boxCenter()*vec(0,0,1)  
     }
     
     function storePropData(E:entity){
@@ -531,7 +536,6 @@ if( first() ){
             
             if(KeyAttack1){
                 ModeState++
-                ExtensionPlane = Entity
                 holoParent(4,Entity)
                 holoAng(4,Entity:angles())
                 holoEntity(0):soundPlay(3,1,"buttons/lightswitch2.wav")
@@ -637,9 +641,13 @@ if(Active & !Busy){
     Entity = Owner:aimEntity()
      
     Mode(0)
-    
-    if(changed(Owner:lastSaidWhen())){
-        Chat = Owner:lastSaid():explode(" ")
+
+}
+
+event chat(Ply:entity, Text:string, Team:number){
+    Team = Team
+    if( Ply == Owner ){
+        Chat = Text:explode(" ")
         if(Chat[1,string]=="/mode"){
             if(Modes[Chat[2,string],string]){
                 Mode = Chat[2,string]    
@@ -653,9 +661,8 @@ if(Active & !Busy){
         elseif(Chat[1,string]=="/help"){
             prnt("Current Mode: "+Mode)
             prnt(Helps[Mode,string])
-        }
+        }        
     }
-
 }
 
 if( !holoEntity(3):isValid() ){
