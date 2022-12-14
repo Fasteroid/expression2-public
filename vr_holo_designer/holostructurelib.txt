@@ -15,6 +15,10 @@
 #[                                                    ]#
 
 if( first() ){
+    
+    function supressInitializationWarnings(){
+        HOLOSTRUCTURE_DATA = table() HOLOSTRUCTURE_QUEUE = table() HOLOSTRUCTURE_SPAWNED = table()
+    }
 
     ###############
     ## 
@@ -81,47 +85,56 @@ if( first() ){
         }
     }
     
+    ###############
+    ## 
+    #   <HoloStructure>:getChildren( )
+    #     Returns an array representing the holo ids of the children of this HoloStructure
+    # 
+    function array number:getChildren(){
+        return HOLOSTRUCTURE_SPAWNED[This+"",table]["children",array]
+    }
+    
     if(entity():model() == "models/bull/gates/microcontroller1.mdl"){
         selfDestruct()
         error("This is a library; #include it in something.")
     }
     
-    runOnTick(1)
-    
 }
 
-foreach(S, SpawnStruct:table = HOLOSTRUCTURE_QUEUE){
-    
-    if( !holoCanCreate() ){ break }
-    N = SpawnStruct["id",number]
-    
-    local Template = SpawnStruct["template",table]
-        local Models = Template["models",array]
-        local Positions = Template["positions",array]
-        local Angles = Template["angles",array]
-        local Scales = Template["scales",array]
-        local Colors = Template["colors",array]
-        local Max = Models:count()
-    
-    local Progress = SpawnStruct["progress",number]
-    local BaseEntity = SpawnStruct["entity",entity]
-    
-    while( holoCanCreate() & (Progress < Max) ){
-        Progress++
-        local H = holoAlloc()
-            holoModel(H,Models[Progress,string])
-            holoPos(H,BaseEntity:toWorld(Positions[Progress,vector]))
-            holoAng(H,BaseEntity:toWorld(Angles[Progress,angle]))
-            holoScale(H,Scales[Progress,vector])
-            holoColor(H,Colors[Progress,vector])
-            holoParent(H,N)
-        SpawnStruct["children",array]:pushNumber(H)
+event tick(){
+    foreach(S, SpawnStruct:table = HOLOSTRUCTURE_QUEUE){
+        
+        if( !holoCanCreate() ){ break }
+        N = SpawnStruct["id",number]
+        
+        local Template = SpawnStruct["template",table]
+            local Models = Template["models",array]
+            local Positions = Template["positions",array]
+            local Angles = Template["angles",array]
+            local Scales = Template["scales",array]
+            local Colors = Template["colors",array]
+            local Max = Models:count()
+        
+        local Progress = SpawnStruct["progress",number]
+        local BaseEntity = SpawnStruct["entity",entity]
+        
+        while( holoCanCreate() & (Progress < Max) ){
+            Progress++
+            local H = holoAlloc()
+                holoModel(H,Models[Progress,string])
+                holoPos(H,BaseEntity:toWorld(Positions[Progress,vector]))
+                holoAng(H,BaseEntity:toWorld(Angles[Progress,angle]))
+                holoScale(H,Scales[Progress,vector])
+                holoColor(H,Colors[Progress,vector])
+                holoParent(H,N)
+            SpawnStruct["children",array]:pushNumber(H)
+        }
+        
+        SpawnStruct["progress",number] = Progress
+        
+        if( Progress == Max ){ # done, move it out of the queue
+            HOLOSTRUCTURE_SPAWNED[N+"",table] = HOLOSTRUCTURE_QUEUE:removeTable(N+"")
+        }
+        
     }
-    
-    SpawnStruct["progress",number] = Progress
-    
-    if( Progress == Max ){ # done, move it out of the queue
-        HOLOSTRUCTURE_SPAWNED[N+"",table] = HOLOSTRUCTURE_QUEUE:removeTable(N+"")
-    }
-    
 }
