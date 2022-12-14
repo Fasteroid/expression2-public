@@ -36,7 +36,7 @@ if( first() ){
     
     # -------- GLOBAL_CONSTANTS -------- #
     
-        PLY = findPlayerByName("fast")   
+        PLY = owner()
         
         SPAWNMENU_W = 6
         SPAWNMENU_SCL = 14
@@ -761,386 +761,388 @@ if( first() ){
 }
 
 event tick(){
-# -------- Menu Element Spawning -------- #
-
-    # template holos
-    while( MENU_SPAWNED < HOLO_MODELS:count() & holoCanCreate() ){
-        
-        MENU_SPAWNED++
-        local MDL = HOLO_MODELS[MENU_SPAWNED,string]
-        local Background = holoAlloc()
-        local Holo = holoAlloc()
-        
-        if( !MENU_DATA:exists(Y) ){
-            MENU_DATA[Y,table] = table()
-        }
-        
-        local Pos = MENU_ENT:toWorld( vec(0,X,Y)*SPAWNMENU_SCL - vec(0,SPAWNMENU_W-1,SPAWNMENU_H-1)*0.5*SPAWNMENU_SCL + vec(1,0,0) )
-        
-        holoModel(Holo,MDL)
     
-        holoColor(Background,vec(40),150)
-        holoColor(Holo,vec(60))
-        holoMaterial(Holo,"pac/default")    
+    # -------- Menu Element Spawning -------- #
     
-        holoScaleUnits(Background,vec(0,1,1)*(SPAWNMENU_SCL-SPAWNMENU_SPACING))        
-        holoScaleUnits(Holo,DEFAULT_SCALE)        
-    
-        holoPos(Background,Pos)
-        holoPos(Holo,Pos+MENU_ENT:toWorldAxis(vec(SPAWNMENU_SCL*0.5,0,0)))
-        
-        holoAng(Holo,MENU_ENT:toWorld(ang(0,180,0) + HOLO_MODEL_OFFSETS[MDL,angle]))
-        #holoAng(Background,MENU_ENT:angles())
-        
-        holoParent(Background,MENU_BASE)
-        holoParent(Holo,MENU_BASE)
-        
-        if(MENU_SPAWNED==1){
-            SELECT_BASE = Background
-        }
-        
-        local HoloTable = table(
-            "trueid" = Holo,
-            "model" = MDL,
-            "ent" = holoEntity(Holo),
-            "scale" = DEFAULT_SCALE,
-            "ismenu" = 1
-        )
-        
-        MENU_DATA[Y,table][X,table] = HoloTable
-        
-        X=(X+1)%SPAWNMENU_W
-        if(!X){Y++}   
-    }
-    
-    # paint bucket stuff
-    while( BUCKET_SPAWNED < BUCKET_SATS*BUCKET_BRIGHTS & holoCanCreate() ){
-        BUCKET_SPAWNED++
-     
-        local Holo = holoAlloc()
-        
-        if(BUCKET_SPAWNED==1){ 
-            X = Y = 0 
-            holoPos(BUCKET_POINTER,BUCKET_ENT:toWorld(vec(SPAWNMENU_SCL+BUCKET_LEN,0,0)))
-            holoAng(BUCKET_POINTER,BUCKET_ENT:toWorld(ang(-90,0,0)))
-        }
-        
-        local Deg = (BUCKET_ANGLE*2)*X/(BUCKET_SATS-1)
-        holoAng(Holo,BUCKET_ENT:toWorld(ang(0,Deg-90-BUCKET_ANGLE,-90)))
-        holoPos(Holo,BUCKET_ENT:toWorld( vec(SPAWNMENU_SCL,0,SPAWNMENU_SCL*1.6*(Y/BUCKET_BRIGHTS-0.5+0.5/BUCKET_BRIGHTS)):rotate(ang(0,Deg-BUCKET_ANGLE,0)) ))
-        holoScaleUnits(Holo,vec(BUCKET_LEN*2,1.6*SPAWNMENU_SCL/BUCKET_BRIGHTS,0.01))
-        local HSV = vec(0, 1-X/(BUCKET_SATS-1), Y/(BUCKET_BRIGHTS-1))
-        holoColor( Holo, hsv2rgb( HSV ) )
-        holoMaterial( Holo, "lights/white" )
-        holoParent( Holo, BUCKET_BASE )
-        
-        local HoloData = table(
-            "trueid" = Holo,
-            "hsv" = HSV,
-            "hue" = (Y/BUCKET_BRIGHTS)*360 + (X/BUCKET_SATS)*360/BUCKET_BRIGHTS
-        )
-        
-        BUCKET_DATA[(X+1),table][(Y+1),table] = HoloData
-        X=(X+1)%BUCKET_SATS
-        if(!X){Y++}   
-    }
-    
-    # slider notches
-    if( !SLIDER_NOTCHES_DONE ){
-        foreach(Name:string, T:table = SLIDER_DATA){
-            local Values = T["values",array]
-            while( holoCanCreate() & (T["notches",number] < Values:count()) ){
-                
-                T["notches",number] = T["notches",number] + 1
-                
-                local H = holoAlloc( T["slider_base_ent",entity]:toWorld(vec(0.5, T:sliderToWorld(Values[ T["notches",number], number]), 0)) )
-                holoScaleUnits(H, vec(0.01,SLIDER_SIZE/4,SLIDER_SIZE/4))
-                holoParent(H,T["slider_base",number])
-                
-            }
-            if( holoCanCreate() ){
-                SLIDER_NOTCHES_DONE = 1
-            }
-        }
-    }
-# -------- End Menu Element Spawning -------- #
-
-
-
-### global transients
-##  not persisted, but defined every tick
-    if(PLY:isPlayerInVR()){
-        Hand_ang_ = PLY:getRightHandAngVR()
-        Hand_pos_ = PLY:getRightHandPosVR()+Hand_ang_:forward()*5
-    }
-    else{
-        Hand_pos_ = PLY:shootPos() + PLY:eye()*35
-        Hand_ang_ = PLY:eyeAngles()
-    }
-    
-    local GridPos = holoEntity(SELECT_BASE):toLocal(Hand_pos_)
-          GridPos = round(GridPos/SPAWNMENU_SCL-vec(0.5,0,0))
-    GridPos_x_ = GridPos[2]
-    GridPos_y_ = GridPos[3]
-    GridPos_z_ = GridPos[1]
-
-##
-### global transients
-
-switch( Action_Holding ){
-    
-    case 0, action_holdingNothing() break
-    
-    case HOLD_BucketPointer, action_holdingBucketPointer() break
-    
-    case HOLD_GrabbableHolo, action_holdingGrabbableHolo() break
-    
-    case HOLD_ScaleHandle, action_holdingScaleHandle() break
-    
-    case HOLD_Slider, action_holdingSlider() break
-    
-}
-
-if( changed(PLY:keyAttack1()) ){ # on m1 change
-    
-    if( PLY:keyAttack1() ){ # m1
-        
-        switch( Action_M1 ){
+        # template holos
+        while( MENU_SPAWNED < HOLO_MODELS:count() & holoCanCreate() ){
             
-            case M1_BucketPointer,
-                Locals = toLocalPosAng(BUCKET_POINTER_ENT:pos(),BUCKET_POINTER_ENT:angles(),Hand_pos_,Hand_ang_)
-                Hand_Local_Pos = Locals[1,vector]
-                Hand_Local_Ang = Locals[2,angle]
-                
-                Action_Holding = HOLD_BucketPointer
-            break
+            MENU_SPAWNED++
+            local MDL = HOLO_MODELS[MENU_SPAWNED,string]
+            local Background = holoAlloc()
+            local Holo = holoAlloc()
             
-            case M1_ScaleHandle,
-                if( !Action_Holding ){ # this should never trigger if we're holding something
-                    Target_M1["trueid",number]:highlight( vec(255,0,0), 150, 2) # change to red
-                    Target_M1["ent",entity]:soundPlay("use"+Target_M1["trueid",number],0.5,"common/wpn_select.wav")
-                    Hand_Local_Pos = Target_M1["ent",entity]:pos() - Hand_pos_
-                    Handle_Axis = Target_M1["slider",vector]
-                    Opposite_Handle = HANDLE_OPPOSITES[Handle_Axis+"",table]
-                    Action_Holding = HOLD_ScaleHandle
+            if( !MENU_DATA:exists(Y) ){
+                MENU_DATA[Y,table] = table()
+            }
+            
+            local Pos = MENU_ENT:toWorld( vec(0,X,Y)*SPAWNMENU_SCL - vec(0,SPAWNMENU_W-1,SPAWNMENU_H-1)*0.5*SPAWNMENU_SCL + vec(1,0,0) )
+            
+            holoModel(Holo,MDL)
+        
+            holoColor(Background,vec(40),150)
+            holoColor(Holo,vec(60))
+            holoMaterial(Holo,"pac/default")    
+        
+            holoScaleUnits(Background,vec(0,1,1)*(SPAWNMENU_SCL-SPAWNMENU_SPACING))        
+            holoScaleUnits(Holo,DEFAULT_SCALE)        
+        
+            holoPos(Background,Pos)
+            holoPos(Holo,Pos+MENU_ENT:toWorldAxis(vec(SPAWNMENU_SCL*0.5,0,0)))
+            
+            holoAng(Holo,MENU_ENT:toWorld(ang(0,180,0) + HOLO_MODEL_OFFSETS[MDL,angle]))
+            #holoAng(Background,MENU_ENT:angles())
+            
+            holoParent(Background,MENU_BASE)
+            holoParent(Holo,MENU_BASE)
+            
+            if(MENU_SPAWNED==1){
+                SELECT_BASE = Background
+            }
+            
+            local HoloTable = table(
+                "trueid" = Holo,
+                "model" = MDL,
+                "ent" = holoEntity(Holo),
+                "scale" = DEFAULT_SCALE,
+                "ismenu" = 1
+            )
+            
+            MENU_DATA[Y,table][X,table] = HoloTable
+            
+            X=(X+1)%SPAWNMENU_W
+            if(!X){Y++}   
+        }
+        
+        # paint bucket stuff
+        while( BUCKET_SPAWNED < BUCKET_SATS*BUCKET_BRIGHTS & holoCanCreate() ){
+            BUCKET_SPAWNED++
+         
+            local Holo = holoAlloc()
+            
+            if(BUCKET_SPAWNED==1){ 
+                X = Y = 0 
+                holoPos(BUCKET_POINTER,BUCKET_ENT:toWorld(vec(SPAWNMENU_SCL+BUCKET_LEN,0,0)))
+                holoAng(BUCKET_POINTER,BUCKET_ENT:toWorld(ang(-90,0,0)))
+            }
+            
+            local Deg = (BUCKET_ANGLE*2)*X/(BUCKET_SATS-1)
+            holoAng(Holo,BUCKET_ENT:toWorld(ang(0,Deg-90-BUCKET_ANGLE,-90)))
+            holoPos(Holo,BUCKET_ENT:toWorld( vec(SPAWNMENU_SCL,0,SPAWNMENU_SCL*1.6*(Y/BUCKET_BRIGHTS-0.5+0.5/BUCKET_BRIGHTS)):rotate(ang(0,Deg-BUCKET_ANGLE,0)) ))
+            holoScaleUnits(Holo,vec(BUCKET_LEN*2,1.6*SPAWNMENU_SCL/BUCKET_BRIGHTS,0.01))
+            local HSV = vec(0, 1-X/(BUCKET_SATS-1), Y/(BUCKET_BRIGHTS-1))
+            holoColor( Holo, hsv2rgb( HSV ) )
+            holoMaterial( Holo, "lights/white" )
+            holoParent( Holo, BUCKET_BASE )
+            
+            local HoloData = table(
+                "trueid" = Holo,
+                "hsv" = HSV,
+                "hue" = (Y/BUCKET_BRIGHTS)*360 + (X/BUCKET_SATS)*360/BUCKET_BRIGHTS
+            )
+            
+            BUCKET_DATA[(X+1),table][(Y+1),table] = HoloData
+            X=(X+1)%BUCKET_SATS
+            if(!X){Y++}   
+        }
+        
+        # slider notches
+        if( !SLIDER_NOTCHES_DONE ){
+            foreach(Name:string, T:table = SLIDER_DATA){
+                local Values = T["values",array]
+                while( holoCanCreate() & (T["notches",number] < Values:count()) ){
                     
-                    holoUnparent(HANDLE_CENTER)
+                    T["notches",number] = T["notches",number] + 1
+                    
+                    local H = holoAlloc( T["slider_base_ent",entity]:toWorld(vec(0.5, T:sliderToWorld(Values[ T["notches",number], number]), 0)) )
+                    holoScaleUnits(H, vec(0.01,SLIDER_SIZE/4,SLIDER_SIZE/4))
+                    holoParent(H,T["slider_base",number])
+                    
                 }
-            break
-            
-            case M1_Slider,
-                Target_M1["slider_ent",entity]:soundPlay("use_slider_"+Target_M1["name",string],0.5,"common/wpn_select.wav")
-                Action_Holding = HOLD_Slider
-            break
-            
-            case M1_Duplicate,
-                local Tmp = holoCreateGrabbable( Target_Use )
-                Tmp["ent",entity]:soundPlay("duplicate"+Tmp["trueid",number],1,"ambient/water/drip2.wav")
-            break
-            
+                if( holoCanCreate() ){
+                    SLIDER_NOTCHES_DONE = 1
+                }
+            }
+        }
+    # -------- End Menu Element Spawning -------- #
+    
+    
+    
+    ### global transients
+    ##  not persisted, but defined every tick
+        if(PLY:isPlayerInVR()){
+            Hand_ang_ = PLY:getRightHandAngVR()
+            Hand_pos_ = PLY:getRightHandPosVR()+Hand_ang_:forward()*5
+        }
+        else{
+            Hand_pos_ = PLY:shootPos() + PLY:eye()*35
+            Hand_ang_ = PLY:eyeAngles()
         }
         
-    }
-    else{ # un-m1
-       
-        switch( Action_Holding ){
-            
-            case HOLD_BucketPointer,
-                Action_Holding = 0
-                Bucket_State   = -1 # prevent bucket from getting stuck
-            break
-            
-            case HOLD_ScaleHandle,
-                Action_Holding = 0
-            break
-            
-            case HOLD_Slider, 
-                Action_Holding = 0
-            break
-            
-        }
-     
+        local GridPos = holoEntity(SELECT_BASE):toLocal(Hand_pos_)
+              GridPos = round(GridPos/SPAWNMENU_SCL-vec(0.5,0,0))
+        GridPos_x_ = GridPos[2]
+        GridPos_y_ = GridPos[3]
+        GridPos_z_ = GridPos[1]
+    
+    ##
+    ### global transients
+    
+    switch( Action_Holding ){
+        
+        case 0, action_holdingNothing() break
+        
+        case HOLD_BucketPointer, action_holdingBucketPointer() break
+        
+        case HOLD_GrabbableHolo, action_holdingGrabbableHolo() break
+        
+        case HOLD_ScaleHandle, action_holdingScaleHandle() break
+        
+        case HOLD_Slider, action_holdingSlider() break
+        
     }
     
-}
-
-
-if( changed(PLY:keyUse()) ){ # on use change 
+    if( changed(PLY:keyAttack1()) ){ # on m1 change
         
-    if(PLY:keyUse()){ # use
-        
-        switch( Action_Use ){
+        if( PLY:keyAttack1() ){ # m1
             
-            case USE_MenuHolo,
-            
-                if( !Action_Holding ){
-                    Target_Use = holoCreateGrabbable( Target_Use )
-                }
-                # continue on to USE_GrabbableHolo case!
+            switch( Action_M1 ){
                 
-            case USE_GrabbableHolo,
-            
-                if( !Action_Holding ){ # this should never trigger if we're holding something
-                    Locals = toLocalPosAng(Target_Use["ent",entity]:pos(),Target_Use["ent",entity]:angles(),Hand_pos_,Hand_ang_)
-
+                case M1_BucketPointer,
+                    Locals = toLocalPosAng(BUCKET_POINTER_ENT:pos(),BUCKET_POINTER_ENT:angles(),Hand_pos_,Hand_ang_)
                     Hand_Local_Pos = Locals[1,vector]
                     Hand_Local_Ang = Locals[2,angle]
                     
-                    holoPos(HANDLE_CENTER,Target_Use["ent",entity]:pos())
-                    holoAng(HANDLE_CENTER,Target_Use["ent",entity]:angles())
-                    holoParent(HANDLE_CENTER,Target_Use["trueid",number])
-                    
-                    0:highlight( vec(), 255, 2) # un-highlight any scale handles
-                    
-                    Action_Holding = HOLD_GrabbableHolo
-                    Action_M1      = M1_Duplicate
-                }
+                    Action_Holding = HOLD_BucketPointer
+                break
                 
-            break
+                case M1_ScaleHandle,
+                    if( !Action_Holding ){ # this should never trigger if we're holding something
+                        Target_M1["trueid",number]:highlight( vec(255,0,0), 150, 2) # change to red
+                        Target_M1["ent",entity]:soundPlay("use"+Target_M1["trueid",number],0.5,"common/wpn_select.wav")
+                        Hand_Local_Pos = Target_M1["ent",entity]:pos() - Hand_pos_
+                        Handle_Axis = Target_M1["slider",vector]
+                        Opposite_Handle = HANDLE_OPPOSITES[Handle_Axis+"",table]
+                        Action_Holding = HOLD_ScaleHandle
+                        
+                        holoUnparent(HANDLE_CENTER)
+                    }
+                break
+                
+                case M1_Slider,
+                    Target_M1["slider_ent",entity]:soundPlay("use_slider_"+Target_M1["name",string],0.5,"common/wpn_select.wav")
+                    Action_Holding = HOLD_Slider
+                break
+                
+                case M1_Duplicate,
+                    local Tmp = holoCreateGrabbable( Target_Use )
+                    Tmp["ent",entity]:soundPlay("duplicate"+Tmp["trueid",number],1,"ambient/water/drip2.wav")
+                break
+                
+            }
             
         }
-        
-        switch( Action_Holding ){
-            
-            case HOLD_BucketPointer,
-                Bucket_State = 1
-            break
-            
+        else{ # un-m1
+           
+            switch( Action_Holding ){
+                
+                case HOLD_BucketPointer,
+                    Action_Holding = 0
+                    Bucket_State   = -1 # prevent bucket from getting stuck
+                break
+                
+                case HOLD_ScaleHandle,
+                    Action_Holding = 0
+                break
+                
+                case HOLD_Slider, 
+                    Action_Holding = 0
+                break
+                
+            }
+         
         }
         
     }
-    else{ # un-use
-        
-        switch( Action_Holding ){
+    
+    
+    if( changed(PLY:keyUse()) ){ # on use change 
             
-            case HOLD_GrabbableHolo,
-                if( Target_Use["trueid",number] & GridPos_z_==0 & MENU_DATA:exists(GridPos_y_,GridPos_x_) ){ # they dropped it back in the menu, oops
-                    holoFreeGrabbable(Target_Use)
-                }
-                elseif(Shredder_flash_){ # queue it for deletion
-                    local SoundN = randint(2,3)
-                    SHREDDER:soundPlay("trash"+SoundN,1,"player/footsteps/ice"+SoundN+".wav")
-                    holoShredGrabbable(Target_Use)
-                }
-                Action_Holding = 0
-            break
+        if(PLY:keyUse()){ # use
             
-            case HOLD_BucketPointer,
-                Bucket_State = -1
-            break
+            switch( Action_Use ){
+                
+                case USE_MenuHolo,
+                
+                    if( !Action_Holding ){
+                        Target_Use = holoCreateGrabbable( Target_Use )
+                    }
+                    # continue on to USE_GrabbableHolo case!
+                    
+                case USE_GrabbableHolo,
+                
+                    if( !Action_Holding ){ # this should never trigger if we're holding something
+                        Locals = toLocalPosAng(Target_Use["ent",entity]:pos(),Target_Use["ent",entity]:angles(),Hand_pos_,Hand_ang_)
+    
+                        Hand_Local_Pos = Locals[1,vector]
+                        Hand_Local_Ang = Locals[2,angle]
+                        
+                        holoPos(HANDLE_CENTER,Target_Use["ent",entity]:pos())
+                        holoAng(HANDLE_CENTER,Target_Use["ent",entity]:angles())
+                        holoParent(HANDLE_CENTER,Target_Use["trueid",number])
+                        
+                        0:highlight( vec(), 255, 2) # un-highlight any scale handles
+                        
+                        Action_Holding = HOLD_GrabbableHolo
+                        Action_M1      = M1_Duplicate
+                    }
+                    
+                break
+                
+            }
+            
+            switch( Action_Holding ){
+                
+                case HOLD_BucketPointer,
+                    Bucket_State = 1
+                break
+                
+            }
             
         }
-        
+        else{ # un-use
+            
+            switch( Action_Holding ){
+                
+                case HOLD_GrabbableHolo,
+                    if( Target_Use["trueid",number] & GridPos_z_==0 & MENU_DATA:exists(GridPos_y_,GridPos_x_) ){ # they dropped it back in the menu, oops
+                        holoFreeGrabbable(Target_Use)
+                    }
+                    elseif(Shredder_flash_){ # queue it for deletion
+                        local SoundN = randint(2,3)
+                        SHREDDER:soundPlay("trash"+SoundN,1,"player/footsteps/ice"+SoundN+".wav")
+                        holoShredGrabbable(Target_Use)
+                    }
+                    Action_Holding = 0
+                break
+                
+                case HOLD_BucketPointer,
+                    Bucket_State = -1
+                break
+                
+            }
+            
+        }
+    
     }
-
-}
-
-# stuff that runs every tick goes below:
-
-# -------- Bucket runOnTick -------- #
-    if( Bucket_State==1 | Bucket_Flip > 0 ){
-        
-        local Ignore = !changed( Bucket_State ) # fixes a frame-perfect input bug where one row becomes may become incorrectly colored
-        local Divisions = 8 # must be a power of 2
-        
-        Bucket_Flip = clamp(Bucket_Flip + Ignore*Bucket_State*(1/Divisions),0,BUCKET_BRIGHTS)
-        local BucketRow = floor(Bucket_Flip)
-        
-        Rot = frac(Bucket_Flip) * (Divisions) / (Divisions-1)
-        #print(frac(Bucket_Flip))
-        
-        for(N=1,BUCKET_SATS){
-            local Deg = (BUCKET_ANGLE*2)*(N-1)/(BUCKET_SATS-1)
-            local Holo = BUCKET_DATA[N,table][(BucketRow+1),table]
-            holoAng(Holo["trueid",number],BUCKET_ENT:toWorld(ang(0,Deg+90*(-1+Rot*2)-BUCKET_ANGLE,-90)))
-        }
-
-        if(Rot==1){
-            if(Bucket_State==1){
-                for(N=1,BUCKET_SATS){
-                    local Holo = BUCKET_DATA[N,table][(BucketRow+1),table]
-                    holoColor(Holo["trueid",number],hsv2rgb(Holo["hue",number],1,1))
+    
+    # stuff that runs every tick goes below:
+    
+    # -------- Bucket runOnTick -------- #
+        if( Bucket_State==1 | Bucket_Flip > 0 ){
+            
+            local Ignore = !changed( Bucket_State ) # fixes a frame-perfect input bug where one row becomes may become incorrectly colored
+            local Divisions = 8 # must be a power of 2
+            
+            Bucket_Flip = clamp(Bucket_Flip + Ignore*Bucket_State*(1/Divisions),0,BUCKET_BRIGHTS)
+            local BucketRow = floor(Bucket_Flip)
+            
+            Rot = frac(Bucket_Flip) * (Divisions) / (Divisions-1)
+            #print(frac(Bucket_Flip))
+            
+            for(N=1,BUCKET_SATS){
+                local Deg = (BUCKET_ANGLE*2)*(N-1)/(BUCKET_SATS-1)
+                local Holo = BUCKET_DATA[N,table][(BucketRow+1),table]
+                holoAng(Holo["trueid",number],BUCKET_ENT:toWorld(ang(0,Deg+90*(-1+Rot*2)-BUCKET_ANGLE,-90)))
+            }
+    
+            if(Rot==1){
+                if(Bucket_State==1){
+                    for(N=1,BUCKET_SATS){
+                        local Holo = BUCKET_DATA[N,table][(BucketRow+1),table]
+                        holoColor(Holo["trueid",number],hsv2rgb(Holo["hue",number],1,1))
+                    }
                 }
+                else{
+                    for(N=1,BUCKET_SATS){
+                        local Holo = BUCKET_DATA[N,table][(BucketRow+1),table]
+                        holoColor(Holo["trueid",number],hsv2rgb(Holo["hsv",vector]:setX(HUE_CURRENT)))
+                    } 
+                }
+            }
+        }
+    # -------- End Bucket runOnTick -------- #
+    
+    
+    # -------- Shredder runOnTick -------- #
+        if(Shredder_flash_==1 | (Shredder_Flasher%1 != 0) ){
+            Shredder_Flasher = round( ((Shredder_Flasher+0.02)%1)*50 )*0.02
+        }
+    
+        holoColor(SHREDDER_BASE,vec(40)+vec(115)*(sin(Shredder_Flasher*180)^2))
+    
+        for(I=Shredding_Holos:count(),1,-1){
+            
+            local HoloObj = Shredding_Holos[I,table]
+            local ID = HoloObj["trueid",number]
+            
+            if(HoloObj["hp",number]>0.05){
+                Shredder_spin_ = 1 # keep the shredder on if we're shredding
+                HoloObj["hp",number] = HoloObj["hp",number] * 0.9
+                holoScaleUnits(ID, HoloObj["deathscale",vector]*HoloObj["hp",number])
+                holoPos(ID, mix(HoloObj["deathpos",vector], SHREDDER:pos()-SHREDDER:up()*5, HoloObj["hp",number]))
             }
             else{
-                for(N=1,BUCKET_SATS){
-                    local Holo = BUCKET_DATA[N,table][(BucketRow+1),table]
-                    holoColor(Holo["trueid",number],hsv2rgb(Holo["hsv",vector]:setX(HUE_CURRENT)))
-                } 
+                #holoUnparent(HANDLE_CENTER) -- probably not needed, will remove when I'm sure
+                HoloObj["trueid",number]:holoFree()
+                Shredding_Holos:remove(I)
+            }
+            
+        }
+    
+        if(changed(Shredder_spin_)){
+            if(Shredder_spin_){
+                SHREDDER:soundPlay("shredder",0,"vehicles/apc/apc_start_loop3.wav")
+            }
+            else{
+                soundStop("shredder")
+                SHREDDER:soundPlay("shredderstop",1,"vehicles/apc/apc_shutdown.wav")
             }
         }
-    }
-# -------- End Bucket runOnTick -------- #
-
-
-# -------- Shredder runOnTick -------- #
-    if(Shredder_flash_==1 | (Shredder_Flasher%1 != 0) ){
-        Shredder_Flasher = round( ((Shredder_Flasher+0.02)%1)*50 )*0.02
-    }
-
-    holoColor(SHREDDER_BASE,vec(40)+vec(115)*(sin(Shredder_Flasher*180)^2))
-
-    for(I=Shredding_Holos:count(),1,-1){
-        
-        local HoloObj = Shredding_Holos[I,table]
-        local ID = HoloObj["trueid",number]
-        
-        if(HoloObj["hp",number]>0.05){
-            Shredder_spin_ = 1 # keep the shredder on if we're shredding
-            HoloObj["hp",number] = HoloObj["hp",number] * 0.9
-            holoScaleUnits(ID, HoloObj["deathscale",vector]*HoloObj["hp",number])
-            holoPos(ID, mix(HoloObj["deathpos",vector], SHREDDER:pos()-SHREDDER:up()*5, HoloObj["hp",number]))
-        }
-        else{
-            #holoUnparent(HANDLE_CENTER) -- probably not needed, will remove when I'm sure
-            HoloObj["trueid",number]:holoFree()
-            Shredding_Holos:remove(I)
-        }
-        
-    }
-
-    if(changed(Shredder_spin_)){
-        if(Shredder_spin_){
-            SHREDDER:soundPlay("shredder",0,"vehicles/apc/apc_start_loop3.wav")
-        }
-        else{
-            soundStop("shredder")
-            SHREDDER:soundPlay("shredderstop",1,"vehicles/apc/apc_shutdown.wav")
-        }
-    }
-
-    Shredder_Speed    = (Shredder_Speed*0.9+Shredder_spin_*0.1)
-    Shredder_Rotation = Shredder_Rotation + Shredder_Speed*20
-    holoAng(SHREDDER_TOP,SHREDDER:toWorld(ang(-Shredder_Rotation,0,90)))
-    holoAng(SHREDDER_BOTTOM,SHREDDER:toWorld(ang(Shredder_Rotation,0,90)))
     
-    local DeletColor = mix( vec(255),vec(60),Shredder_Speed )
-    holoColor(SHREDDER_TOP,DeletColor)
-    holoColor(SHREDDER_BOTTOM,DeletColor)
-# -------- End Shredder runOnTick -------- #
-
-
-# -------- Slider runOnTick -------- #
-
-    foreach(Name:string, T:table = SLIDER_DATA){
+        Shredder_Speed    = (Shredder_Speed*0.9+Shredder_spin_*0.1)
+        Shredder_Rotation = Shredder_Rotation + Shredder_Speed*20
+        holoAng(SHREDDER_TOP,SHREDDER:toWorld(ang(-Shredder_Rotation,0,90)))
+        holoAng(SHREDDER_BOTTOM,SHREDDER:toWorld(ang(Shredder_Rotation,0,90)))
         
-        local Value = T["anim_value",number]
-        
-        Value = Value*0.9 + T["value",number]*0.1 # interpolate
-        T["anim_value",number] = Value # write back
-        
-        Value = (Value - T["min",number]) / T["range",number] # 0-1
-        Value = (Value - 0.5)*2*T["maxpos",number] # local space
-        
-        holoPos(T["slider",number], T["slider_base_ent",entity]:toWorld( vec(SLIDER_HOVER_DISTANCE,Value,0) ))
-    }
-
-# -------- End Slider runOnTick -------- #
+        local DeletColor = mix( vec(255),vec(60),Shredder_Speed )
+        holoColor(SHREDDER_TOP,DeletColor)
+        holoColor(SHREDDER_BOTTOM,DeletColor)
+    # -------- End Shredder runOnTick -------- #
+    
+    
+    # -------- Slider runOnTick -------- #
+    
+        foreach(Name:string, T:table = SLIDER_DATA){
+            
+            local Value = T["anim_value",number]
+            
+            Value = Value*0.9 + T["value",number]*0.1 # interpolate
+            T["anim_value",number] = Value # write back
+            
+            Value = (Value - T["min",number]) / T["range",number] # 0-1
+            Value = (Value - 0.5)*2*T["maxpos",number] # local space
+            
+            holoPos(T["slider",number], T["slider_base_ent",entity]:toWorld( vec(SLIDER_HOVER_DISTANCE,Value,0) ))
+        }
+    
+    # -------- End Slider runOnTick -------- #
+    
 }
 
 # -------- Saving Stuff -------- #
 event chat(Ply:entity, Text:string, Team:number){
-    Team = Team # stupid variable discard error
+    Team = Team # stupid variable discard warning
 
     if(Ply != owner()){ exit() }
     
