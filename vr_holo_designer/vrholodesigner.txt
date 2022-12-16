@@ -1,6 +1,11 @@
 @name VR Holo Designer v1.4
-@inputs 
-@outputs 
+
+#[
+    Note for Fasteroid/expression2-public Github browsers: 
+    
+    This chip won't work without its #includes.
+    Check the README in the repo for more details!
+]#
 
 # GLOBAL CONSTANTS
 @persist NULL:table
