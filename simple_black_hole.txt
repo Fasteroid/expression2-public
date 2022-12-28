@@ -1,0 +1,40 @@
+@name simple black hole
+@persist Chip:entity Props:array
+
+if( first() ){
+    
+    Chip = entity()             # store e2 chip entity in variable 'Chip'
+
+    holoCreate(1)               # create hologram with id 1
+    holoModel(1,"hq_icosphere") # use sphere model
+    holoScale(1,vec(10))        # make it 10x bigger
+    holoColor(1,vec(0,0,0))     # use black color
+    holoParent(1, Chip)         # parent it to the e2 chip
+    
+    timer("find", 1000)         # trigger clk("find") in 1000ms
+    
+}
+
+if( clk("find") ){ # when clk("find") triggers:
+    
+    timer("find", 1000) # trigger clk("find") in 1000ms
+    
+    findIncludeClass("prop_*")       # only include entity classes that start with 'prop_' in the next find
+    findInSphere( Chip:pos(), 2048 ) # find anything within 2048 units of the e2 chip
+    Props = findToArray()            # store find results in variable 'Props'
+    
+}
+
+event tick(){ # run the following every tick:
+    
+    foreach(N, Prop:entity = Props){ # for each 'Prop' in 'Props' :
+        
+        local Force = (Chip:pos() - Prop:pos()) # These lines get the force multiplier for the prop,
+        Force = Force / Force:length2()         # in accordance with the inverse square law.
+        Force = Force * Prop:mass()             # The math is left as an exercise to the reader.
+        
+        Prop:applyForce(Force * 10000)          # Apply force to the prop.  But multiply it by 10000 first, because why not?
+        
+    }
+    
+}
