@@ -3,7 +3,7 @@
 @outputs 
 @persist Ang Busy Entity:entity Mode:string Owner:entity Modes:table Helps:table GridEnabled
 @persist ModeState ModePersist:table PropData:table
-@persist ShouldDelete
+@persist ShouldDelete UNIT_SIZE
 @persist [FlatMin,FlatSize,Forward,Up,SpawnComplement,WorldPos,SpawnPos]:vector Valid TileAng:angle
 @model models/hunter/blocks/cube025x025x025.mdl
 
@@ -617,30 +617,55 @@ if( first() ){
     
 }
 
-Owner = owner()
-Active = (Owner:weapon():type() == "weapon_crowbar")
-DoneBusy = !Queue:count() & Busy
+event tick(){
 
-if(changed(Mode) | first()){
-    Mode(1)
-}
-
-if(DoneBusy){
-    Busy = 0
-    if(ShouldDelete){
-        Entity:propDelete()  
-    }  
-}
-
-if(Active & !Busy){
+    Owner = owner()
+    Active = (Owner:weapon():type() == "weapon_crowbar")
+    DoneBusy = !Queue:count() & Busy
     
-    if(changed(Owner:keyAttack2()) & Owner:keyAttack2()){
-        Ang = (Ang + 90)%360
+    if(changed(Mode) | first()){
+        Mode(1)
     }
     
-    Entity = Owner:aimEntity()
-     
-    Mode(0)
+    if(DoneBusy){
+        Busy = 0
+        if(ShouldDelete){
+            Entity:propDelete()  
+        }  
+    }
+    
+    if(Active & !Busy){
+        
+        if(changed(Owner:keyAttack2()) & Owner:keyAttack2()){
+            Ang = (Ang + 90)%360
+        }
+        
+        Entity = Owner:aimEntity()
+         
+        Mode(0)
+    
+    }
+    
+    if( !holoEntity(3):isValid() ){
+        holoCreate(3)
+        holoColor(3,vec(255,0,0),100)
+        holoMaterial(3,"lights/white")
+    }
+    
+    if( holoModelAny() & GridEnabled ){
+        if( !holoEntity(4):isValid() ){
+            holoCreate(4)
+            holoVisible(4,players(),0)
+            holoModel(4,"models/hunter/plates/plate32x32.mdl")
+            holoScale(4,vec(4,4,1.5))
+            holoColor(4,vec(255),200)
+            holoClipEnabled(4,1,1)
+            holoClipEnabled(4,2,1)
+            holoDisableShading(4,1)
+            holoMaterial(4,"sprops/sprops_grid_12x12")
+            holoEntity(4):setRenderMode(9)
+        }
+    }
 
 }
 
@@ -665,23 +690,3 @@ event chat(Ply:entity, Text:string, Team:number){
     }
 }
 
-if( !holoEntity(3):isValid() ){
-    holoCreate(3)
-    holoColor(3,vec(255,0,0),100)
-    holoMaterial(3,"lights/white")
-}
-
-if( holoModelAny() & GridEnabled ){
-    if( !holoEntity(4):isValid() ){
-        holoCreate(4)
-        holoVisible(4,players(),0)
-        holoModel(4,"models/hunter/plates/plate32x32.mdl")
-        holoScale(4,vec(4,4,1.5))
-        holoColor(4,vec(255),200)
-        holoClipEnabled(4,1,1)
-        holoClipEnabled(4,2,1)
-        holoDisableShading(4,1)
-        holoMaterial(4,"sprops/sprops_grid_12x12")
-        holoEntity(4):setRenderMode(9)
-    }
-}
