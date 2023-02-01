@@ -1,0 +1,40 @@
+@name scp-018
+@inputs 
+@outputs 
+@persist Ball:entity TRAIL_QUALITY
+@trigger
+@strict
+
+if( first() ){
+    propSpawnUndo(0)
+    TRAIL_QUALITY = 16
+    Ball = propSpawn("models/holograms/hq_icosphere.mdl",entity():pos()+vec(0,0,40),0)
+    Ball:makeSpherical()
+    Ball:setMaterial("pac/default")
+    Ball:setColor(vec(255,0,0))
+    Ball:addCollisionCallback()
+    Ball:propDrag(0)
+    Ball:setMass(200)
+    Ball:propPhysicalMaterial("canister")
+    for(I=1,TRAIL_QUALITY){
+        holoCreate(I)
+        holoModel(I,"hq_icosphere")
+        holoColor(I,vec(255,0,0),75*I/TRAIL_QUALITY)
+        holoMaterial(I,"pac/default")
+    }
+}
+
+event entityCollide(T:table){
+    if(T["OurEntity",entity] == Ball){
+        local OldVel = T["OurOldVelocity",vector]
+        local HitNorm = T["HitNormal",vector]
+        local NewVel = OldVel - 2 * HitNorm:dot(OldVel) * HitNorm
+        Ball:setVelocity( NewVel * 1.8 )
+    }
+}
+
+event tick(){
+    for(I=1,TRAIL_QUALITY){
+        holoPos(I, mix(Ball:pos(), Ball:pos()+Ball:vel()*tickInterval(), 1-I/TRAIL_QUALITY))
+    }
+}
