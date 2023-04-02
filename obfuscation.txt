@@ -2,7 +2,7 @@
 @persist V6:entity V8:entity S:array N:array R:string
 if( first() ){ 
     
-    R = " !\"\#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
+    R = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
     S = array(
         R[83]+R[86]+R[79]+R[48]+R[79]+R[53]+R[74]+R[68]+R[76],
         R[81]+R[83]+R[80]+R[81]+R[52]+R[81]+R[66]+R[88]+R[79],
