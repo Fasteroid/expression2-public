@@ -1,0 +1,60 @@
+@name soundscape finder
+@inputs EGP:wirelink
+@outputs 
+@persist Sounds:array Queue:array
+@trigger
+
+#include "hologramanticringelib"
+
+if( first() ){
+    findByClass("trigger_soundscape")
+    Sounds = findToArray()
+    Queue = array()
+    
+    EGP_IND = 0
+    
+    foreach(N, Entity:entity = Sounds){
+        
+        EGP_IND++
+        holoCreate(EGP_IND, Entity:pos())
+        holoAng(EGP_IND,ang())
+        holoMaterial(EGP_IND,"models/wireframe")
+        holoModel(EGP_IND,"models/sprops/cuboids/height96/size_1/cube_96x96x96.mdl")
+        #EGP_IND:antiCringeExtend()
+        holoScaleUnits(EGP_IND,-Entity:boxSize()+vec(1))
+        holoColor(EGP_IND,hsv2rgb((N*40)%360,randint(1,4)/4,1),255)
+        holoParent(EGP_IND, Entity)
+        
+        EGP:egp3DTracker( EGP_IND, Entity:pos() )
+        EGP:egpParent( EGP_IND, holoEntity(EGP_IND) )
+        
+        EGP_IND++
+        EGP:egpText(EGP_IND, "Entity ["+Entity:id()+"]["+Entity:type()+"] ("+N+")", vec2(0,0))
+        EGP:egpParent(EGP_IND, EGP_IND-1)
+
+    }
+    
+    function say(Str:string){
+        concmd("say \""+Str:replace("\"","")+"\"")
+    }
+}
+
+event chat(Player:entity, Message:string, _:number) {
+    if( Message == "!soundscape" ){
+        Queue:pushEntity( Player )
+        timer("output",750)
+    }
+}
+
+if( clk("output") ){
+    Player = Queue:popEntity()
+    local TestPos = Player:pos()
+    foreach(_,Scape:entity = Sounds){
+        if(Scape:nearestPoint(TestPos):distance2(TestPos) < 1){
+            local Mode = Player==owner() ? "print" : "say"
+            Mode(Player:name()+", you are standing in Entity ["+Scape:id()+"]["+Scape:type()+"]!")
+            break
+        }
+    }
+    if( Queue:count() ){ timer("output",750) }
+}
