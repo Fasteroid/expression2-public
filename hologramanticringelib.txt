@@ -27,6 +27,7 @@ if( first() ){
         Ent["scl",vector] = holoScale(This)
         Ent["c",vector] = -Ent:boxCenter()        
         Ent["o",angle] = ang(0)
+        Ent["model_scl",vector] = holoScaleUnits(This)
     }
     function antiCringeExtend(This){
         This:antiCringeExtend()
@@ -85,6 +86,19 @@ if( first() ){
     function holoScaleExt( Id, S:vector ){
         local Ent = holoEntity(Id)
         Ent["scl",vector] = S  
+        holoPos(Id, Ent["pos",vector] + (Ent["c",vector]*S):rotate(Ent["ang",angle]) )   
+        holoScale(Id, S)   
+    }  
+    
+    ###############
+    ## 
+    #   holoScaleUnitsExt( Id, S:vector )
+    #     Use this where you would normally use holoScaleUnits on a normal hologram.
+    #  
+    function holoScaleUnitsExt( Id, S:vector ){
+        local Ent = holoEntity(Id)
+        S = S / Ent["model_scl",vector]
+        Ent["scl",vector] = S
         holoPos(Id, Ent["pos",vector] + (Ent["c",vector]*S):rotate(Ent["ang",angle]) )   
         holoScale(Id, S)   
     }
