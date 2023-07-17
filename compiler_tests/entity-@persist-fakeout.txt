@@ -1,0 +1,21 @@
+@name compiler_tests/entity-@persist-fakeout
+
+#
+# Bug Description:
+#   Defining entity variables in if( first() ) and referencing them in
+#   events results in nil values being retrieved.
+#
+# Current commit:
+#   https://github.com/Vurv78/wire/commit/40ebf0653652b1723efbe575d165f5e6f2af45f4
+#
+# Relevant issue:
+#   https://github.com/Vurv78/wire/issues/4
+#
+
+if( first() ){
+    Entity = noentity()
+}
+
+event tick(){
+    entity():weld(Entity)
+}
