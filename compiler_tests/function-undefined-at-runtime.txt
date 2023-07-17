@@ -1,0 +1,18 @@
+@name compiler_tests/function-undefined-at-runtime
+
+#
+# Bug Description:
+#   The original error thrown for calling a nonexistent UDF no longer exists
+#   in the new compiler.
+#
+# Current commit:
+#   https://github.com/Vurv78/wire/commit/40ebf0653652b1723efbe575d165f5e6f2af45f4
+#
+# Relevant issue:
+#   https://github.com/Vurv78/wire/issues/6
+#
+
+if(0){
+    function f(){}
+}
+f()
