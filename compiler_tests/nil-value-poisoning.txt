@@ -1,0 +1,29 @@
+@name compiler_tests/nil-value-poisoning
+
+#
+# Bug Description:
+#   Passing a nil value to a UDF cancels the rest of the arguments.
+#
+# Current commit:
+#   https://github.com/Vurv78/wire/commit/40ebf0653652b1723efbe575d165f5e6f2af45f4
+#
+# Relevant issue:
+#   https://github.com/Vurv78/wire/issues/5
+#
+
+if( first() ){
+    
+    function udf(Safe:number, Payload:ranger, Victim:vector){
+        print("Safe = ", Safe)
+        print("Payload = ", Payload)
+        print("Victim = ", Victim)
+        
+        Victim += vec(1,2,3)
+    }
+    
+    # Vanilla nil value, see https://github.com/search?q=repo%3Awiremod%2Fwire%20noranger&type=code
+    Nil = noranger()
+    
+    udf(1, Nil, vec(1,2,3))
+    
+}
