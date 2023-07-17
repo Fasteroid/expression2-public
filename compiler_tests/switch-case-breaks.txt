@@ -1,0 +1,24 @@
+@name compiler_tests/switch-case-breaks
+
+#
+# Bug Description:
+#   The 'break' keyword behaves unexpectedly inside switch-case statements.
+#
+# Current commit:
+#   https://github.com/Vurv78/wire/commit/40ebf0653652b1723efbe575d165f5e6f2af45f4
+#
+# Relevant issue:
+#   https://github.com/Vurv78/wire/issues/7
+#
+
+if( first() ){
+    Test = 1
+    switch(Test){
+        case 1,
+            if(1){
+                break    
+            }
+            print("this should never execute")
+        break
+    }
+}
