@@ -101,6 +101,8 @@ if( first() ){
 
                 local Read = Queue[1,table]
                 TMP = propSpawn(Read["model",string],Read["pos",vector],Read["ang",angle],1)
+                TMP:propStatic(1)
+                if(!TMP:isValid()){ return }
                 if(Read:exists("func")){
                     if(Read:exists("data")){
                         Read["func",string](TMP,Read["data",table])
