@@ -1,4 +1,4 @@
-@name VR Holo Designer v1.4
+@name VR Holo Designer v1.5
 
 #[
     Note for Fasteroid/expression2-public Github browsers: 
@@ -14,6 +14,7 @@
 @persist HANDLE_DATA:table HANDLE_OPPOSITES:table HANDLE_CENTER HANDLE_SCL HANDLE_COLOR:vector SLIDER_HOVER_DISTANCE
 @persist SHREDDER_BASE SHREDDER_TOP SHREDDER_BOTTOM SHREDDER:entity
 @persist BUCKET_BASE BUCKET_PAINT BUCKET_ENT:entity BUCKET_SPAWNED BUCKET_SATS BUCKET_BRIGHTS BUCKET_LEN BUCKET_ANGLE HUE_CURRENT HSV_CURRENT:vector BUCKET_POINTER BUCKET_DATA:table BUCKET_POINTER_ENT:entity
+@persist ORIGIN ORIGIN_ENT:entity
 @persist POS_SNAP_DIVISORS:array ANG_SNAP_DIVISORS:array SCL_SNAP_DIVISORS:array
 @persist SLIDER_DATA:table SLIDER_NOTCHES_DONE SLIDER_SIZE SLIDER_BORDER
 
@@ -26,14 +27,16 @@
 @persist Handle_Axis:vector Opposite_Handle:table Handle_Parent:table
 
 # ACTIONS & STATES
-@persist Target_Use:table  Target_M1:table
-@persist Action_Use        Action_M1
+@persist Target_Use:table   Target_M1:table  Target_M2:table
+@persist Action_Use         Action_M1        State_M2
 @persist Action_Holding
 
+
 # ACTION & STATE ENUMS
-@persist USE_GrabbableHolo                                         USE_MenuHolo
-@persist M1_Duplicate        M1_BucketPointer    M1_ScaleHandle                  M1_Slider
-@persist HOLD_GrabbableHolo  HOLD_BucketPointer  HOLD_ScaleHandle                HOLD_Slider
+@persist USE_GrabbableHolo                                         USE_MenuHolo               USE_Origin
+@persist                     M1_BucketPointer    M1_ScaleHandle                  M1_Slider
+@persist HOLD_GrabbableHolo  HOLD_BucketPointer  HOLD_ScaleHandle                HOLD_Slider  HOLD_Origin
+@persist M2_SelectLock M1_Duplicate
 
 #include "betterhololib"
 
@@ -121,7 +124,7 @@ if( first() ){
     
         # don't actually call this; these start as @persist defaults
         function supressInitializationWarnings(){
-            BUCKET_ENT = noentity() HANDLE_CENTER = 0 BUCKET_POINTER = 0 BUCKET_LEN = 0 HUE_CURRENT = 0 BUCKET_PAINT = 0 SHREDDER_BASE= 0 MENU_SPAWNED = 0 BUCKET_SPAWNED = 0 NULL = table() BUCKET_DATA = table() HANDLE_DATA = table() MENU_DATA = table() HANDLE_OPPOSITES = table() DEFAULT_SCALE = vec(0.9)*SPAWNMENU_SCL-SPAWNMENU_SPACING Grab_Holos = table() Shredding_Holos = table() Opposite_Handle = NULL Grab_Holo_AvailableIDs = array() Highlight_Current = array() Highlight_OldColor = array() Highlight_OldAlpha = array() Bucket_Flip = 0 Grab_Holo_MaxID = 0 Action_Holding = 0 Shredder_Flasher = 0 Shredder_Speed= 0 Shredder_Rotation = 0 Hand_Local_Pos = vec() Hand_Local_Ang = ang() SLIDER_NOTCHES_DONE = 0 MENU_BASE = 0 SLIDER_DATA = table()
+            BUCKET_ENT = noentity() HANDLE_CENTER = 0 BUCKET_POINTER = 0 BUCKET_LEN = 0 HUE_CURRENT = 0 BUCKET_PAINT = 0 SHREDDER_BASE = 0 MENU_SPAWNED = 0 BUCKET_SPAWNED = 0 NULL = table() BUCKET_DATA = table() HANDLE_DATA = table() MENU_DATA = table() HANDLE_OPPOSITES = table() DEFAULT_SCALE = vec(0.9)*SPAWNMENU_SCL-SPAWNMENU_SPACING Grab_Holos = table() Shredding_Holos = table() Opposite_Handle = NULL Grab_Holo_AvailableIDs = array() Highlight_Current = array() Highlight_OldColor = array() Highlight_OldAlpha = array() Bucket_Flip = 0 Grab_Holo_MaxID = 0 Action_Holding = 0 Shredder_Flasher = 0 Shredder_Speed= 0 Shredder_Rotation = 0 Hand_Local_Pos = vec() Hand_Local_Ang = ang() SLIDER_NOTCHES_DONE = 0 MENU_BASE = 0 SLIDER_DATA = table()
         }
         
         # cached values; don't touch these
@@ -164,6 +167,20 @@ if( first() ){
             else{
                 return This[R,number]
             }
+        }
+
+        function setHoloLock(){
+            if(!Target_Use["trueid",number]){ return }
+            State_M2 = M2_SelectLock
+            Target_M2 = Target_Use
+            holoEntity(HANDLE_CENTER):soundPlay("lock",1,"buttons/button14.wav")
+            holoColor(HANDLE_CENTER, vec(0,0,0))
+        }
+        function clearHoloLock(){
+            State_M2 = 0
+            Target_M2 = NULL
+            holoColor(HANDLE_CENTER, vec(255))
+            holoEntity(HANDLE_CENTER):soundPlay("unlock",1,"buttons/button15.wav")
         }
         
         function updateHandles(Scale:vector){
@@ -233,12 +250,14 @@ if( first() ){
         
         function holoFreeGrabbable(BaseHolo:table){
             holoUnparent(HANDLE_CENTER)
+
             BaseHolo["trueid",number]:holoFree()
             
             # for now I'm just clearing the table and will check for that when I export
             # actually removing them won't be constant time and is therefore stupid
             Grab_Holo_AvailableIDs:pushNumber(BaseHolo["grabid",number])
             BaseHolo:clear()
+
         }
         
         function holoShredGrabbable(BaseHolo:table){
@@ -251,6 +270,9 @@ if( first() ){
             DeleteAnimation["deathscale",vector] = DeleteAnimation["scale",vector]
             DeleteAnimation["hp",number] = 1
             
+            if( (State_M2 == M2_SelectLock) & (Target_M2 == BaseHolo) ){
+                clearHoloLock()
+            }
             BaseHolo:clear() # can't free the entity yet since it's needed for animation
             
             Shredding_Holos:pushTable(DeleteAnimation)
@@ -258,7 +280,7 @@ if( first() ){
         
         function number table:containsPoint(V:vector){
             local Test = This["ent",entity]:toLocal(V)
-            local Scale = This["scale",vector]*0.5
+            local Scale = This["scale",vector] * 0.5
             return inrange(Test,-Scale,Scale)
         }
         
@@ -344,6 +366,7 @@ if( first() ){
         
         USE_GrabbableHolo = 1
         USE_MenuHolo      = 4
+        USE_Origin        = 6
         
         M1_ScaleHandle    = 2
         M1_BucketPointer  = 3
@@ -354,6 +377,9 @@ if( first() ){
         HOLD_ScaleHandle   = 2
         HOLD_BucketPointer = 3
         HOLD_Slider        = 5
+        HOLD_Origin        = 6
+        
+        M2_SelectLock      = 1
 
     # -------- Actions -------- #
     
@@ -406,54 +432,75 @@ if( first() ){
                           Target_M1  = T
                         
                         T["slider_accent",number]:highlight(vec(255), 150, 3)
-                        
-                        return
+                                                return
                     }
                 }
                 # if we got here, nothing should be highlighted
                 0:highlight(vec(), 255, 3)
                 
-                if(holoEntity(BUCKET_POINTER):pos():distance(Hand_pos_) < BUCKET_LEN*1.25){
+                if(BUCKET_POINTER_ENT:pos():distance(Hand_pos_) < BUCKET_LEN*1.25){
                     
                       Action_Use = 0
                       Action_M1  = M1_BucketPointer
-                      #print("set M1_BucketPointer")
-                    
+                                          
                     BUCKET_POINTER:highlight(hsv2rgb(HUE_CURRENT,1,1), 255, 1)
-                    
-                    return
+                                        return
                     
                 }
-                else{
-                    BUCKET_POINTER:highlight(vec(255), 255, 1)
-                }
+                0:highlight(vec(),0,1)
+                
             # ----
             
             
             # ---- handle highlighting scale pointers and picking nearest holo
                 
                 # first find nearest grabbable holo
-                local NearestHoloDist = inf()
-                for(I=1,Grab_Holos:count()){
-                    local Holo = Grab_Holos[I,table]
-                    local TestDist = Holo["ent",entity]:pos():distance2(Hand_pos_)
-                    if(TestDist<NearestHoloDist){
-                        NearestHoloDist = TestDist
-                        Target_Use = Holo
+
+                if( State_M2 != M2_SelectLock ){
+                    local NearestHoloDist = inf()
+                    local IsOrigin = 0
+                    
+                    local OriginDist = ORIGIN_ENT:pos():distance(Hand_pos_)
+                    if( OriginDist < 5 ){
+                        IsOrigin = 1
+                        NearestHoloDist = OriginDist
+                    }
+                    
+                    for(I=1,Grab_Holos:count()){
+                        local Holo = Grab_Holos[I,table]
+                        local TestDist = Holo["ent",entity]:pos():distance2(Hand_pos_)
+                        if(TestDist<NearestHoloDist){
+                            NearestHoloDist = TestDist
+                            Target_Use = Holo
+                            IsOrigin = 0
+                        }
+                    }
+                
+                    if( Target_Use["trueid",number] & Target_Use:containsPoint(Hand_pos_) ){ 
+                        holoAlpha(HANDLE_CENTER,255)
+                        Action_Use = USE_GrabbableHolo
+                    }
+                    else{
+                        holoAlpha(HANDLE_CENTER,0)
+
+                            if( IsOrigin ){
+                                Action_Use = USE_Origin
+                                ORIGIN:highlight(vec(255),255,3)
+                                return
+                            }
+                            else {
+                                0:highlight(vec(),0,3)
+                            }
+                            
+                        if( NearestHoloDist > Target_Use["scale",vector]:length2() ){ # are we even sort of near it?
+                            0:highlight(vec(),0,2) # clear any scale handle highlighting
+                            return
+                        }
                     }
                 }
-                
-                
-                if( Target_Use["trueid",number] & Target_Use:containsPoint(Hand_pos_) ){ 
-                    holoAlpha(HANDLE_CENTER,255)
+                else {
+                    Target_Use = Target_M2
                     Action_Use = USE_GrabbableHolo
-                }
-                else{
-                    holoAlpha(HANDLE_CENTER,0)
-                    if( NearestHoloDist > Target_Use["scale",vector]:length2() ){ # are we even sort of near it?
-                        0:highlight(vec(),0,2) # clear any scale handle highlighting
-                        return # nothing else to do
-                    }
                 }
                 
                 
@@ -613,6 +660,19 @@ if( first() ){
         }
         # ------------
         
+
+        function action_holdingOrigin(){
+            
+            local Snap_Pos = SLIDER_DATA["pos",table]["value",number]
+            local Snap_Ang = SLIDER_DATA["ang",table]["value",number]
+            
+            Worlds = toWorldPosAng(Hand_Local_Pos,Hand_Local_Ang,Hand_pos_,Hand_ang_)
+            holoPos(ORIGIN,round(Worlds[1,vector] * Snap_Pos / DEFAULT_SIZE) * DEFAULT_SIZE / Snap_Pos)
+            holoAng(ORIGIN,round(Worlds[2,angle] * Snap_Ang / 90 ) * 90 / Snap_Ang)
+            
+        }
+        # ------------
+        
     # -------- scaling handle population -------- #
     
         Sliders = array()
@@ -763,7 +823,29 @@ if( first() ){
         
         generateSlider("scl", SlidersCenter, SCL_SNAP_DIVISORS)
 
+        OriginPos = SlidersCenter + vec(0.5*SPAWNMENU_SCL,0,-SPAWNMENU_H*SPAWNMENU_SCL*0.2)
+        
+        ORIGIN = holoAlloc( entity():toWorld(OriginPos) )
+        ORIGIN_ENT = holoEntity(ORIGIN)
+        
+        holoScale(ORIGIN,vec(0.1))
+        holoColor(ORIGIN,vec(50))
+        
+        for(I=1, 3){
+            local Offset = vec()
+            Offset[I] = 3
+            local Temp_Holo = holoAlloc( entity():toWorld(OriginPos + Offset) )
+            holoModel(Temp_Holo,"hq_cylinder")
+            holoMaterial(Temp_Holo,"lights/white")
+            holoScale(Temp_Holo,vec(0.02,0.02,0.5))
+            holoAng(Temp_Holo,Offset:toAngle()+ang(90,0,0))
+            holoColor(Temp_Holo,Offset*255)
+            holoParent(Temp_Holo,ORIGIN)
+        }
+        holoAng(ORIGIN, entity():angles())
+
 }
+
 
 event tick(){
     
@@ -905,6 +987,8 @@ event tick(){
         
         case HOLD_Slider, action_holdingSlider() break
         
+        case HOLD_Origin, action_holdingOrigin() break
+    
     }
     
     if( changed(PLY:keyAttack1()) ){ # on m1 change
@@ -974,13 +1058,14 @@ event tick(){
     if( changed(PLY:keyUse()) ){ # on use change 
             
         if(PLY:keyUse()){ # use
-            
+            local VurvCompilerBugFix = 1
             switch( Action_Use ){
                 
                 case USE_MenuHolo,
                 
-                    if( !Action_Holding ){
+                    if( !Action_Holding & VurvCompilerBugFix ){
                         Target_Use = holoCreateGrabbable( Target_Use )
+                        VurvCompilerBugFix = 0
                     }
                     # continue on to USE_GrabbableHolo case!
                     
@@ -1004,6 +1089,14 @@ event tick(){
                     
                 break
                 
+                case USE_Origin,
+                    Locals = toLocalPosAng(ORIGIN_ENT:pos(),ORIGIN_ENT:angles(),Hand_pos_,Hand_ang_)
+                    Hand_Local_Pos = Locals[1,vector]
+                    Hand_Local_Ang = Locals[2,angle]
+                    
+                    Action_Holding = HOLD_Origin
+                break
+            
             }
             
             switch( Action_Holding ){
@@ -1035,10 +1128,41 @@ event tick(){
                     Bucket_State = -1
                 break
                 
+                case HOLD_Origin,
+                    Action_Holding = 0
+                break
+            
             }
             
         }
     
+    }
+
+    if( changed( PLY:keyAttack2() ) ){ # on m2 change
+
+        if( PLY:keyAttack2() ){ # m2
+            do {
+                
+                # case: "use target is lockable"
+                    if( !State_M2 & (Action_Use == USE_GrabbableHolo) ){
+                        setHoloLock()
+                        break
+                    }
+                # case: "should unlock"
+                    elseif( State_M2 == M2_SelectLock ){
+                        clearHoloLock()
+                        break
+                    }
+                    
+                # default:
+                    break
+            }
+            while(1) # switch didn't fit here, but I also don't wanna make a function to use break...
+        }
+        else { # un-m2
+            # nothing here yet
+        }
+
     }
     
     # stuff that runs every tick goes below:
@@ -1099,7 +1223,7 @@ event tick(){
             }
             else{
                 #holoUnparent(HANDLE_CENTER) -- probably not needed, will remove when I'm sure
-                HoloObj["trueid",number]:holoFree()
+                holoFreeGrabbable(HoloObj)
                 Shredding_Holos:remove(I)
             }
             
@@ -1149,7 +1273,7 @@ event tick(){
 event chat(Ply:entity, Text:string, Team:number){
     Team = Team # stupid variable discard warning
 
-    if(Ply != owner()){ exit() }
+    if(Ply != PLY){ exit() }
     
     S = Text:explode(" ")
     
@@ -1164,26 +1288,14 @@ event chat(Ply:entity, Text:string, Team:number){
             local Scales = array()
             local Colors = array()
             
-            Center = vec(0,0,0)
-            
-            for(I=1,Grab_Holos:count()){
-                local Holo = Grab_Holos[I,table]
-                if(Holo:count()){ # we've got a valid one!
-                    ValidHolos:pushTable( Holo )
-                    Center = Center + Holo["ent",entity]:pos()
-                }
-            }
-
-            Center = Center / ValidHolos:count()
-
             foreach(N:number, Holo:table = ValidHolos){
                 local M = Holo["model",string]
                 Models:pushString( "\""+M+"\"" )
                 
-                local V = round(Holo["ent",entity]:pos() - Center, 5)
+                local V = round(ORIGIN_ENT:toLocal(Holo["ent",entity]:pos()), 5)
                 Positions:pushString( "vec("+V[1]+","+V[2]+","+V[3]+")" )
                 
-                local A = round(Holo["ent",entity]:angles(), 3)
+                local A = round(ORIGIN_ENT:toLocal(Holo["ent",entity]:angles()), 3)
                 Angles:pushString( "ang("+A[1]+","+A[2]+","+A[3]+")" )
                 
                 local S = round(holoScale(Holo["trueid",number]), 5)
