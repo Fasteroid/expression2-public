@@ -1,0 +1,19 @@
+@name compiler_tests/switchcasenobreak
+@inputs 
+@outputs 
+@persist 
+@trigger
+
+if( first() ){
+    switch( 1 ){
+        
+        case 1,
+        
+            print("balls")
+            
+        case 2,
+            
+        break
+        
+    }
+}
