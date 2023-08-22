@@ -34,7 +34,7 @@ if( first() ){
     
     ###############
     ## 
-    #   holoAlloc( Pos:vector = entity():pos() )
+    #   holoAlloc( Pos:vector = entity():pos(), Ang:angle = entity():angles() )
     #     Creates a new BetterHolo and returns its index.
     #     Optionally takes in a position to spawn the holo at.
     #
@@ -46,6 +46,11 @@ if( first() ){
     function number holoAlloc(Pos:vector){
         local Next = nextHoloID()
         holoCreate(Next,Pos)
+        return Next
+    }
+    function number holoAlloc(Pos:vector,Ang:angle){
+        local Next = nextHoloID()
+        holoCreate(Next,Pos,vec(1),Ang)
         return Next
     }
     
