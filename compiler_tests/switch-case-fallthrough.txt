@@ -1,0 +1,22 @@
+@name compiler_tests/switch-case-fallthrough
+
+#
+# Bug Description:
+#   Switch "fall-through" behavior is broken
+#
+# Current commit:
+#   https://github.com/Vurv78/wire/commit/2402d9bb48db6132759bdc49e236e7c0c43b8ba1
+#
+# Relevant issue:
+#   https://github.com/Vurv78/wire/issues/12
+#
+
+if( first() ){
+    switch( 1 ){
+        case 1,
+            print("balls")
+        case 2,
+        
+        break
+    }
+}
