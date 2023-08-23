@@ -124,7 +124,7 @@ if( first() ){
     
         # don't actually call this; these start as @persist defaults
         function supressInitializationWarnings(){
-            BUCKET_ENT = noentity() HANDLE_CENTER = 0 BUCKET_POINTER = 0 BUCKET_LEN = 0 HUE_CURRENT = 0 BUCKET_PAINT = 0 SHREDDER_BASE = 0 MENU_SPAWNED = 0 BUCKET_SPAWNED = 0 NULL = table() BUCKET_DATA = table() HANDLE_DATA = table() MENU_DATA = table() HANDLE_OPPOSITES = table() DEFAULT_SCALE = vec(0.9)*SPAWNMENU_SCL-SPAWNMENU_SPACING Grab_Holos = table() Shredding_Holos = table() Opposite_Handle = NULL Grab_Holo_AvailableIDs = array() Highlight_Current = array() Highlight_OldColor = array() Highlight_OldAlpha = array() Bucket_Flip = 0 Grab_Holo_MaxID = 0 Action_Holding = 0 Shredder_Flasher = 0 Shredder_Speed= 0 Shredder_Rotation = 0 Hand_Local_Pos = vec() Hand_Local_Ang = ang() SLIDER_NOTCHES_DONE = 0 MENU_BASE = 0 SLIDER_DATA = table()
+            BUCKET_ENT = noentity() HANDLE_CENTER = 0 BUCKET_POINTER = 0 BUCKET_LEN = 0 HUE_CURRENT = 0 BUCKET_PAINT = 0 SHREDDER_BASE = 0 MENU_SPAWNED = 0 BUCKET_SPAWNED = 0 NULL = table() BUCKET_DATA = table() HANDLE_DATA = table() MENU_DATA = table() HANDLE_OPPOSITES = table() DEFAULT_SCALE = vec(0.9)*SPAWNMENU_SCL-SPAWNMENU_SPACING Grab_Holos = table() Shredding_Holos = table() Opposite_Handle = NULL Grab_Holo_AvailableIDs = array() Highlight_Current = array() Highlight_OldColor = array() Highlight_OldAlpha = array() Bucket_Flip = 0 Grab_Holo_MaxID = 0 Action_Holding = 0 Shredder_Flasher = 0 Shredder_Speed= 0 Shredder_Rotation = 0 Hand_Local_Pos = vec() Hand_Local_Ang = ang() SLIDER_NOTCHES_DONE = 0 MENU_BASE = 0 SLIDER_DATA = table() Target_Use = table() M2_SelectLock = 0 BUCKET_POINTER_ENT = noentity() ORIGIN_ENT = noentity() ORIGIN = 0
         }
         
         # cached values; don't touch these
@@ -149,7 +149,7 @@ if( first() ){
             return MONTHS[ D["month",number], string ] + " " + D["day",number] + " " + D["year",number]
         }
         
-        function number array:binarySearchClosest(Target){
+        function number array:binarySearchClosest(Target:number){
             local L = 1
             local R = This:count()
             while( L+1 < R ){
@@ -174,7 +174,7 @@ if( first() ){
             State_M2 = M2_SelectLock
             Target_M2 = Target_Use
             holoEntity(HANDLE_CENTER):soundPlay("lock",1,"buttons/button14.wav")
-            holoColor(HANDLE_CENTER, vec(0,0,0))
+            holoColor(HANDLE_CENTER, vec(255,0,0))
         }
         function clearHoloLock(){
             State_M2 = 0
@@ -197,9 +197,9 @@ if( first() ){
             holoScaleUnits(HANDLE_CENTER,Scale)
         }
     
-        function setHandleAlphas(A){
+        function setHandleAlphas(A:number){
             local Keys = HANDLE_DATA:keys()
-            foreach(N,ID:string=Keys){
+            foreach(_:number,ID:string=Keys){
                 local H = HANDLE_DATA[ID,table]
                 holoAlpha( H["trueid",number], A )
             }
@@ -285,7 +285,7 @@ if( first() ){
         }
         
         # replaces old and bug-prone highlighting system
-        function number number:highlight(Color:vector,Alpha,Group){
+        function number number:highlight(Color:vector,Alpha:number,Group:number){
             if( This != Highlight_Current[Group,number] ){
                 holoColor(Highlight_Current[Group,number], Highlight_OldColor[Group,vector], Highlight_OldAlpha[Group,number])
                 
@@ -302,7 +302,7 @@ if( first() ){
             return 0
         }
         
-        function number table:exists(Y,X){
+        function number table:exists(Y:number,X:number){
             return This:exists(Y) & This[Y,table]:exists(X)
         }
 
@@ -352,12 +352,12 @@ if( first() ){
             )
         }
         
-        function number table:sliderToWorld(Value){
+        function number table:sliderToWorld(Value:number){
             Value = (Value - This["min",number]) / This["range",number] # 0-1
             return  (Value - 0.5)*2*This["maxpos",number]               # local space
         }
         
-        function number table:worldToSlider(Pos){
+        function number table:worldToSlider(Pos:number){
             Pos = clamp( (Pos/This["maxpos",number])*0.5 + 0.5, 0, 1) # 0-1
             return This["min",number] + Pos*This["range",number]       # min-max
         }
@@ -424,7 +424,7 @@ if( first() ){
             
             # ---- handle misc UI elements
             
-                foreach(Name:string, T:table = SLIDER_DATA){
+                foreach(_:string, T:table = SLIDER_DATA){
                     if( T["slider_ent",entity]:pos():distance2(Hand_pos_) < (HANDLE_SCL/2)^2 ){
                         
                           Action_Use = 0
@@ -935,7 +935,7 @@ event tick(){
         
         # slider notches
         if( !SLIDER_NOTCHES_DONE ){
-            foreach(Name:string, T:table = SLIDER_DATA){
+            foreach(_:string, T:table = SLIDER_DATA){
                 local Values = T["values",array]
                 while( holoCanCreate() & (T["notches",number] < Values:count()) ){
                     
@@ -1252,7 +1252,7 @@ event tick(){
     
     # -------- Slider runOnTick -------- #
     
-        foreach(Name:string, T:table = SLIDER_DATA){
+        foreach(_:string, T:table = SLIDER_DATA){
             
             local Value = T["anim_value",number]
             
@@ -1288,7 +1288,7 @@ event chat(Ply:entity, Text:string, Team:number){
             local Scales = array()
             local Colors = array()
             
-            foreach(N:number, Holo:table = ValidHolos){
+            foreach(_:number, Holo:table = ValidHolos){
                 local M = Holo["model",string]
                 Models:pushString( "\""+M+"\"" )
                 
