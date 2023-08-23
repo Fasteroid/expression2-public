@@ -13,7 +13,7 @@
 @persist MENU_DATA:table SPAWNMENU_W SPAWNMENU_H SPAWNMENU_SCL MENU_BASE SELECT_BASE SPAWNMENU_SPACING X Y MENU_SPAWNED MENU_ENT:entity HOLO_MODELS:array HOLO_MODEL_OFFSETS:table DEFAULT_SCALE:vector DEFAULT_SIZE
 @persist HANDLE_DATA:table HANDLE_OPPOSITES:table HANDLE_CENTER HANDLE_SCL HANDLE_COLOR:vector SLIDER_HOVER_DISTANCE
 @persist SHREDDER_BASE SHREDDER_TOP SHREDDER_BOTTOM SHREDDER:entity
-@persist BUCKET_BASE BUCKET_PAINT BUCKET_ENT:entity BUCKET_SPAWNED BUCKET_SATS BUCKET_BRIGHTS BUCKET_LEN BUCKET_ANGLE HUE_CURRENT HSV_CURRENT:vector BUCKET_POINTER BUCKET_DATA:table BUCKET_POINTER_ENT:entity
+@persist BUCKET_BASE BUCKET_PAINT BUCKET_ENT:entity BUCKET_PAINT_ENT:entity BUCKET_SPAWNED BUCKET_SATS BUCKET_BRIGHTS BUCKET_LEN BUCKET_ANGLE HUE_CURRENT HSV_CURRENT:vector BUCKET_POINTER BUCKET_DATA:table BUCKET_POINTER_ENT:entity
 @persist ORIGIN ORIGIN_ENT:entity
 @persist POS_SNAP_DIVISORS:array ANG_SNAP_DIVISORS:array SCL_SNAP_DIVISORS:array
 @persist SLIDER_DATA:table SLIDER_NOTCHES_DONE SLIDER_SIZE SLIDER_BORDER
@@ -61,7 +61,7 @@ if( first() ){
         # snap divisors; bigger = more precise; must be real integers
         # must be in ascending order to work correctly
         # TODO: automatic sorting that won't tick quota the chip
-        POS_SNAP_DIVISORS = array(1,2,4,8)
+        POS_SNAP_DIVISORS = array(1,2,4,8,16)
         ANG_SNAP_DIVISORS = array(1,2,3,4,5,6,8,12,15)
         SCL_SNAP_DIVISORS = array(1,2,4,8)
         
@@ -125,7 +125,7 @@ if( first() ){
     
         # don't actually call this; these start as @persist defaults
         function supressInitializationWarnings(){
-            BUCKET_ENT = noentity() HANDLE_CENTER = 0 BUCKET_POINTER = 0 BUCKET_LEN = 0 HUE_CURRENT = 0 BUCKET_PAINT = 0 SHREDDER_BASE = 0 MENU_SPAWNED = 0 BUCKET_SPAWNED = 0 NULL = table() BUCKET_DATA = table() HANDLE_DATA = table() MENU_DATA = table() HANDLE_OPPOSITES = table() DEFAULT_SCALE = vec(0.9)*SPAWNMENU_SCL-SPAWNMENU_SPACING Grab_Holos = table() Shredding_Holos = table() Opposite_Handle = NULL Grab_Holo_AvailableIDs = array() Highlight_Current = array() Highlight_OldColor = array() Highlight_OldAlpha = array() Bucket_Flip = 0 Grab_Holo_MaxID = 0 Action_Holding = 0 Shredder_Flasher = 0 Shredder_Speed= 0 Shredder_Rotation = 0 Hand_Local_Pos = vec() Hand_Local_Ang = ang() SLIDER_NOTCHES_DONE = 0 MENU_BASE = 0 SLIDER_DATA = table() Target_Use = table() M2_SelectLock = 0 BUCKET_POINTER_ENT = noentity() ORIGIN_ENT = noentity() ORIGIN = 0 New_Holo_Group = ""
+            BUCKET_ENT = noentity() HANDLE_CENTER = 0 BUCKET_POINTER = 0 BUCKET_LEN = 0 HUE_CURRENT = 0 BUCKET_PAINT = 0 SHREDDER_BASE = 0 MENU_SPAWNED = 0 BUCKET_SPAWNED = 0 NULL = table() BUCKET_DATA = table() HANDLE_DATA = table() MENU_DATA = table() HANDLE_OPPOSITES = table() DEFAULT_SCALE = vec(0.9)*SPAWNMENU_SCL-SPAWNMENU_SPACING Grab_Holos = table() Shredding_Holos = table() Opposite_Handle = NULL Grab_Holo_AvailableIDs = array() Highlight_Current = array() Highlight_OldColor = array() Highlight_OldAlpha = array() Bucket_Flip = 0 Grab_Holo_MaxID = 0 Action_Holding = 0 Shredder_Flasher = 0 Shredder_Speed= 0 Shredder_Rotation = 0 Hand_Local_Pos = vec() Hand_Local_Ang = ang() SLIDER_NOTCHES_DONE = 0 MENU_BASE = 0 SLIDER_DATA = table() Target_Use = table() M2_SelectLock = 0 BUCKET_POINTER_ENT = noentity() ORIGIN_ENT = noentity() ORIGIN = 0 New_Holo_Group = "" BUCKET_PAINT_ENT = noentity()
         }
         
         # cached values; don't touch these
@@ -612,10 +612,12 @@ if( first() ){
             
                 local PaintTest = BUCKET_ENT:toLocal(Target_Use["ent",entity]:pos())
                 if( PaintTest:setZ(0):length()<=0.9*SPAWNMENU_SCL & abs(PaintTest[3])<SPAWNMENU_SCL*0.9 ){
-                    BucketVictim = Target_Use["ent",entity]
-                    NewColor = holoEntity(BUCKET_PAINT):getColor()
-                    if( BucketVictim:getColor() != NewColor ){
+                    local BucketVictim = Target_Use["ent",entity]
+                    local NewColor = BUCKET_PAINT_ENT:getColor()
+                    local NewMater = BUCKET_PAINT_ENT:getMaterial()
+                    if( BucketVictim:getColor() != NewColor | BucketVictim:getMaterial() != NewMater ){
                         holoColor(Target_Use["trueid",number],NewColor)
+                        holoMaterial(Target_Use["trueid",number],NewMater)
                         BUCKET_ENT:soundPlay("dunk",0.2,"player/footsteps/mud2.wav")
                     }
                 }
@@ -767,9 +769,10 @@ if( first() ){
         holoParent(BUCKET_PAINT,BUCKET_BASE)
         holoPos(BUCKET_PAINT,entity():toWorld(BucketCenter-vec(0,0,0.1)*SPAWNMENU_SCL))
         holoModel(BUCKET_PAINT,"hq_cylinder")
-        holoScaleUnits(BUCKET_PAINT,vec(1.7,1.7,1.6)*SPAWNMENU_SCL)    
-        holoMaterial(BUCKET_PAINT,"models/shiny")
+        holoScaleUnits(BUCKET_PAINT,vec(1.7,1.7,1.6)*SPAWNMENU_SCL)
+        holoMaterial(BUCKET_PAINT,"pac/default")
         holoParent(BUCKET_BASE,MENU_BASE)
+        BUCKET_PAINT_ENT = holoEntity(BUCKET_PAINT)
         
         SidelenSolverPt = vec2(cos(BUCKET_ANGLE/(BUCKET_SATS-1)),sin(BUCKET_ANGLE/(BUCKET_SATS-1)))
         BUCKET_LEN = SidelenSolverPt[2] * (1/SidelenSolverPt[1]) * SPAWNMENU_SCL
@@ -1283,6 +1286,13 @@ event chat(Ply:entity, Text:string, _:number){
         print("group set to: \""+New_Holo_Group+"\"")
     }
     
+    # If anyone really needs it, bother me with an issue and I'll make a UI for this command
+    if(S[1,string] == ".m"){
+        Bucket_Material = S[2,string]
+        holoMaterial(BUCKET_PAINT, Bucket_Material)
+        print("paint material set to: \""+Bucket_Material+"\"")
+    }
+    
     if(S[1,string] == ".s"){
         if( S[2,string] != "" ){
             
@@ -1295,27 +1305,31 @@ event chat(Ply:entity, Text:string, _:number){
                 }
             }
             
-            local Models = array()
+            local Models    = array()
             local Positions = array()
-            local Angles = array()
-            local Scales = array()
-            local Colors = array()
+            local Angles    = array()
+            local Scales    = array()
+            local Colors    = array()
+            local Materials = array()
             
             foreach(_:number, Holo:table = ValidHolos){
-                local M = Holo["model",string]
-                Models:pushString( "\""+M+"\"" )
+                local Mdl = Holo["model",string]
+                Models:pushString( "\""+Mdl+"\"" )
                 
-                local V = round(ORIGIN_ENT:toLocal(Holo["ent",entity]:pos()), 5)
-                Positions:pushString( "vec("+V[1]+","+V[2]+","+V[3]+")" )
+                local Pos = round(ORIGIN_ENT:toLocal(Holo["ent",entity]:pos()), 5)
+                Positions:pushString( "vec("+Pos[1]+","+Pos[2]+","+Pos[3]+")" )
                 
-                local A = round(ORIGIN_ENT:toLocal(Holo["ent",entity]:angles()), 3)
-                Angles:pushString( "ang("+A[1]+","+A[2]+","+A[3]+")" )
+                local Ang = round(ORIGIN_ENT:toLocal(Holo["ent",entity]:angles()), 3)
+                Angles:pushString( "ang("+Ang[1]+","+Ang[2]+","+Ang[3]+")" )
                 
-                local S = round(holoScale(Holo["trueid",number]), 5)
-                Scales:pushString( "vec("+S[1]+","+S[2]+","+S[3]+")" )
+                local Scl = round(Holo["scale",vector], 5)
+                Scales:pushString( "vec("+Scl[1]+","+Scl[2]+","+Scl[3]+")" )
                 
-                local C = round(Holo["ent",entity]:getColor())
-                Colors:pushString( "vec("+C[1]+","+C[2]+","+C[3]+")" )
+                local Col = round(Holo["ent",entity]:getColor())
+                Colors:pushString( "vec("+Col[1]+","+Col[2]+","+Col[3]+")" )
+                
+                local Mat = Holo["ent",entity]:getMaterial()
+                Materials:pushString( "\""+Mat+"\"" )
             }
             
             local Code = "@name holo structure: " + S[2,string] + "\n" +
@@ -1327,10 +1341,12 @@ event chat(Ply:entity, Text:string, _:number){
                          "  \"positions\" = array(" + Positions:concat(",") + ")," + "\n" +
                          "  \"angles\" = array(" + Angles:concat(",") + ")," + "\n" +
                          "  \"scales\" = array(" + Scales:concat(",") + ")," + "\n" +
-                         "  \"colors\" = array(" + Colors:concat(",") + ")" + "\n" +
+                         "  \"colors\" = array(" + Colors:concat(",") + ")," + "\n" +
+                         "  \"materials\" = array(" + Materials:concat(",") + ")" + "\n" +
                          "))}\n"
             
             fileWrite(">e2shared/vrmodels/"+S[2,string]+".txt",Code)
+            print("saved")
             owner():soundPlay("save",1,"buttons/button9.wav")
             
         }

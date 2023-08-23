@@ -113,6 +113,7 @@ event tick(){
             local Angles = Template["angles",array]
             local Scales = Template["scales",array]
             local Colors = Template["colors",array]
+            local Materials = Template["materials",array]
             local Max = Models:count()
         
         local Progress = SpawnStruct["progress",number]
@@ -126,6 +127,7 @@ event tick(){
                 holoAng(H,BaseEntity:toWorld(Angles[Progress,angle]))
                 holoScale(H,Scales[Progress,vector])
                 holoColor(H,Colors[Progress,vector])
+                holoMaterial(H,Materials[Progress,string])
                 holoParent(H,N)
             SpawnStruct["children",array]:pushNumber(H)
         }
