@@ -1287,6 +1287,13 @@ event chat(Ply:entity, Text:string, _:number){
         if( S[2,string] != "" ){
             
             local ValidHolos = table()
+        
+            for(I=1,Grab_Holos:count()){
+                local Holo = Grab_Holos[I,table]
+                if(Holo["group",string] == New_Holo_Group){ # we've got a valid one!
+                    ValidHolos:pushTable( Holo )
+                }
+            }
             
             local Models = array()
             local Positions = array()
@@ -1295,7 +1302,6 @@ event chat(Ply:entity, Text:string, _:number){
             local Colors = array()
             
             foreach(_:number, Holo:table = ValidHolos){
-                if(Holo["group",string] != New_Holo_Group){ continue }
                 local M = Holo["model",string]
                 Models:pushString( "\""+M+"\"" )
                 
