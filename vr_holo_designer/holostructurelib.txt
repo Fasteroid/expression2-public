@@ -60,7 +60,7 @@ if( first() ){
         return Base
     }
     function number holoStructCreate(Class:string){
-        holoStructCreate(Class,entity():pos())
+        return holoStructCreate(Class,entity():pos())
     }
     
     ###############
