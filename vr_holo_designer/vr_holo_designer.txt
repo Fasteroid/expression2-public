@@ -1322,7 +1322,7 @@ event chat(Ply:entity, Text:string, _:number){
                 local Ang = round(ORIGIN_ENT:toLocal(Holo["ent",entity]:angles()), 3)
                 Angles:pushString( "ang("+Ang[1]+","+Ang[2]+","+Ang[3]+")" )
                 
-                local Scl = round(Holo["scale",vector], 5)
+                local Scl = round(Holo["scale",vector] / 12, 5)
                 Scales:pushString( "vec("+Scl[1]+","+Scl[2]+","+Scl[3]+")" )
                 
                 local Col = round(Holo["ent",entity]:getColor())
