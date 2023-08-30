@@ -1,0 +1,86 @@
+@name tinyiklib
+@persist IKLib_Legs:table
+
+#include "betterhololib"
+
+#[                                        ]#
+##    E2 Library: tinyiklib               ##
+##                                        ##
+##    Does simple 2-segment ik legs.      ##
+##    That's about it.                    ##
+#[                                        ]#
+
+if( first() ){
+    
+    IKLib_Legs = table()
+    
+    ###############
+    ## 
+    #   newIKLeg( L1:number, L2:number, RootEnt:entity, TargetFunc:function = "iklib_default_target" )
+    #     Creates a new IKLeg and returns it.
+    #     Optionally takes a function name for the target position solver.
+    #
+    function table iklib_newIKLeg(L1:number, L2:number, RootEnt:entity){
+        local IK = table(
+            "_root" = RootEnt,
+            "_l1" = L1,
+            "_l2" = L2,
+            "_len" = L1+L2,
+            "_targetFunc" = "iklib_default_target"
+        )
+        local H1 = holoAlloc(RootEnt:pos(), RootEnt:angles())
+        local H2 = holoAlloc(RootEnt:toWorld(vec(L1,0,0)), RootEnt:angles())
+        holoParent(H1,RootEnt)
+        holoParent(H2,H1)
+        holoAlpha(H1,0)
+        holoAlpha(H2,0)
+        IK["_h1",number] = H1
+        IK["_h2",number] = H2
+        IK["_enabled",number] = 1
+        IKLib_Legs:pushTable(IK)
+        return IK
+    }
+    function table iklib_newIKLeg(L1:number, L2:number, RootEnt:entity, TargetFunc:string){
+        local Ret = iklib_newIKLeg(L1,L2,RootEnt)
+        Ret["_targetFunc",string] = TargetFunc
+        return Ret
+    }
+
+    ### INTERNAL ##
+    ## 
+    #   <IKLeg>:iklib_default_target()
+    #     Default position solver function; note it should provide access to "This"!
+    #
+    function vector iklib_default_target(This:table){
+        local Next = rangerOffset(This["_len",number], This["_root",entity]:pos(), This["_root",entity]:toWorldAxis(vec(1,0,-1))):position()
+        if( !This:exists("_targetPos") | This["_targetPos",vector]:distance(Next) > 0.5*This["_len",number] ){
+            This["_targetPos",vector] = Next
+        }
+        return This["_targetPos",vector]
+    }
+    
+}
+
+event tick(){
+    foreach(_:number, IK:table = IKLib_Legs){
+        
+        if(!IK["_enabled",number]){ continue }
+        
+        local Dir  = IK["_targetFunc",string](IK)[vector] - IK["_root",entity]:pos()
+        
+        local Ang1 = Dir:toAngle()
+        
+        local L1 = IK["_l1",number]
+        local L2 = IK["_l2",number]
+        local L3 = Dir:length()
+        
+        local A = acos( clamp((L3^2 + L1^2 - L2^2) / (2*L3*L1),-1,1) )
+        local B = acos( clamp((L3^2 + L2^2 - L1^2) / (2*L3*L2),-1,1) )
+        
+        holoAng(IK["_h1",number],Ang1+ang(-A,0,0))
+        holoAng(IK["_h2",number],Ang1+ang(B,0,0))
+        
+        IK["_lastDist",number] = L3
+        #IK["_last",vector] = holoEntity(IK["_h2",number]):toWorld(vec(IK["_l2",number],0,0))
+    }
+}
