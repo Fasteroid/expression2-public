@@ -1368,7 +1368,7 @@ event chat(Ply:entity, Text:string, _:number){
             }
             
             local Code = "@name holo structure: " + S[2,string] + "\n" +
-                         "#include \"vr_holo_designer/holostructurelib\"" + "\n\n" +
+                         "#include \"holostructurelib\"" + "\n\n" +
                          "# ~ #include this in your e2 to use with holostructurelib" + "\n" +
                          "# ~ exported by fast's vr hologram designer on " + getTimeStamp() + "\n\n" +
                          "if(first()){ registerStructure(\"" + S[2,string] + "\",table(" + "\n" +

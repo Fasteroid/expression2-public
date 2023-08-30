@@ -1,5 +1,5 @@
 @name holo structure: nade
-#include "vr_holo_designer/holostructurelib"
+#include "holostructurelib"
 
 # ~ #include this in your e2 to use with holostructurelib
 # ~ exported by fast's vr hologram designer on september 10 2022
