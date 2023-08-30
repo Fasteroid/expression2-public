@@ -1,4 +1,4 @@
-@name VR Holo Designer v1.5.1
+@name VR Holo Designer v1.5.2
 
 #[
     Note for Fasteroid/expression2-public Github browsers: 
@@ -169,6 +169,19 @@ if( first() ){
                 return This[R,number]
             }
         }
+        
+        # algorithm stolen from PA, no guarantees it'll work on everything
+        function table entity:getMirrored(Origin:vector, Axis:vector){
+            local Pos = This:pos()
+            Pos = Pos - Origin
+            Pos = Pos - 2 * Axis:dot(Pos) * Axis
+            Pos = Pos + Origin
+            
+            local Angle = This:toWorld(ang(180,0,0))
+            Angle = Angle:rotateAroundAxis(Axis,180)
+            
+            return table( "pos" = Pos, "ang" = Angle )
+        }
 
         function setHoloLock(){
             if(!Target_Use["trueid",number]){ return }
@@ -231,7 +244,7 @@ if( first() ){
             holoModel(H,Options["model",string])
             holoAng(H,Options["ent",entity]:angles())
             holoPos(H,Options["ent",entity]:pos())
-            holoMaterial(H,"pac/default")
+            holoMaterial(H,Options["ent",entity]:getMaterial())
             holoScaleUnits(H,Options["scale",vector])
             holoColor(H,Options["ent",entity]:getColor())
             
@@ -1291,6 +1304,28 @@ event chat(Ply:entity, Text:string, _:number){
         Bucket_Material = S[2,string]
         holoMaterial(BUCKET_PAINT, Bucket_Material)
         print("paint material set to: \""+Bucket_Material+"\"")
+    }
+    
+    if(S[1,string] == ".f"){
+        local Choice = table("x"=1,"y"=2,"z"=3)[S[2,string],number]
+        if( Choice ){
+            local Axis = vec()
+            Axis[Choice] = 1
+            Axis = ORIGIN_ENT:toWorldAxis(Axis)
+            local Origin = ORIGIN_ENT:pos()
+            for(I=1,Grab_Holos:count()){
+                local Holo = Grab_Holos[I,table]["trueid",number]
+                if(Holo){
+                    local Ent = holoEntity(Holo)
+                    local PosAng = Ent:getMirrored(Origin, Axis)
+                    holoPos(Holo,PosAng["pos",vector])
+                    holoAng(Holo,PosAng["ang",angle])
+                }
+            }
+        }
+        else {
+            owner():soundPlay("save",1,"buttons/button10.wav")             
+        }
     }
     
     if(S[1,string] == ".s"){
