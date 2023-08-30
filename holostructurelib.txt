@@ -72,14 +72,14 @@ if( first() ){
         local ThisStr = This+""
         if( HOLOSTRUCTURE_SPAWNED:exists(ThisStr) ){ # probably already spawned
             local Holos = HOLOSTRUCTURE_SPAWNED[ThisStr,table]["children",array]
-            foreach(N,ID:number=Holos){
+            foreach(_:number,ID:number=Holos){
                 ID:holoFree()
             }
             HOLOSTRUCTURE_SPAWNED:remove(ThisStr)
         }
         elseif( HOLOSTRUCTURE_QUEUE:exists(ThisStr) ) { # check queue just in case
             local Holos = HOLOSTRUCTURE_QUEUE[ThisStr,table]["children",array]
-            foreach(N,ID:number=Holos){
+            foreach(_:number,ID:number=Holos){
                 ID:holoFree()
             }
         }
@@ -102,7 +102,7 @@ if( first() ){
 }
 
 event tick(){
-    foreach(S, SpawnStruct:table = HOLOSTRUCTURE_QUEUE){
+    foreach(_:string, SpawnStruct:table = HOLOSTRUCTURE_QUEUE){
         
         if( !holoCanCreate() ){ break }
         N = SpawnStruct["id",number]
