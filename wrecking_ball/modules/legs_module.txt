@@ -1,0 +1,168 @@
+@name wreckingballfeet
+@persist LEGS_Buffer:number LEGS_FootID:number LEGS_Soundmakers:array LEGS_Objects:table LEGS_ForceFootUpdate:number LEGS_LERP_SPEED LEGS_SOUND_VOL
+
+#include "tinyiklib"
+
+#include "wrecking_ball/models/leg1"
+#include "wrecking_ball/models/leg2"
+
+if( first() ){
+    
+    # configurable stuff
+    
+    LEGS_LERP_SPEED = 0.2
+    LEGS_SOUND_VOL  = 20
+    
+    # don't touch pls
+    
+    LEGS_FootID =  LEGS_Buffer = 0
+    LEGS_Objects = table()
+    LEGS_Soundmakers = array()
+
+    function table legs_createFoot(Root:entity){
+        LEGS_FootID++
+        local Ret = iklib_newIKLeg(38,42,Root,"legs_ballFootSolver")
+        Ret["id",number] = LEGS_FootID
+        LEGS_Objects:pushTable(Ret)
+        
+        local Decor1 = holoStructCreate("leg1",Root:pos())
+        holoAng(Decor1, Root:angles())
+        holoParent(Decor1,Ret["_h1",number])
+        
+        local Decor2 = holoStructCreate("leg2",Root:toWorld(vec(34,0,0)))
+        holoAng(Decor2, Root:angles())
+        holoParent(Decor2,Ret["_h2",number])
+        
+        return Ret
+    }
+    
+    function legs_enableSoundMakers(){
+        foreach(_:number, V:entity = LEGS_Soundmakers){
+            V:setPos(V["root",entity]:pos())
+            V:propNotSolid(0)
+            V:propFreeze(0)
+        }
+    }
+    
+    function legs_disableSoundMakers(){
+        foreach(_:number, V:entity = LEGS_Soundmakers){
+            V:propFreeze(1)
+            V:propNotSolid(1)
+        }
+    }
+    
+    function legs_disableFeet(){
+        foreach(_:number, Foot:table = LEGS_Objects){
+            Foot["disabling",number] = 1
+        }
+    }
+    
+    function legs_enableFeet(){
+        foreach(_:number, Foot:table = LEGS_Objects){
+            Foot["disabling",number] = 0
+            Foot["_enabled",number] = 1
+            Foot["lerpfrom",vector] = Foot["_root",entity]:pos()
+            Foot["lerp",number] = 1
+        }        
+    }
+    
+    function legs_handleSoundMakers(This:table, Target:vector, Root:entity, Ranger:ranger){
+        if(!This["soundmaker",entity]:isValid()){
+            local P = propSpawn("models/props_c17/canister02a.mdl",Target+vec(0,0,100),0)
+            P:setAlpha(0)
+            P:makeSpherical(5)
+            P:noCollide(Root:parent())
+            P["root",entity] = Root
+            LEGS_Soundmakers:pushEntity(P)
+            This["soundmaker",entity] = P
+        }
+        local Soundmaker = This["soundmaker",entity]
+        if(!Soundmaker:isFrozen()){
+            local TargetOffset = Target+Ranger:hitNormal()*2.5
+            if(Soundmaker:pos():distance2(Target) > 550){ # something went wrong
+                Soundmaker:setPos(Target + vec(0,0,LEGS_SOUND_VOL))
+                Soundmaker:applyForce( -Soundmaker:vel()*Soundmaker:mass() )
+            }
+            else {
+                Soundmaker:applyForce( (TargetOffset-Soundmaker:pos())*Soundmaker:mass()*35 - Soundmaker:vel()*Soundmaker:mass() )
+            }
+        }        
+    }
+    
+    function legs_forceFootUpdate(){
+        LEGS_ForceFootUpdate = LEGS_FootID # each must consume
+    }
+    
+    function vector legs_ballFootSolver(This:table){
+        
+        local Root = This["_root",entity]
+        local RootVel = (Root:pos() - This["oldPos",vector]) * 8
+        local RootSpeed = RootVel:length()
+        RootVel = (RootVel/(RootSpeed+0.1))*clamp(RootSpeed,0,48)
+        
+        This["oldPos",vector] = Root:pos()
+        
+        local NextOrigin = Root:toWorld(vec(0,0,100))+RootVel
+        
+        local TestRanger = rangerOffset(160, NextOrigin, Root:toWorldAxis(vec(1,0,-5)))     
+        local Ranger = rangerOffset(160, This["rangerpos",vector], Root:toWorldAxis(vec(1,0,-5)))
+        
+        local Target = TestRanger:hit() ? (Ranger:hit() ? Ranger:pos() : TestRanger:pos()) : Root:toWorld(vec(20,0,-50))
+        
+        if(This["disabling",number]){ Target = Root:toWorld(vec(-50,0,30)) }
+        
+        if( 
+            (!LEGS_Buffer) & (This["lerp",number] <= 0) & 
+            (
+                # criteria to trigger foot move automatically:
+                ((Root:forward():dot(holoEntity(This["_h1",number]):forward():setZ(1)) < 0.4) & !This["disabling",number]) |
+                (This["rangerpos",vector]:distance(NextOrigin) > 80) |
+                (This["_lastDist",number] > This["_len",number])
+            ) |
+            (TestRanger:hit() & !This["rangerHit",number]) |
+            (This["disabling",number]==1) | 
+            LEGS_ForceFootUpdate
+        ){
+            This["rangerpos",vector] = NextOrigin
+            if(Ranger:hit() | This["disabling",number] | LEGS_ForceFootUpdate){
+                This["lerpfrom",vector] = This["last",vector]
+                This["lerp",number] = 1
+                if(LEGS_ForceFootUpdate){
+                    LEGS_ForceFootUpdate--
+                }
+                elseif(This["disabling",number]){
+                    This["disabling",number] = 2
+                }
+                else {
+                    LEGS_Buffer = 1
+                }
+            }
+        }
+        
+        This["rangerHit",number] = TestRanger:hit()
+        local Lerp = This["lerp",number]
+        
+        if( Lerp > 0 & TestRanger:hit() | This["disabling",number] ){
+            local A = This["lerpfrom",vector]
+            local B = (This["lerpfrom",vector]+Target)*0.5 + vec(0,0,20)
+            local C = Target
+            Target = mix(mix(C,B,1-Lerp),mix(B,A,1-Lerp),1-Lerp)
+            This["lerp",number] = This["lerp",number] - LEGS_LERP_SPEED
+            if(This["lerp",number]<=0){
+                LEGS_Buffer = 0
+                if(This["disabling",number]){
+                    This["disabling",number] = 0
+                    This["_enabled",number]  = 0
+                    This["soundmaker",entity]:setPos( Ranger:position() + vec(0,0,LEGS_SOUND_VOL) )
+                }
+            }
+        }
+        
+        This["last",vector] = Target
+        
+        legs_handleSoundMakers(This, Target, Root, Ranger)
+        
+        return Target
+        
+    }
+}
