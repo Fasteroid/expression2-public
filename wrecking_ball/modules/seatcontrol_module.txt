@@ -14,7 +14,7 @@ if( first() ){
     
     function seatrotation_internal_setupCamController(){
         if(CamController:isValid()){
-            CamController:linkToPod(SEATROTATION_Seat)
+            SEATROTATION_Seat:linkTo(CamController)
             SEATROTATION_CamLink = CamController:wirelink()
             SEATROTATION_CamLink["Position",vector]  = SEATROTATION_EyePos
             SEATROTATION_CamLink["Parent",entity]    = SEATROTATION_Seat
