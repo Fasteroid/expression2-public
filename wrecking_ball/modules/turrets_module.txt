@@ -40,6 +40,8 @@ if( first() ){
     TURRETS_TurretPool         = array()
     TURRETS_ActiveTurretMatrix = array()
     
+    TURRETS_CurWirelink        = nowirelink()
+    
     # external library interface
     
     sents_onTurretsReady("turrets_onCreated")
@@ -197,8 +199,12 @@ event tick(){
         TURRETS_CurSpread = max(TURRETS_SPREAD_OFFSET, TURRETS_CurSpread-TURRETS_SPREAD_SPEED)
     }
 
+    local Delta = TURRETS_TransformProgress
     TURRETS_TransformProgress = clamp(TURRETS_TransformProgress + TURRETS_TRANSFORM_SPEED * TURRETS_TransformState, 0, 1)
-    TURRETS_TransformRate_ = $TURRETS_TransformProgress
+    
+    TURRETS_TransformRate_ = TURRETS_TransformProgress - Delta
+    
+    # TURRETS_TransformRate_ = $TURRETS_TransformProgress -- broken on old compiler??
     
 }
 
