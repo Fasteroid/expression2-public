@@ -105,6 +105,8 @@ event tick(){
     foreach(_:string, SpawnStruct:table = HOLOSTRUCTURE_QUEUE){
         
         if( !holoCanCreate() ){ break }
+        if( opcounter() > softQuota() ){ break }
+        
         N = SpawnStruct["id",number]
         
         local Template = SpawnStruct["template",table]
@@ -120,6 +122,7 @@ event tick(){
         local BaseEntity = SpawnStruct["entity",entity]
         
         while( holoCanCreate() & (Progress < Max) ){
+            if( opcounter() > softQuota() ){ break }
             Progress++
             local H = holoAlloc()
                 holoModel(H,Models[Progress,string])
