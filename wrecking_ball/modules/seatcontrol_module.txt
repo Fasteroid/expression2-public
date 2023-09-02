@@ -1,6 +1,6 @@
 @name seatrotationcontrol
 @persist SEATROTATION_Seat:entity SEATROTATION_RootHolo:number
-@persist SEATROTATION_CamLink:wirelink SEATROTATION_ThirdPerson SEATROTATION_Active SEATROTATION_Angle SEATROTATION_EyePos:vector
+@persist SEATROTATION_CamLink:wirelink SEATROTATION_ThirdPerson SEATROTATION_Angle SEATROTATION_EyePos:vector
 
 #include "wrecking_ball/modules/sentspawning_module"
 
@@ -8,7 +8,6 @@ if( first() ){
     
     # no warnings
     SEATROTATION_Seat = noentity()
-    SEATROTATION_Active = 0
     SEATROTATION_EyePos = vec(0.00,0.00,33.18)
     
     
