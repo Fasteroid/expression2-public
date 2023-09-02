@@ -1,9 +1,8 @@
 @name seatrotationcontrol
-@inputs CamController:entity
-@persist SEATROTATION_Seat:entity SEATROTATION_RootHolo:number CamController:entity
+@persist SEATROTATION_Seat:entity SEATROTATION_RootHolo:number
 @persist SEATROTATION_CamLink:wirelink SEATROTATION_ThirdPerson SEATROTATION_Active SEATROTATION_Angle SEATROTATION_EyePos:vector
 
-#include "betterhololib"
+#include "wrecking_ball/modules/sentspawning_module"
 
 if( first() ){
     
@@ -12,40 +11,23 @@ if( first() ){
     SEATROTATION_Active = 0
     SEATROTATION_EyePos = vec(0.00,0.00,33.18)
     
-    function seatrotation_internal_setupCamController(){
-        if(CamController:isValid()){
-            CamController:linkTo(SEATROTATION_Seat)
-            SEATROTATION_CamLink = CamController:wirelink()
-            SEATROTATION_CamLink["Position",vector]  = SEATROTATION_EyePos
-            SEATROTATION_CamLink["Parent",entity]    = SEATROTATION_Seat
-        }
+    
+    sents_onCamControllerReady("seatrotation_setupCamController")
+    function seatrotation_setupCamController(CamController:entity){
+        CamController:linkTo(SEATROTATION_Seat)
+        SEATROTATION_CamLink = CamController:wirelink()
+        SEATROTATION_CamLink["Position",vector]  = SEATROTATION_EyePos
+        SEATROTATION_CamLink["Parent",entity]    = SEATROTATION_Seat
     }
     
     # thanks to my internship and angular dependency injection for this programming pattern!
     function seatrotation_setup(Seat:entity, RootHolo:number){
         SEATROTATION_Seat = Seat
         SEATROTATION_RootHolo = RootHolo
-        seatrotation_internal_setupCamController()
     }
     function seatrotation_setThirdPerson(Mode:number){
         SEATROTATION_ThirdPerson = Mode ? 1 : 0
     }
-    #[
-    (this doesn't work)
-    CamController = spawnCamController(
-        vec(),
-        ang(),
-        1, # number freeze
-        1, # number parentLocal
-        1, # number autoMove,
-        0, # number localMove,
-        1, # number allowZoom,
-        0, # number autoUnclip,
-        0, # number drawPlayer,
-        0, # number autoUnclip_IgnoreWater,
-        1  # number drawParent
-    )
-    ]#
 
 }
 
@@ -70,12 +52,5 @@ event tick(){
         }
     }
     
-}
-event removed(N:number){
-    SEATROTATION_Seat:unlinkFrom(CamController)
-}
-
-if( ~CamController ){
-    seatrotation_internal_setupCamController()
 }
 

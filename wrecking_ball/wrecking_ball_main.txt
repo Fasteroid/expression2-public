@@ -1,4 +1,4 @@
-@name Wrecking Ball 1.5.1
+@name Wrecking Ball 1.6
 
 #[
     Note for Fasteroid/expression2-public Github browsers: 
@@ -35,6 +35,7 @@
 #include "wrecking_ball/modules/seatcontrol_module"
 #include "wrecking_ball/modules/turrets_module"
 #include "wrecking_ball/modules/legs_module"
+#include "wrecking_ball/modules/sentspawning_module"
 
 #include "wrecking_ball/models/fireball_cheap"
 
@@ -81,17 +82,22 @@ if( first() ){
         local Origin = entity():pos() + entity():up()*100
     
         SEAT = seatSpawn("models/nova/airboat_seat.mdl", Origin, ang(0,-90,0), 1)
-        if(!SEAT:isValid()){ error("wtf") }
+        if(!SEAT:isValid()){ error("Failed to create seat!") }
     
-        BALL = propSpawn("models/hunter/misc/sphere175x175.mdl", Origin, ang(), 0)    
+        BALL = propSpawn("models/hunter/misc/sphere175x175.mdl", Origin, ang(), 0)
+        if(!BALL:isValid()){ error("Failed to create ball!") }
+        
         BALL:propPhysicalMaterial("Metal_barrel")
-        BALL:makeSpherical()
+        local Size = BALL:boxSize()
+        
+        RADIUS = max(Size[1], Size[2], Size[3]) / 2 + 1
+        BALL:makeSpherical( RADIUS )
+        
         BALL:setMass(320)
         
         BALL:soundPlay("gyroscopic-harness",0,"npc/scanner/cbot_fly_loop.wav")
         BALL:setMaterial("metal6")
         
-        RADIUS = BALL:boxSize():x()/2
         SEAT_HEIGHT = RADIUS - 20
     
     ##### holo initialization #####
@@ -172,6 +178,8 @@ if( first() ){
         
         Can_Jump = 1
         
+        sents_startSpawning()
+        
       # uninitialized warnings
         Transform_Progress = Is_Hampter = Pile_Progress = Grapple_Out = OnGround_ = 
         Speed_ = Pile_Active = Is_Fireball = Fireball_Current_Opacity = Pile_Desired = 0
@@ -191,14 +199,14 @@ if( first() ){
     ##### misc #####
     
         function checkLandingConditions(){
-            if(Ball_Action != Grapple_LOCK){
+            #if(Ball_Action != Grapple_LOCK){
                 
                 local OldVel = BALL["oldvel",vector]
                 local NewVel = BALL:vel()
                 
                 local Accel = NewVel - OldVel
                 
-                local IsReallyOnGround = OnGround_ & (1-abs(NewVel:dot(GroundTrace_:hitNormal())) > 0)
+                local IsReallyOnGround = OnGround_ & (1-abs(NewVel:dot(GroundTrace_:hitNormal())) > 0) & (GroundTrace_:hitNormal():dot(vec(0,0,1)) > 0.5)
                 
                 if( IsReallyOnGround ){
                     Can_Jump = 1
@@ -222,7 +230,7 @@ if( first() ){
                 
                 BALL["oldvel",vector] = NewVel
                 
-            }
+            #}
         }
     
         function entity:perfectAngForce(Ang:angle){
@@ -233,7 +241,10 @@ if( first() ){
         function ranger doGroundTrace(){
             local Test = rangerOffsetHull(BALL,BALL:pos()+vec(0,0,RADIUS), BALL:pos()-vec(0,0,4096))
             local Victim = Test:entity()
-            while( Victim:isAlive() | (Victim:isValidPhysics() & (Victim:volume() < 100000)) ){
+            while( 
+                (Victim:isAlive()) | 
+                (Victim:isValidPhysics() & !Victim:isFrozen() & (Victim:surfaceArea() < 10000) & (!Victim:health() | (Victim:health() < 200)))
+            ){
                 rangerFilter(Victim)
                 Test = rangerOffsetHull(BALL,BALL:pos()+vec(0,0,RADIUS), BALL:pos()-vec(0,0,4096))
                 Victim = Test:entity()
@@ -391,6 +402,8 @@ if( first() ){
         function mode_ball(){
             
             holoAng( ROOT_HOLO, ang() )
+            
+            OnGround_ = (GroundTrace_:distance() < 20+RADIUS)
 
             Transform_Progress = max(0, Transform_Progress - TRANSFORM_RATE)
             if( $Transform_Progress < 0 & Transform_Progress == 0 ){
@@ -606,7 +619,7 @@ if( first() ){
             OnGround_ = (GroundTrace_:distance() < 20+MECH_HEIGHT+RADIUS)
             
             local FacingAng = Tilt_ + ang(0,SEATROTATION_Angle,0)
-            local GroundTrace2 = rangerOffset(BALL:pos()+vec(0,0,RADIUS), BALL:pos()-vec(0,0,4096))
+            local GroundTrace2 = rangerOffsetHull(BALL,BALL:pos(),BALL:pos()-vec(0,0,4096))
             local NewAng = slerp(quat(ROOT_HOLO_ENT),quat(FacingAng),0.4):toAngle()
             holoAng(ROOT_HOLO,NewAng)
             
@@ -626,7 +639,7 @@ if( first() ){
             
             local HoverForce   = vec()
             if(Tilt_!=ang() & OnGround_ & Can_Jump){
-                local HoverTarget = GroundTrace2:pos() + vec(0,0,RADIUS) + GroundTrace_:pos()
+                local HoverTarget = GroundTrace2:pos() + GroundTrace_:pos()
                 HoverTarget = HoverTarget*0.5 + GroundTrace_:hitNormal()*MECH_HEIGHT
                 HoverForce = (HoverTarget-BALL:pos())*(BALL:mass()*10)-BALL:vel()*BALL:mass()*0.9
                 HoverForce = HoverForce:rotate(ang(-Tilt_[1], 0, Tilt_[2]))*0.5
@@ -669,7 +682,6 @@ event tick(){
     Speed_ = BALL:vel():setZ(0):length()
     
     GroundTrace_ = doGroundTrace()
-    OnGround_ = (GroundTrace_:distance() < 20+RADIUS)
 
     checkLandingConditions()
     
@@ -737,7 +749,7 @@ event keyPressed(Player:entity, Key:string, Down:number, KeyBind:string) {
                 }
             break
             case "jump",
-                if(Down & OnGround_ & Can_Jump & Ball_Action == Action_NONE){
+                if(Down & OnGround_ & Can_Jump){
                     BALL:applyForce(vec(0,0,270)*BALL:mass())
                     Can_Jump = 0
                 }

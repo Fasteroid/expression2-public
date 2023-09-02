@@ -1,0 +1,154 @@
+@name sentspawningmodule
+@inputs 
+@outputs 
+@persist SENTS_tick:string SENTS_entityCreated:string SENTS_Turrets:array SENTS_CamController:entity SENTS_TurretCallback:string SENTS_CamControlCallback:string SENTS_ShouldHint
+@persist SENTS_SETUP_TURRETS:string SENTS_SETUP_CAMCONTROLLER:string
+@trigger
+
+if( first() ){
+    
+    SENTS_SETUP_TURRETS =                                 #
+        "wire_turret_tracernum 1;" +                      #
+        "wire_turret_tracer Tracer;" +                    #
+        "wire_turret_model models/weapons/w_smg1.mdl;" +  #
+        "wire_turret_sound Weapon_AR2.Single;" +          #
+        "wire_turret_numbullets 1;" +                     #
+        "wire_turret_force 1.0;" +                        #
+        "wire_turret_damage 8;" +                         #
+        "wire_turret_automatic 0;" +                      #
+        "gmod_toolmode wire_turret"                       #
+        
+    SENTS_SETUP_CAMCONTROLLER =                                         #
+        "wire_cam_allowzoom 0;" +                                       #
+        "wire_cam_automove 1;" +                                        #
+        "wire_cam_autounclip 1;" +                                      #
+        "wire_cam_autounclip_ignorewater 0;" +                          #
+        "wire_cam_drawparent 1;" +                                      #
+        "wire_cam_drawplayer 0;" +                                      #
+        "wire_cam_freemove 0;" +                                        #
+        "wire_cam_localmove 0;" +                                       #
+        "wire_cam_model models/jaanus/wiretool/wiretool_range.mdl;" +   #
+        "wire_cam_parentlocal 1;" +                                     #
+        "gmod_toolmode wire_cam"                                        #
+    
+    SENTS_Turrets = array()
+    SENTS_ShouldHint = 1
+    
+    function sents_onCamControllerReady(Callback:string){
+        SENTS_CamControlCallback = Callback
+    }
+    function sents_onTurretsReady(Callback:string){
+        SENTS_TurretCallback = Callback
+    }
+    
+    function sents_resetFetched(E:entity){
+        E:constraintBreak()
+        E:propFreeze(1)
+        E:setPos(vec())
+    }
+    
+    function sents_startSpawning(){
+        
+        if( !concmd("use gmod_tool") ){
+            print("> sentspawningmodule: no concmd; manual setup required")
+            # TODO: implement manual setup
+        }
+        else{
+            print("> sentspawningmodule: setting up...")
+            SENTS_tick          = "sents_turrets_1"
+            SENTS_entityCreated = ""
+            timer("sents_helphint",5000)
+        }
+
+    }
+    
+    function sents_turrets_1(){
+        if( !owner():keyAttack1() & owner():weapon():type() == "gmod_tool" ){
+            SENTS_tick          = "sents_turrets_2"
+            SENTS_entityCreated = ""
+            
+            SENTS_ShouldHint = 0
+            
+            concmd(SENTS_SETUP_TURRETS)
+        }
+    }
+    function sents_turrets_2(){
+        if( owner():tool() == "wire_turret" & !owner():keyAttack1() & owner():aimEntity():type() != "gmod_wire_turret" ){
+            SENTS_tick          = ""
+            SENTS_entityCreated = "sents_turrets_3"
+            
+            concmd("+attack")
+        }
+    }
+    function sents_turrets_3(Ent:entity){
+        if( Ent:type() == "gmod_wire_turret" & Ent:owner() == owner() ){
+            sents_resetFetched(Ent)
+            SENTS_Turrets:pushEntity(Ent)
+            
+            if(SENTS_Turrets:count() < 4){
+                SENTS_tick          = "sents_turrets_2"
+                SENTS_entityCreated = ""
+                
+                concmd("-attack")
+            }
+            else{
+                 print("> sentspawningmodule: made turrets...")
+                SENTS_tick          = "sents_camcontroller_1"
+                SENTS_entityCreated = ""            
+                
+                concmd("-attack;" + SENTS_SETUP_CAMCONTROLLER)
+                concmd("-attack")
+            }
+            
+        }
+    }
+    
+    function sents_camcontroller_1(){
+        if( owner():tool() == "wire_cam" & !owner():keyAttack1() ){
+            SENTS_tick          = ""
+            SENTS_entityCreated = "sents_camcontroller_2"
+            
+            concmd("+attack")
+        }        
+    }
+    function sents_camcontroller_2(Ent:entity){
+        if( Ent:type() == "gmod_wire_cameracontroller" & Ent:owner() == owner() ){
+            sents_resetFetched(Ent)
+            SENTS_CamController = Ent
+            
+            SENTS_tick          = "sents_run_callbacks"
+            SENTS_entityCreated = ""          
+            
+            print("> sentspawningmodule: made cam controller...")
+                
+            concmd("-attack; gmod_toolmode wire_expression2")
+        }     
+    }
+    
+    function sents_run_callbacks(){
+        print("> sentspawningmodule: done!")
+        SENTS_TurretCallback(SENTS_Turrets)
+        SENTS_CamControlCallback(SENTS_CamController)
+        SENTS_tick = ""
+    }
+    
+}
+
+
+event tick(){
+    if( SENTS_tick != "" ){
+        SENTS_tick()
+    }
+}
+
+
+event entityCreated(Ent:entity) {
+    if( SENTS_entityCreated != "" ){
+        SENTS_entityCreated(Ent)
+    }    
+}
+
+if(clk("sents_helphint") & SENTS_ShouldHint){
+    SENTS_ShouldHint = 0
+    print("> sentspawningmodule: this is taking a while... make sure your toolgun is out")
+}
