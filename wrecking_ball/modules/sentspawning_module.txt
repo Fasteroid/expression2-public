@@ -1,9 +1,7 @@
 @name sentspawningmodule
-@inputs 
-@outputs 
-@persist SENTS_tick:string SENTS_entityCreated:string SENTS_Turrets:array SENTS_CamController:entity SENTS_TurretCallback:string SENTS_CamControlCallback:string SENTS_ShouldHint
+@persist SENTS_tick:string SENTS_entityCreated:string SENTS_Turrets:array SENTS_CamController:entity SENTS_TurretCallback:string SENTS_CamControlCallback:string
+@persist SENTS_ShouldHint SENTS_Manual
 @persist SENTS_SETUP_TURRETS:string SENTS_SETUP_CAMCONTROLLER:string
-@trigger
 
 if( first() ){
     
@@ -34,6 +32,10 @@ if( first() ){
     SENTS_Turrets = array()
     SENTS_ShouldHint = 1
     
+    function sents_uninitialized_warnings(){
+        SENTS_CamController = noentity()
+    }
+    
     function sents_onCamControllerReady(Callback:string){
         SENTS_CamControlCallback = Callback
     }
@@ -42,6 +44,7 @@ if( first() ){
     }
     
     function sents_resetFetched(E:entity){
+        E["sents_consumed",number] = 1
         E:constraintBreak()
         E:propFreeze(1)
         E:setPos(vec())
@@ -50,13 +53,15 @@ if( first() ){
     function sents_startSpawning(){
         
         if( !concmd("use gmod_tool") ){
-            print("> sentspawningmodule: no concmd; manual setup required")
-            # TODO: implement manual setup
+            print("> sentspawningmodule: no concmd; waiting for turrets and camcontroller...")
+            SENTS_entityCreated = "sents_monitorManual"
+            SENTS_Manual = 1
         }
         else{
             print("> sentspawningmodule: setting up...")
             SENTS_tick          = "sents_turrets_1"
             SENTS_entityCreated = ""
+            SENTS_Manual = 0
             timer("sents_helphint",5000)
         }
 
@@ -81,10 +86,17 @@ if( first() ){
         }
     }
     function sents_turrets_3(Ent:entity){
-        if( Ent:type() == "gmod_wire_turret" & Ent:owner() == owner() ){
-            sents_resetFetched(Ent)
-            SENTS_Turrets:pushEntity(Ent)
-            
+        
+        if( 
+            Ent:type() != "gmod_wire_turret" |
+            Ent:owner() != owner() | 
+            SENTS_Turrets:count() >= 4 |
+            Ent["sents_consumed",number]
+        ){ return }
+        
+        sents_resetFetched(Ent)
+        SENTS_Turrets:pushEntity(Ent)
+        if(!SENTS_Manual){ 
             if(SENTS_Turrets:count() < 4){
                 SENTS_tick          = "sents_turrets_2"
                 SENTS_entityCreated = ""
@@ -92,15 +104,19 @@ if( first() ){
                 concmd("-attack")
             }
             else{
-                 print("> sentspawningmodule: made turrets...")
+                print("> sentspawningmodule: made turrets...")
                 SENTS_tick          = "sents_camcontroller_1"
                 SENTS_entityCreated = ""            
                 
                 concmd("-attack;" + SENTS_SETUP_CAMCONTROLLER)
-                concmd("-attack")
             }
-            
         }
+        else {
+            if(SENTS_Turrets:count() == 4){
+                SENTS_TurretCallback(SENTS_Turrets)
+            }
+        }
+        
     }
     
     function sents_camcontroller_1(){
@@ -112,21 +128,37 @@ if( first() ){
         }        
     }
     function sents_camcontroller_2(Ent:entity){
-        if( Ent:type() == "gmod_wire_cameracontroller" & Ent:owner() == owner() ){
-            sents_resetFetched(Ent)
-            SENTS_CamController = Ent
-            
+        
+        if(
+            Ent:type() != "gmod_wire_cameracontroller" |
+            Ent:owner() != owner() | 
+            SENTS_CamController:isValid() |
+            Ent["sents_consumed",number]
+        ){ return }
+        
+        sents_resetFetched(Ent)
+        SENTS_CamController = Ent
+        if(!SENTS_Manual){ 
             SENTS_tick          = "sents_run_callbacks"
             SENTS_entityCreated = ""          
             
             print("> sentspawningmodule: made cam controller...")
                 
-            concmd("-attack; gmod_toolmode wire_expression2")
-        }     
+            concmd("-attack; gmod_toolmode wire_expression2") 
+        }
+        else {
+            SENTS_CamControlCallback(SENTS_CamController)
+        } 
+    }
+    
+    function sents_monitorManual(E:entity){
+        sents_turrets_3(E)
+        sents_camcontroller_2(E)
     }
     
     function sents_run_callbacks(){
         print("> sentspawningmodule: done!")
+        concmd("wire_turret_automatic 1")
         SENTS_TurretCallback(SENTS_Turrets)
         SENTS_CamControlCallback(SENTS_CamController)
         SENTS_tick = ""
@@ -140,7 +172,6 @@ event tick(){
         SENTS_tick()
     }
 }
-
 
 event entityCreated(Ent:entity) {
     if( SENTS_entityCreated != "" ){
