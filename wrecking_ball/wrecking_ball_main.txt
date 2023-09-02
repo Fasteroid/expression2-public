@@ -1,4 +1,4 @@
-@name Wrecking Ball 1.6.1
+@name Wrecking Ball 1.6.3
 
 #[
     Note for Fasteroid/expression2-public Github browsers: 
@@ -27,7 +27,7 @@
 @persist Grapple_Vel:vector Rope_Len Grapple_Hit_Entity:entity Grapple_Out
 @persist Pile_Active Pile_Dir:vector Pile_Axis:vector Pile_Initial_Ang:angle Pile_Progress Pile_Target_Pos:vector Pile_Prop:entity Pile_Desired
 @persist Leg_Deploy_Desired
-@persist Is_Fireball Fireball_Current_Opacity FireballCachedOpacity Fireball_Sound_CD
+@persist Is_Fireball Fireball_Current_Opacity Fireball_Sound_CD Fireball_Cache
 
 # updated every tick
 @persist GroundTrace_:ranger OnGround_ Driver_:entity Keys_:table Speed_ AimPos_:vector Tilt_:angle 
@@ -79,7 +79,7 @@ if( first() ){
         Pile_SPOOL = 3    Pile_DROP = 4
         
       # global constants
-        local Origin = entity():pos() + entity():up()*100
+        local Origin = entity():pos() + entity():up()*100 + entity():forward() * 100
     
         SEAT = seatSpawn("models/nova/airboat_seat.mdl", Origin, ang(0,-90,0), 1)
         if(!SEAT:isValid()){ error("Failed to create seat!") }
@@ -181,8 +181,10 @@ if( first() ){
         sents_startSpawning()
         
       # uninitialized warnings
+      function uninitialized(){
         Transform_Progress = Is_Hampter = Pile_Progress = Grapple_Out = OnGround_ = 
-        Speed_ = Pile_Active = Is_Fireball = Fireball_Current_Opacity = Pile_Desired = 0
+        Speed_ = Pile_Active = Is_Fireball = Fireball_Current_Opacity = Pile_Desired = 
+        Fireball_Cache = 0
         
         Driver_ = noentity()
         GroundTrace_ = noranger()
@@ -191,6 +193,7 @@ if( first() ){
         Tilt_ = ang()
         Ball_Action = Action_NONE
         Pile_Prop = noentity()
+      }
         
     ##### function stubs #####
     
@@ -253,14 +256,17 @@ if( first() ){
         }
         
       # fireball funcs
-        FireballCachedOpacity = -1
         function setFireballOpacity(Alpha:number){
             Alpha = round(Alpha/5)*5
             Alpha = Alpha / 255
             local Children = FIREBALL_ROOT:getChildren()
             local Colors   = HOLOSTRUCTURE_DATA["fireball",table]["colors",array]
-            foreach(Child:number, HoloID:number = Children){
-                holoColor(HoloID, Colors[Child,vector] * Alpha,254)
+            local CurCache = Children:count() * (1+Alpha)
+            if( Fireball_Cache != CurCache ){
+                foreach(Child:number, HoloID:number = Children){
+                    holoColor(HoloID, Colors[Child,vector] * Alpha,254)
+                }
+                Fireball_Cache = CurCache
             }
         }
         
@@ -604,12 +610,14 @@ if( first() ){
                 begin_mode_hampter()
             }
             
+            local TiltAng = ang(Tilt_[1], 0, -Tilt_[2])
+            
             if(Driver_:isValid()){
                 local EyeTrace = rangerOffsetHull(16384,Driver_:shootPos(),Driver_:eyeAnglesVehicle():forward(),-vec(16),vec(16))
                 turrets_aimAll( EyeTrace:position() )
             }
             
-            if( Leg_Deploy_Desired & (BALL:up():dot(vec(0,0,1))>0.9)){
+            if( Leg_Deploy_Desired & (BALL:up():dot(vec(0,0,1))>0.9) ){
                 legs_enableSoundMakers()
                 legs_enableFeet()
                 legs_forceFootUpdate()
@@ -619,12 +627,11 @@ if( first() ){
             OnGround_ = (GroundTrace_:distance() < 20+MECH_HEIGHT+RADIUS)
             
             local FacingAng = Tilt_ + ang(0,SEATROTATION_Angle,0)
-            local GroundTrace2 = rangerOffsetHull(BALL,BALL:pos(),BALL:pos()-vec(0,0,4096))
             local NewAng = slerp(quat(ROOT_HOLO_ENT),quat(FacingAng),0.4):toAngle()
             holoAng(ROOT_HOLO,NewAng)
             
             local ForceVec = (vec( Keys_["ws",number], Keys_["ad",number], 0 ):rotate( Driver_:eyeAnglesVehicle() ):setZ(0))
-            ForceVec = ForceVec:rotate(ang(Tilt_[1], 0, -Tilt_[2])):normalized()
+            ForceVec = ForceVec:rotate(TiltAng):normalized()
                 
             local AccelTime = 5
             local TopSpeed  = 150
@@ -635,14 +642,14 @@ if( first() ){
             # stupid conversion factor, I have no idea where this comes from
             TopSpeed = (TopSpeed + 115) / 0.962857
             
-            local MovementForce = (ForceVec*TopSpeed*vec(1,1,OnGround_*0.5) - BALL:vel()*vec(1,1,0)) * BALL:mass() / AccelTime
-            
-            local HoverForce   = vec()
+            local Vel           = BALL:vel()
+            local Mass          = BALL:mass()
+            local MovementForce = (ForceVec*TopSpeed*vec(1,1,OnGround_*0.5) - Vel:setZ(0)) * BALL:mass() / AccelTime
+            local HoverForce    = vec()
             if(Tilt_!=ang() & OnGround_ & Can_Jump){
-                local HoverTarget = GroundTrace2:pos() + GroundTrace_:pos()
-                HoverTarget = HoverTarget*0.5 + GroundTrace_:hitNormal()*MECH_HEIGHT
-                HoverForce = (HoverTarget-BALL:pos())*(BALL:mass()*10)-BALL:vel()*BALL:mass()*0.9
-                HoverForce = HoverForce:rotate(ang(-Tilt_[1], 0, Tilt_[2]))*0.5
+                HoverTarget = GroundTrace_:pos() + GroundTrace_:hitNormal()*MECH_HEIGHT
+                HoverForce  = (HoverTarget-BALL:pos())*(Mass*10)-Vel*Mass*0.9
+                HoverForce  = HoverForce:rotate(TiltAng)*0.5
             }
             
             BALL:applyForce( MovementForce + HoverForce*vec(0,0,1) )
@@ -676,6 +683,10 @@ if( first() ){
 }
 
 event tick(){
+    
+    if( opcounter() > softQuota() ){
+        exit() 
+    } # :(
     
     Driver_ = SEAT:driver()
     holoPos( SEAT_ROOT_HOLO, ROOT_HOLO_ENT:toWorld(vec(0,0,SEAT_HEIGHT * Transform_Progress )))
