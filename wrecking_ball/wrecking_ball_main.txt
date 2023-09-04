@@ -1,4 +1,4 @@
-@name Wrecking Ball 1.7.1
+@name Wrecking Ball 1.7.2
 
 #[
     Note for Fasteroid/expression2-public Github browsers: 
@@ -782,6 +782,11 @@ event keyPressed(Player:entity, Key:string, Down:number, KeyBind:string) {
                 else{
                     detachGrapple()
                 }
+            break
+            case "attack",
+                if(Down){
+                    if(!Is_Hampter){ changeMechForm() } # exit mech to fire
+                }            
             break
             case "jump",
                 if(Down & OnGround_ & Can_Jump){
