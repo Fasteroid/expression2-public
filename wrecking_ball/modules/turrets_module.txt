@@ -12,6 +12,7 @@
 #include "wrecking_ball/models/gunbarrel_cheap"
 
 #include "wrecking_ball/modules/sentspawning_module"
+#include "wrecking_ball/modules/tracefilter_module"
 
 if( first() ){
     
@@ -49,6 +50,7 @@ if( first() ){
         foreach(_:number, T:entity = Turrets){
             rangerFilter(T)
             TURRETS_TurretPool:pushEntity(T)
+            TRACEFILTER_IGNORABLES:pushEntity(T)
         }        
     }
     

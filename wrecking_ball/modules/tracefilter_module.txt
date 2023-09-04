@@ -1,0 +1,11 @@
+@name tracefiltermodule
+@persist TRACEFILTER_IGNORABLES:array
+
+if( first() ){
+    TRACEFILTER_IGNORABLES = array()
+}
+
+function tracefilter_load(){
+    rangerReset()
+    rangerFilter(TRACEFILTER_IGNORABLES)
+}

@@ -1,4 +1,4 @@
-@name Wrecking Ball 1.6.3
+@name Wrecking Ball 1.7.0
 
 #[
     Note for Fasteroid/expression2-public Github browsers: 
@@ -8,7 +8,7 @@
 ]#
 
 # constants
-@persist SEAT_HEIGHT CAMERA_POS:vector SEAT:entity BALL:entity TRACE_IGNORABLE_ENTS:array TRANSFORM_RATE
+@persist SEAT_HEIGHT CAMERA_POS:vector SEAT:entity BALL:entity TRANSFORM_RATE
 @persist GRAPPLE_SPEED RADIUS FIREBALL_VEL GRAPPLE_MIN_DIST GRAPPLE_STEP_SIZE GRAPPLE_MAX_DIST GRAPPLE_PHYSOBJ:entity FIREBALL_TIMEOUT GRAPPLE_ORIGIN:entity
 @persist PILE_SPOOL_RATE PILE_SPOOL_STEP PILE_DROP_STEP PILE_MIN_HEIGHT PILE_FORCE PILE_FORCE_TIME
 @persist MECH_HEIGHT GRAPPLE_MAX_DOT SLOPE_MAX_DOT
@@ -36,6 +36,7 @@
 #include "wrecking_ball/modules/turrets_module"
 #include "wrecking_ball/modules/legs_module"
 #include "wrecking_ball/modules/sentspawning_module"
+#include "wrecking_ball/modules/tracefilter_module"
 
 #include "wrecking_ball/models/fireball_cheap"
 
@@ -62,7 +63,7 @@ if( first() ){
         FIREBALL_TIMEOUT  = 4000
         
         PILE_SPOOL_RATE = 0.02
-        PILE_SPOOL_STEP = 3.6
+        PILE_SPOOL_STEP = 5
         PILE_DROP_STEP  = 100
         PILE_MIN_HEIGHT = 150
         PILE_FORCE      = 600
@@ -90,7 +91,7 @@ if( first() ){
         BALL:propPhysicalMaterial("Metal_barrel")
         local Size = BALL:boxSize()
         
-        RADIUS = max(Size[1], Size[2], Size[3]) / 2 + 1
+        RADIUS = max(Size[1], Size[2], Size[3]) / 2 + 2
         BALL:makeSpherical( RADIUS )
         
         BALL:setMass(320)
@@ -173,8 +174,13 @@ if( first() ){
         holoParent(GRAPPLE_HOLO,GRAPPLE_ROOT_HOLO)
 
         rangerPersist(1)
-        TRACE_IGNORABLE_ENTS = array(BALL, SEAT, GRAPPLE_PHYSOBJ, GRAPPLE_ORIGIN)
-        rangerFilter( TRACE_IGNORABLE_ENTS )
+        
+        TRACEFILTER_IGNORABLES = TRACEFILTER_IGNORABLES:add(array(
+            BALL, 
+            SEAT, 
+            GRAPPLE_PHYSOBJ, 
+            GRAPPLE_ORIGIN
+        ))
         
         Can_Jump = 1
         
@@ -246,11 +252,15 @@ if( first() ){
         }
         
         function ranger doGroundTrace(){
+            tracefilter_load()
             local Test = rangerOffsetHull(BALL,BALL:pos(),BALL:pos()-vec(0,0,4096))
             local Victim = Test:entity()
             while( 
-                (Victim:isAlive()) | 
-                (Victim:isValidPhysics() & !Victim:isFrozen() & (Victim:surfaceArea() < 10000) & (!Victim:health() | (Victim:health() < 200)))
+                Victim:isAlive() | 
+                Victim:isValid() & (
+                    (!Victim:isFrozen() & (Victim:surfaceArea() < 20000)) | 
+                    (Victim:health() & (Victim:health() < 1000))
+                )
             ){
                 rangerFilter(Victim)
                 Test = rangerOffsetHull(BALL,BALL:pos(),BALL:pos()-vec(0,0,4096))
@@ -481,6 +491,7 @@ if( first() ){
                     reelGrapple()
                 break
                 case Grapple_FIRE,
+                    tracefilter_load()
                     local Trace = rangerOffset( GRAPPLE_HOLO_ENT:pos(), GRAPPLE_HOLO_ENT:pos() + Grapple_Vel )
                     if(Trace:pos():distance(BALL:pos()) > GRAPPLE_MAX_DIST){
                         detachGrapple()
@@ -519,6 +530,8 @@ if( first() ){
                     reelGrapple()
                     Pile_Progress = min(1, Pile_Progress + PILE_SPOOL_RATE)
                     
+                    tracefilter_load()
+                    
                     local TraceDir   = Pile_Dir:setZ(1):normalized()
                     local DistLeft   = PILE_SPOOL_STEP
                     local TraceStart = BALL:pos()
@@ -555,7 +568,7 @@ if( first() ){
                         SEAT:soundPlay("pile-metal",3,"doors/garage_stop1.wav")
                         
                         Pile_Prop = propSpawn("models/hunter/plates/plate8x8.mdl",GroundTrace_:position()-vec(0,0,RADIUS+1.55),0)
-                        foreach(_:number, K:entity = TRACE_IGNORABLE_ENTS){
+                        foreach(_:number, K:entity = TRACEFILTER_IGNORABLES){
                             K:noCollide(Pile_Prop)
                         }
                         Pile_Prop:setAlpha(0)
@@ -621,6 +634,7 @@ if( first() ){
             local TiltAng = ang(Tilt_[1], 0, -Tilt_[2])
             
             if(Driver_:isValid()){
+                tracefilter_load()
                 local EyeTrace = rangerOffsetHull(16384,Driver_:shootPos(),Driver_:eyeAnglesVehicle():forward(),-vec(4),vec(4))
                 turrets_aimAll( EyeTrace:position() )
             }
