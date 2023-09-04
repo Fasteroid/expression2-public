@@ -1,4 +1,4 @@
-@name Wrecking Ball 1.7.0
+@name Wrecking Ball 1.7.1
 
 #[
     Note for Fasteroid/expression2-public Github browsers: 
@@ -91,7 +91,7 @@ if( first() ){
         BALL:propPhysicalMaterial("Metal_barrel")
         local Size = BALL:boxSize()
         
-        RADIUS = max(Size[1], Size[2], Size[3]) / 2 + 2
+        RADIUS = max(Size[1], Size[2], Size[3]) / 2
         BALL:makeSpherical( RADIUS )
         
         BALL:setMass(320)
@@ -251,9 +251,11 @@ if( first() ){
             This:applyTorque((Torque*200-This:angVelVector()*10)*This:inertia())
         }
         
-        function ranger doGroundTrace(){
+        function ranger doGroundTrace(UseOffset:number){
             tracefilter_load()
-            local Test = rangerOffsetHull(BALL,BALL:pos(),BALL:pos()-vec(0,0,4096))
+            local StartPos = BALL:pos() + vec(0,0,RADIUS * UseOffset)
+            local EndPos   = BALL:pos() - vec(0,0,4096)
+            local Test = rangerOffsetHull(BALL,StartPos,EndPos)
             local Victim = Test:entity()
             while( 
                 Victim:isAlive() | 
@@ -263,7 +265,7 @@ if( first() ){
                 )
             ){
                 rangerFilter(Victim)
-                Test = rangerOffsetHull(BALL,BALL:pos(),BALL:pos()-vec(0,0,4096))
+                Test = rangerOffsetHull(BALL,StartPos,EndPos)
                 Victim = Test:entity()
             }
             return Test
@@ -714,7 +716,7 @@ event tick(){
     holoPos( SEAT_ROOT_HOLO, ROOT_HOLO_ENT:toWorld(vec(0,0,SEAT_HEIGHT * Transform_Progress )))
     Speed_ = BALL:vel():setZ(0):length()
     
-    GroundTrace_ = doGroundTrace()
+    GroundTrace_ = doGroundTrace(!Pile_Active)
 
     checkLandingConditions()
     
