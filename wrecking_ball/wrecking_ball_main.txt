@@ -235,6 +235,10 @@ if( first() ){
                 
             #}
         }
+        
+        function vector vector:projectOnPlane(Norm:vector){
+            return This - ( This * Norm / Norm:length2() ) * Norm
+        }
     
         function entity:perfectAngForce(Ang:angle){
             local Torque = This:toLocalAxis(rotationVector(quat(Ang)/quat(This)))
@@ -242,14 +246,14 @@ if( first() ){
         }
         
         function ranger doGroundTrace(){
-            local Test = rangerOffsetHull(BALL,BALL:pos()+vec(0,0,RADIUS), BALL:pos()-vec(0,0,4096))
+            local Test = rangerOffsetHull(BALL,BALL:pos(),BALL:pos()-vec(0,0,4096))
             local Victim = Test:entity()
             while( 
                 (Victim:isAlive()) | 
                 (Victim:isValidPhysics() & !Victim:isFrozen() & (Victim:surfaceArea() < 10000) & (!Victim:health() | (Victim:health() < 200)))
             ){
                 rangerFilter(Victim)
-                Test = rangerOffsetHull(BALL,BALL:pos()+vec(0,0,RADIUS), BALL:pos()-vec(0,0,4096))
+                Test = rangerOffsetHull(BALL,BALL:pos(),BALL:pos()-vec(0,0,4096))
                 Victim = Test:entity()
             }
             return Test
@@ -466,7 +470,6 @@ if( first() ){
                 TopSpeed = (TopSpeed + 115) / 0.962857
                 
                 BALL:applyForce( (ForceVec*TopSpeed*vec(1,1,OnGround_*0.5) - BALL:vel()*vec(1,1,0)) * BALL:mass() / AccelTime )
-                ## print(BALL:vel():length())
             }
                 
             if( !Grapple_Out ){
@@ -516,15 +519,20 @@ if( first() ){
                     reelGrapple()
                     Pile_Progress = min(1, Pile_Progress + PILE_SPOOL_RATE)
                     
-                    local TraceStart = BALL:pos() + vec(0,0,PILE_SPOOL_STEP)
-                    local StepTrace = noranger()
-                    for( I=1, 3 ){ # for the authentic, jankty
-                        local Direc = vec()
-                        Direc[I] = 1
-                        local StepDir = Pile_Dir * Direc
-                        StepTrace = rangerOffsetHull(BALL, TraceStart, TraceStart + StepDir * PILE_SPOOL_STEP)     
-                        TraceStart = StepTrace:pos()            
+                    local TraceDir   = Pile_Dir:setZ(1):normalized()
+                    local DistLeft   = PILE_SPOOL_STEP
+                    local TraceStart = BALL:pos()
+                    local StepTrace  = rangerOffsetHull(BALL, TraceStart, TraceStart + TraceDir * PILE_SPOOL_STEP)
+                    
+                    for(_=1, 3){
+                        local HitNorm = StepTrace:hitNormal()
+                        if( HitNorm != vec() ){
+                            DistLeft = DistLeft - StepTrace:distance()
+                            TraceDir = TraceDir:projectOnPlane(HitNorm)
+                            StepTrace  = rangerOffsetHull(BALL, TraceStart, TraceStart + TraceDir * PILE_SPOOL_STEP)
+                        }
                     }
+
                     BALL:setPos( StepTrace:pos() )
                     BALL:setAng( Pile_Initial_Ang:rotateAroundAxis(Pile_Axis,360*4*Pile_Progress) )
                     soundPitch("pile-spoolup",30+70*Pile_Progress)
@@ -613,7 +621,7 @@ if( first() ){
             local TiltAng = ang(Tilt_[1], 0, -Tilt_[2])
             
             if(Driver_:isValid()){
-                local EyeTrace = rangerOffsetHull(16384,Driver_:shootPos(),Driver_:eyeAnglesVehicle():forward(),-vec(16),vec(16))
+                local EyeTrace = rangerOffsetHull(16384,Driver_:shootPos(),Driver_:eyeAnglesVehicle():forward(),-vec(4),vec(4))
                 turrets_aimAll( EyeTrace:position() )
             }
             
