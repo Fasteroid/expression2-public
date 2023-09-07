@@ -52,7 +52,7 @@ if( first() ){
     
     function sents_startSpawning(){
         
-        if( !concmd("") ){
+        if( !concmd("-attack") ){
             print("> sentspawningmodule: no concmd; waiting for turrets and camcontroller...")
             SENTS_entityCreated = "sents_monitorManual"
             SENTS_Manual = 1
