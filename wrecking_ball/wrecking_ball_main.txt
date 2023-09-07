@@ -1,4 +1,4 @@
-@name Wrecking Ball 1.7.2
+@name Wrecking Ball 1.7.3
 
 #[
     Note for Fasteroid/expression2-public Github browsers: 
@@ -565,14 +565,17 @@ if( first() ){
                     if(Dist < PILE_DROP_STEP){
                         Ball_Action = Action_NONE
                         Pile_Active = 0
-                        BALL:soundPlay("pile-thump",3,"vehicles/airboat/pontoon_impact_hard1.wav")
-                        ROOT_HOLO_ENT:soundPlay("pile-crash",2,"vehicles/v8/vehicle_impact_medium"+(randint(1,2)*2)+".wav")
-                        SEAT:soundPlay("pile-metal",3,"doors/garage_stop1.wav")
+                        
+                        BALL:soundPlay("pile-thump",2,"weapons/underwater_explode4.wav")
+                        soundPitch("pile-thump",random(100,120))
+                        ROOT_HOLO_ENT:soundPlay("pile-crash",2,"Airboat_impact_hard")
+                        SEAT:soundPlay("pile-metal",2,"EpicMetal.ImpactSoft")
                         
                         Pile_Prop = propSpawn("models/hunter/plates/plate8x8.mdl",GroundTrace_:position()-vec(0,0,RADIUS+1.55),0)
                         foreach(_:number, K:entity = TRACEFILTER_IGNORABLES){
                             K:noCollide(Pile_Prop)
                         }
+                        
                         Pile_Prop:setAlpha(0)
                         Pile_Prop:applyForce( vec(0,0,200)*Pile_Prop:mass() )
 
@@ -637,8 +640,19 @@ if( first() ){
             
             if(Driver_:isValid()){
                 tracefilter_load()
-                local EyeTrace = rangerOffsetHull(16384,Driver_:shootPos(),Driver_:eyeAnglesVehicle():forward(),-vec(4),vec(4))
-                turrets_aimAll( EyeTrace:position() )
+
+                local HullSizes = array(24,16,8,4)
+                local Pos = vec()
+                foreach(_:number, Size:number = HullSizes){
+                    local EyeTrace = rangerOffsetHull(16384,Driver_:shootPos(),Driver_:eyeAnglesVehicle():forward(),-vec(Size),vec(Size))
+                    Pos = EyeTrace:pos()
+                    if( EyeTrace:entity():isValid() ){
+                        local Tar = EyeTrace:entity()
+                        Pos = (Pos*0.4 + (Tar:boxCenterW()+ Tar:vel()*tickInterval())*0.6)
+                        break
+                    }
+                }
+                turrets_aimAll( Pos )
             }
             
             if( Leg_Deploy_Desired & (BALL:up():dot(vec(0,0,1))>0.9) ){
