@@ -47,7 +47,7 @@ if( first() ){
         E["sents_consumed",number] = 1
         E:constraintBreak()
         E:propFreeze(1)
-        E:setPos(vec())
+        E:setPos(entity():pos()+vec(0,0,10))
     }
     
     function sents_startSpawning(){

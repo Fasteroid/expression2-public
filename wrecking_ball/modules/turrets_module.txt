@@ -13,6 +13,7 @@
 
 #include "wrecking_ball/modules/sentspawning_module"
 #include "wrecking_ball/modules/tracefilter_module"
+#include "wrecking_ball/modules/tickrate_module"
 
 if( first() ){
     
@@ -202,7 +203,7 @@ event tick(){
     }
 
     local Delta = TURRETS_TransformProgress
-    TURRETS_TransformProgress = clamp(TURRETS_TransformProgress + TURRETS_TRANSFORM_SPEED * TURRETS_TransformState, 0, 1)
+    TURRETS_TransformProgress = clamp(TURRETS_TransformProgress + TURRETS_TRANSFORM_SPEED * TICKRATE_TimeScalar_ * TURRETS_TransformState, 0, 1)
     
     TURRETS_TransformRate_ = TURRETS_TransformProgress - Delta
     
@@ -222,13 +223,13 @@ if( clk("turrets_firetick") & TURRETS_Firing & TURRETS_MountIndex ){
         
         while(1){
             TURRETS_FireIndex = (TURRETS_FireIndex + 1) % TURRETS_MountIndex
-            Turret        = TURRETS_ActiveTurretMatrix[ TURRETS_FireIndex+1, entity ]
+            Turret            = TURRETS_ActiveTurretMatrix[ TURRETS_FireIndex+1, entity ]
             
             if(Turret:isValid() | (TURRETS_FireIndex == InitialID)){ break }
         }
         
         TURRETS_CurWirelink = Turret:wirelink()
-        TURRETS_CurSpread = min(TURRETS_CurSpread + TURRETS_SPREAD_SPEED, TURRETS_SPREAD_EXTRA)
+        TURRETS_CurSpread = min(TURRETS_CurSpread + TURRETS_SPREAD_SPEED * TICKRATE_TimeScalar_, TURRETS_SPREAD_EXTRA)
         
         TURRETS_CurWirelink["Fire",number] = 1    
         TURRETS_CurWirelink["Spread",number] = max(0, TURRETS_CurSpread) + TURRETS_SPREAD_START

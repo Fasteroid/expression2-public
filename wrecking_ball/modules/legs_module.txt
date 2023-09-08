@@ -7,6 +7,7 @@
 #include "wrecking_ball/models/leg2"
 
 #include "wrecking_ball/modules/tracefilter_module"
+#include "wrecking_ball/modules/tickrate_module"
 
 if( first() ){
     
@@ -152,7 +153,7 @@ if( first() ){
             local B = (This["lerpfrom",vector]+Target)*0.5 + vec(0,0,20)
             local C = Target
             Target = mix(mix(C,B,1-Lerp),mix(B,A,1-Lerp),1-Lerp)
-            This["lerp",number] = This["lerp",number] - LEGS_LERP_SPEED
+            This["lerp",number] = This["lerp",number] - LEGS_LERP_SPEED * TICKRATE_TimeScalar_
             if(This["lerp",number]<=0){
                 LEGS_Buffer = 0
                 if(This["disabling",number]){

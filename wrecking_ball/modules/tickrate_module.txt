@@ -1,0 +1,31 @@
+@name tickratemodule
+@persist TICKRATE_INT_FROM TICKRATE_INT_TO TICKRATE_BUFFER_SIZE TICKRATE_RATIO
+@persist TICKRATE_Buffer:array TICKRATE_Ptr TICKRATE_TimeScalar_
+
+if( first() ){
+    
+    TICKRATE_INT_FROM    = 1/66
+    TICKRATE_INT_TO      = tickInterval()
+    TICKRATE_BUFFER_SIZE = 64
+    
+    TICKRATE_RATIO = TICKRATE_INT_TO / TICKRATE_INT_FROM
+    
+    TICKRATE_Buffer = array()
+    TICKRATE_Ptr    = 0
+    TICKRATE_TimeScalar_ = 0
+    
+    function tickrate_dropTick(){
+        TICKRATE_Buffer[TICKRATE_Ptr,number] = 0
+    }
+    
+    function entity:tickrate_applyForce(V:vector){
+        This:applyForce(V * TICKRATE_TimeScalar_)
+    }
+    
+}
+
+event tick(){
+    TICKRATE_Ptr = (TICKRATE_Ptr + 1) % TICKRATE_BUFFER_SIZE
+    TICKRATE_Buffer[TICKRATE_Ptr,number] = 1
+    TICKRATE_TimeScalar_ = (1/TICKRATE_Buffer:average()) * TICKRATE_RATIO
+}
