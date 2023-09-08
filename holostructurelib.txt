@@ -31,6 +31,12 @@ if( first() ){
     #     | ["angles",array]    -> local hologram angles
     #     | ["scales",array]    -> hologram scales
     #     | ["colors",array]    -> hologram colors
+    #     | ["materials",array] -> hologram materials
+    #     |
+    #     | OPTIONAL:
+    #     | ["spawnChild",string] -> callback function for spawning child holos; the following are passed:
+    #     | | HoloID:number -> the actual holo id
+    #     | | Index:number  -> index of child on the template
     #   
     #     Spawn your structure class with holoStructCreate("class") !
     #
@@ -132,6 +138,9 @@ event tick(){
                 holoColor(H,Colors[Progress,vector])
                 holoMaterial(H,Materials[Progress,string])
                 holoParent(H,N)
+                if( Template:exists("spawnChild") ){
+                    Template["spawnChild",string](H, Progress)
+                }
             SpawnStruct["children",array]:pushNumber(H)
         }
         
