@@ -1,4 +1,4 @@
-@name VR Holo Designer v1.5.2
+@name VR Holo Designer v1.6.0
 
 #[
     Note for Fasteroid/expression2-public Github browsers: 
@@ -31,7 +31,6 @@
 @persist Target_Use:table   Target_M1:table  Target_M2:table
 @persist Action_Use         Action_M1        State_M2
 @persist Action_Holding
-
 
 # ACTION & STATE ENUMS
 @persist USE_GrabbableHolo                                         USE_MenuHolo               USE_Origin
