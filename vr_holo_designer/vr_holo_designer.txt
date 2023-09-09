@@ -40,6 +40,11 @@
 @persist M2_SelectLock M1_Duplicate
 
 #include "betterhololib"
+#include "holostructurelib"
+
+# you can now create your previously created structures!
+# use .c <struct> to create them at the origin.
+# #include "wrecking_ball/models/leg2"
 
 if( first() ){
     
@@ -261,6 +266,19 @@ if( first() ){
             Grab_Holos[GID,table] = Holo
             
             return Holo
+        }
+        
+        function convertToGrabbable(H:number,_:number){
+            local GID = nextGrabbableID()
+            local Holo = table(
+                "ent" = holoEntity(H),
+                "trueid"  = H,
+                "grabid" = GID,
+                "scale" = holoScaleUnits(H),
+                "model" = holoEntity(H):model(),
+                "group" = New_Holo_Group
+            )
+            Grab_Holos[GID,table] = Holo
         }
         
         function holoFreeGrabbable(BaseHolo:table){
@@ -1293,6 +1311,18 @@ event chat(Ply:entity, Text:string, _:number){
     if(Ply != PLY){ exit() }
     
     S = Text:explode(" ")
+    
+    if(S[1,string] == ".c"){
+        Struct = S[2,string]
+        if(HOLOSTRUCTURE_DATA:exists(Struct)){
+            HOLOSTRUCTURE_DATA[Struct,table]["spawnChild",string] = "convertToGrabbable"
+            holoAng( holoStructCreate(Struct,ORIGIN_ENT:pos()), ORIGIN_ENT:angles() )
+        }
+        else {
+            owner():soundPlay("load",1,"buttons/button10.wav")
+            print("structure not included")
+        }
+    }
     
     if(S[1,string] == ".g"){
         New_Holo_Group = S[2,string]
