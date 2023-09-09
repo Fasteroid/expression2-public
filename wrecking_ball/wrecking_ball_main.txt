@@ -1,4 +1,4 @@
-@name Wrecking Ball 1.8.0
+@name Wrecking Ball 1.8.1
 
 #[
     Note for Fasteroid/expression2-public Github browsers: 
@@ -491,6 +491,7 @@ if( first() ){
             
             switch( Ball_Action ){
                 case Action_NONE,
+                    Pile_Active = 0
                     reelGrapple()
                 break
                 case Grapple_FIRE,
@@ -567,10 +568,16 @@ if( first() ){
                         Ball_Action = Action_NONE
                         Pile_Active = 0
                         
-                        BALL:soundPlay("pile-thump",2,"weapons/underwater_explode4.wav")
-                        soundPitch("pile-thump",random(100,120))
-                        ROOT_HOLO_ENT:soundPlay("pile-crash",2,"Airboat_impact_hard")
-                        SEAT:soundPlay("pile-metal",2,"EpicMetal.ImpactSoft")
+                        BALL:soundPlay("pile-sfx1",1.5,"weapons/physcannon/superphys_launch"+(1+3*randint(1,0))+".wav")
+                        soundPitch("pile-sfx1",random(240,255))
+                        ROOT_HOLO_ENT:soundPlay("pile-sfx2",1.5,"Airboat_impact_hard")
+                        SEAT:soundPlay("pile-sfx3",1.5,"EpicMetal.ImpactSoft")
+                        
+                        # I have no idea why I need to do this to get soundLevel to work consistently.
+                        GRAPPLE_ROOT_HOLO_ENT:soundPlay("pile-sfx4",1.5,"")
+                        soundLevel("pile-sfx4",85)
+                        GRAPPLE_ROOT_HOLO_ENT:soundPlay("pile-sfx4",1.5,"weapons/mortar/mortar_explode"+randint(1,3)+".wav")
+                        soundPitch("pile-sfx4",random(160,170))
                         
                         Pile_Prop = propSpawn("models/hunter/plates/plate8x8.mdl",GroundTrace_:position()-vec(0,0,RADIUS+1.55),0)
                         foreach(_:number, K:entity = TRACEFILTER_IGNORABLES){
