@@ -644,6 +644,10 @@ if( first() ){
                 begin_mode_hampter()
             }
             
+            if(Grapple_Out){ # duct-tape fix; idk why this can happen
+                resetGrapple(ang())
+            }
+            
             local TiltAng = ang(Tilt_[1], 0, -Tilt_[2])
             
             if(Driver_:isValid()){
