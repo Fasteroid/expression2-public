@@ -1,4 +1,4 @@
-@name Wrecking Ball 1.8.2
+@name Wrecking Ball 1.8.3
 
 #[
     Note for Fasteroid/expression2-public Github browsers: 
@@ -632,7 +632,7 @@ if( first() ){
         }
         function begin_mode_hampter(){
             # print("hampter begin")
-            holoAng(ROOT_HOLO, Tilt_ + ang(0,SEATROTATION_Angle,0))
+            holoAng(ROOT_HOLO, Tilt_ + ang(0,SEATROTATION_Angle+90,0))
             Is_Fireball = 0
             Leg_Deploy_Desired = 1
             TURRETS_TransformState = 1
