@@ -36,7 +36,7 @@ if( first() ){
     
     # pls don't touch
     
-    TURRETS_TransformState     = -1
+    TURRETS_TransformState     = 1
     TURRETS_TransformRate_     = TURRETS_TransformProgress = TURRETS_MountIndex = TURRETS_CurSpread = TURRETS_MissingTurrets_ = TURRETS_Firing =0
     TURRETS_TurretMounts       = table()
     TURRETS_TurretPool         = array()
@@ -78,7 +78,8 @@ if( first() ){
             "t_origin_holo"  = OriginT,
             "t_origin_ent"   = holoEntity(OriginT),
             "t_origin_pos"   = LocalTurretOrigin,
-            "secondbarrel"   = Barrel2
+            "secondbarrel"   = Barrel2,
+            "visible"        = 1
         )
         
         TURRETS_MountIndex+=2
@@ -86,6 +87,13 @@ if( first() ){
         TURRETS_TurretMounts:pushTable(Mount)
         return Mount
         
+    }
+    
+    function number:turrets_setChildrenAlpha(Alpha:number){
+        local Children = This:getChildren()
+        foreach(_:number,HoloID:number = Children){
+            holoAlpha(HoloID,Alpha)
+        }
     }
     
     function string turrets_getTurretKey(TurretNum:number){
@@ -137,6 +145,21 @@ if( first() ){
             holoPos(Mount["t_origin_holo",number], Mount["r_origin_ent",entity]:toWorld( Mount["t_origin_pos",vector] * T2 ) )
         }
         
+        if(Mount["visible",number]){
+            if(TURRETS_TransformProgress == 0){
+                Mount["t_origin_holo",number]:turrets_setChildrenAlpha(0)
+                Mount["secondbarrel",number]:turrets_setChildrenAlpha(0)
+                Mount["visible",number] = 0
+            }
+        }
+        else{
+            if(TURRETS_TransformProgress > 0){
+                Mount["t_origin_holo",number]:turrets_setChildrenAlpha(255)
+                Mount["secondbarrel",number]:turrets_setChildrenAlpha(255)
+                Mount["visible",number] = 01               
+            }
+        }
+        
         foreach(TurretNum:number, T_Offset:vector = TURRETS_GROUP_OFFSETS){
             local TurretKey = turrets_getTurretKey(TurretNum)
             local Turret    = Mount[TurretKey,entity]
@@ -160,7 +183,8 @@ if( first() ){
                       Dir = Mount["parent",entity]:toLocalAxis(Dir)
                 local AimAng = Dir:toAngle()
                 
-                if(!!AimableProgress != AimableProgress){ # this is expensive, so avoid it if possible
+                # if AimableProgress is an int, don't slerp since it's expensive
+                if(!!AimableProgress != AimableProgress){
                     AimAng = slerp(TURRETS_DEFAULT_QUAT, quat(AimAng), AimableProgress):toAngle()   
                 }
                 
@@ -199,7 +223,7 @@ event tick(){
     }
     
     if( !TURRETS_Firing ){
-        TURRETS_CurSpread = max(TURRETS_SPREAD_OFFSET, TURRETS_CurSpread-TURRETS_SPREAD_SPEED)
+        TURRETS_CurSpread = max(TURRETS_SPREAD_OFFSET, TURRETS_CurSpread - TURRETS_SPREAD_SPEED * TICKRATE_TimeScalar_)
     }
 
     local Delta = TURRETS_TransformProgress

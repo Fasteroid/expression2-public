@@ -1,4 +1,4 @@
-@name Wrecking Ball 1.8.1
+@name Wrecking Ball 1.8.2
 
 #[
     Note for Fasteroid/expression2-public Github browsers: 

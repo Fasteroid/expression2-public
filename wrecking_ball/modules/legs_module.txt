@@ -31,12 +31,21 @@ if( first() ){
         local Decor1 = holoStructCreate("leg1",Root:pos())
         holoAng(Decor1, Root:angles())
         holoParent(Decor1,Ret["_h1",number])
+        Ret["leg1",number] = Decor1
         
         local Decor2 = holoStructCreate("leg2",Root:toWorld(vec(34,0,0)))
         holoAng(Decor2, Root:angles())
         holoParent(Decor2,Ret["_h2",number])
+        Ret["leg2",number] = Decor2
         
         return Ret
+    }
+    
+    function number:legs_setChildrenAlpha(Alpha:number){
+        local Children = This:getChildren()
+        foreach(_:number,HoloID:number = Children){
+            holoAlpha(HoloID,Alpha)
+        }
     }
     
     function legs_enableSoundMakers(){
@@ -57,6 +66,7 @@ if( first() ){
     function legs_disableFeet(){
         foreach(_:number, Foot:table = LEGS_Objects){
             Foot["disabling",number] = 1
+            Foot["leg1",number]:legs_setChildrenAlpha(0)
         }
     }
     
@@ -66,6 +76,7 @@ if( first() ){
             Foot["_enabled",number] = 1
             Foot["lerpfrom",vector] = Foot["_root",entity]:pos()
             Foot["lerp",number] = 1
+            Foot["leg1",number]:legs_setChildrenAlpha(255)
         }        
     }
     
