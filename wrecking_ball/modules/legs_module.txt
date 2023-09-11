@@ -4,7 +4,7 @@
 #include "tinyiklib"
 
 #include "wrecking_ball/models/leg1"
-#include "wrecking_ball/models/leg2"
+#include "wrecking_ball/models/leg2_cheap"
 
 #include "wrecking_ball/modules/tracefilter_module"
 #include "wrecking_ball/modules/tickrate_module"
@@ -33,7 +33,7 @@ if( first() ){
         holoParent(Decor1,Ret["_h1",number])
         Ret["leg1",number] = Decor1
         
-        local Decor2 = holoStructCreate("leg2",Root:toWorld(vec(34,0,0)))
+        local Decor2 = holoStructCreate("leg2_cheap",Root:toWorld(vec(34,0,0)))
         holoAng(Decor2, Root:angles())
         holoParent(Decor2,Ret["_h2",number])
         Ret["leg2",number] = Decor2
@@ -66,7 +66,6 @@ if( first() ){
     function legs_disableFeet(){
         foreach(_:number, Foot:table = LEGS_Objects){
             Foot["disabling",number] = 1
-            Foot["leg1",number]:legs_setChildrenAlpha(0)
         }
     }
     
@@ -77,6 +76,7 @@ if( first() ){
             Foot["lerpfrom",vector] = Foot["_root",entity]:pos()
             Foot["lerp",number] = 1
             Foot["leg1",number]:legs_setChildrenAlpha(255)
+            Foot["leg2",number]:legs_setChildrenAlpha(255)
         }        
     }
     
@@ -170,6 +170,8 @@ if( first() ){
                 if(This["disabling",number]){
                     This["disabling",number] = 0
                     This["_enabled",number]  = 0
+                    This["leg1",number]:legs_setChildrenAlpha(0)
+                    This["leg2",number]:legs_setChildrenAlpha(0)
                     This["soundmaker",entity]:setPos( Ranger:position() + vec(0,0,LEGS_SOUND_VOL) )
                 }
             }

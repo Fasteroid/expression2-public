@@ -7,8 +7,8 @@
 
 #include "betterhololib"
 
-#include "wrecking_ball/models/gunmountl"
-#include "wrecking_ball/models/gunmountr"
+#include "wrecking_ball/models/gunmountl_cheap"
+#include "wrecking_ball/models/gunmountr_cheap"
 #include "wrecking_ball/models/gunbarrel_cheap"
 
 #include "wrecking_ball/modules/sentspawning_module"
@@ -59,7 +59,7 @@ if( first() ){
         
         local LocalTurretOrigin = vec(17,0,3.25)
         
-        local OriginR = holoStructCreate("gunmount"+Side, Parent:toWorld(LocalRotationOrigin) )
+        local OriginR = holoStructCreate("gunmount"+Side+"_cheap", Parent:toWorld(LocalRotationOrigin) )
         holoAng( OriginR, Parent:angles() )
         
         local OriginT = holoStructCreate("gunbarrel", holoEntity(OriginR):toWorld(LocalTurretOrigin))
