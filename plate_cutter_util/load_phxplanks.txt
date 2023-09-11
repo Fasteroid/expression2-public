@@ -1,0 +1,13 @@
+@name PHX Planks Loader
+@persist PLATES:table UNIT_SIZE
+
+if( first() ){
+    UNIT_SIZE = 11.866406917572 * 4  * 0.9995
+    PLATES    = table()
+    fileLoad(">e2shared/phxplanks_sorted.txt")
+}
+
+event fileLoaded(_:string,Data:string){
+    PLATES = vonDecodeTable(Data)
+    print("PLANKS loaded")
+}

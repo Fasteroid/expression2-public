@@ -1,9 +1,9 @@
-@name Gmod Hunter Plate Cutter v2.8
+@name Gmod Hunter Plate Cutter v2.9
 @inputs 
 @outputs 
-@persist Ang Busy Entity:entity Mode:string Owner:entity Modes:table Helps:table GridEnabled
+@persist Ang Busy Entity:entity Mode:string OWNER:entity Modes:table Helps:table GRID_ENABLED STATIC_PROPS
 @persist ModeState ModePersist:table PropData:table
-@persist ShouldDelete UNIT_SIZE
+@persist ShouldDelete
 @persist [FlatMin,FlatSize,Forward,Up,SpawnComplement,WorldPos,SpawnPos]:vector Valid TileAng:angle
 @model models/hunter/blocks/cube025x025x025.mdl
 
@@ -14,30 +14,26 @@
     Check the README in the repo for more details!
 ]#
 
-#include "plate_cutter_util/gmod_plate_database_sorted"
-#include "plate_cutter_util/queuepropspawn"
+#include "plate_cutter_util/platebuilderlib"
 
 if( first() ){
     
-    Owner = owner()
-    Mode  = "cut"
-    GridEnabled = 1
+    OWNER        = owner()
+    GRID_ENABLED = 1
+    STATIC_PROPS = 0
     
+    Mode  = "cut"
     Modes = table(
         "cut" = "Cut new geometry",
         "hole" = "Remove rectangular regions", 
         "fill" = "Generate coplanar plates"
     )
-    
     Helps = table(
         "cut" = "Left click to place cuts.\nRight click to rotate the cutting plane.", 
         "hole" = "Left click to set first and second corner.\nRight click to cancel.", 
         "fill" = "Left click to set first and second corner.\nRight click to cancel."
     )
-    
     ModeState = 0
-    
-    UNIT_SIZE = 11.866406917572 * 0.9995
     
     function supressInitializationWarnings(){
         Entity = noentity() PropData = table() Ang = 0 ModePersist = table()
@@ -106,7 +102,7 @@ if( first() ){
     holoColor(3,vec(255,0,0),100)
     holoMaterial(3,"lights/white")
     
-    if( holoModelAny() & GridEnabled ){
+    if( holoModelAny() & GRID_ENABLED ){
         holoCreate(4)
         holoVisible(4,players(),0)
         holoModel(4,"models/hunter/plates/plate32x32.mdl")
@@ -117,56 +113,7 @@ if( first() ){
         holoDisableShading(4,1)
         holoMaterial(4,"sprops/sprops_grid_12x12")
         holoEntity(4):setRenderMode(9)
-    }
-
-    #runOnTick(1)
-    
-    
-    #########################
-    ## 
-    #  build( XSize:numbner, YSize:number, Corner:vector, Options:optionsTable )
-    #     Spawns a plate of XSize by YSize.   
-    #
-    #  optionsTable extends table:
-    #   | "origin" = World position of corner
-    #   | "angles" = World angles of corner
-    #   | "format" = Function to format spawned props with
-    #   | "delete" = Prop to remove upon completion; may be left blank
-    #
-    function build(XSize,YSize,Corner:vector,Options:table){
-        
-        PlateObj = getClosestFit(round(XSize),round(YSize))
-        local LTX = LTY = 0
-        local XReal = PlateObj["x",number]
-        local YReal = PlateObj["y",number]
-        local RotationAng = ang(0,PlateObj["angle",number],0)
-        
-        local World = toWorldPosAng( 
-            (Corner)*UNIT_SIZE, # local pos
-            RotationAng,                                  # local ang
-            Options["origin",vector],                     # world pos
-            Options["angles",angle]                       # world ang
-        )
-        
-        queuePropSpawn(
-            PlateObj["model",string],
-            World[1,vector] + PlateObj["offset",vector]:rotate(Options["angles",angle]) * UNIT_SIZE,
-            World[2,angle],
-            Options["format",string]
-        )
-        
-        if( XReal < XSize ){
-            build(XSize-XReal,YReal,Corner+vec(XReal,0,0),Options)    
-            LTX = 1
-        }
-        if( YReal < YSize ){
-            build(XReal,YSize-YReal,Corner+vec(0,YReal,0),Options)
-            LTY = 1
-        }
-        if( LTX & LTY ){ # degenerate case
-            build(XSize-XReal,YSize-YReal,Corner+vec(XReal,YReal,0),Options)
-        }  
-    }    
+    }   
     
     #########################
     ## 
@@ -183,7 +130,7 @@ if( first() ){
         FlatMin = Entity:boxMin():setZ(0)
         FlatSize = round( Entity:boxSize():setZ(0) / UNIT_SIZE )
         
-        AimPos = rayPlaneIntersect(Owner:shootPos(),Owner:eye(),Entity:pos(),Entity:up())
+        AimPos = rayPlaneIntersect(OWNER:shootPos(),OWNER:eye(),Entity:pos(),Entity:up())
         
         Forward = Entity:up()
         Up      = Entity:right()
@@ -213,7 +160,7 @@ if( first() ){
         FlatMin = Entity:boxMin():setZ(0)
         FlatSize = round( Entity:boxSize():setZ(0) / UNIT_SIZE )
         
-        local LocalAim = Entity:toLocal( Owner:aimPos() + Entity:boxCenter() ) / UNIT_SIZE
+        local LocalAim = Entity:toLocal( OWNER:aimPos() + Entity:boxCenter() ) / UNIT_SIZE
         Forward = vec(0,0,1) * sign( LocalAim:z() )
         Up      = Entity:right()
         
@@ -250,6 +197,7 @@ if( first() ){
     }
     
     function applyPropData(E:entity){
+        if(STATIC_PROPS){ E:propStatic(1) }
         E:setMaterial( PropData["mat",string] )
         E:setColor( PropData["color",vector] )
         E:setAlpha( PropData["alpha",number])
@@ -262,7 +210,7 @@ if( first() ){
     #  cut( Init:boolean )
     #     Slicing mode.  Pass 1 to enable.
     #
-    function cut(Init){
+    function cut(Init:number){
         
         if(Init){
             holoVisible(1,players(),1)
@@ -293,7 +241,7 @@ if( first() ){
         holoAng(0,TileAng:rotateAroundAxis(Forward,Ang))   
                 
 
-        if(changed(Owner:keyAttack1()) & Owner:keyAttack1()){
+        if(changed(OWNER:keyAttack1()) & OWNER:keyAttack1()){
             
             Origin = Entity:toWorld(FlatMin + Entity:getBadHeightFix())
             
@@ -352,7 +300,7 @@ if( first() ){
     #  hole( Init:boolean )
     #     Hole cutter mode.  Pass 1 to enable.
     #
-    function hole(Init){
+    function hole(Init:number){
         
         if(Init){
             holoVisible(1,players(),0)
@@ -366,7 +314,7 @@ if( first() ){
             return
         }
     
-        KeyAttack1 = changed(Owner:keyAttack1()) & Owner:keyAttack1()
+        KeyAttack1 = changed(OWNER:keyAttack1()) & OWNER:keyAttack1()
     
         if( ModeState == 0 ){
             
@@ -437,7 +385,7 @@ if( first() ){
                 holoAng(0,TileAng)
             }       
             
-            if(changed(Owner:keyAttack2()) & Owner:keyAttack2()){
+            if(changed(OWNER:keyAttack2()) & OWNER:keyAttack2()){
                 ModeState = 0
                 holoScaleUnits(0,vec(UNIT_SIZE/2))
                 holoVisible(4,players(),0)
@@ -501,7 +449,7 @@ if( first() ){
     #  fill( Init:boolean )
     #     Plate fill mode.  Pass 1 to enable.
     #
-    function fill(Init){
+    function fill(Init:number){
         
         if(Init){
             holoVisible(1,players(),0)
@@ -516,7 +464,7 @@ if( first() ){
             return
         }
     
-        KeyAttack1 = changed(Owner:keyAttack1()) & Owner:keyAttack1()
+        KeyAttack1 = changed(OWNER:keyAttack1()) & OWNER:keyAttack1()
     
         if( ModeState == 0 ){
             
@@ -572,7 +520,7 @@ if( first() ){
                 
             }       
             
-            if(changed(Owner:keyAttack2()) & Owner:keyAttack2()){
+            if(changed(OWNER:keyAttack2()) & OWNER:keyAttack2()){
                 ModeState = 0
                 holoScaleUnits(0,vec(UNIT_SIZE/2))
                 holoVisible(4,players(),0)
@@ -584,9 +532,6 @@ if( first() ){
                 holoScaleUnits(0,vec(UNIT_SIZE/2))
                 holoVisible(4,players(),0)
                 storePropData(Entity)
-            
-            #SpawnComplement = LocalAim:setZ(0) + FlatMin
-            #SpawnComplement = round( SpawnComplement / UNIT_SIZE )
             
                 local MinCorner = minVec(ModePersist["local",vector],SpawnComplement)
                 local MaxCorner = maxVec(ModePersist["local",vector],SpawnComplement)
@@ -619,8 +564,8 @@ if( first() ){
 
 event tick(){
 
-    Owner = owner()
-    Active = (Owner:weapon():type() == "weapon_crowbar")
+    OWNER = owner()
+    Active = (OWNER:weapon():type() == "weapon_crowbar")
     DoneBusy = !Queue:count() & Busy
     
     if(changed(Mode) | first()){
@@ -636,11 +581,11 @@ event tick(){
     
     if(Active & !Busy){
         
-        if(changed(Owner:keyAttack2()) & Owner:keyAttack2()){
+        if(changed(OWNER:keyAttack2()) & OWNER:keyAttack2()){
             Ang = (Ang + 90)%360
         }
         
-        Entity = Owner:aimEntity()
+        Entity = OWNER:aimEntity()
          
         Mode(0)
     
@@ -652,7 +597,7 @@ event tick(){
         holoMaterial(3,"lights/white")
     }
     
-    if( holoModelAny() & GridEnabled ){
+    if( holoModelAny() & GRID_ENABLED ){
         if( !holoEntity(4):isValid() ){
             holoCreate(4)
             holoVisible(4,players(),0)
@@ -671,12 +616,12 @@ event tick(){
 
 event chat(Ply:entity, Text:string, Team:number){
     Team = Team
-    if( Ply == Owner ){
+    if( Ply == OWNER ){
         Chat = Text:explode(" ")
         if(Chat[1,string]=="/mode"){
             if(Modes[Chat[2,string],string]){
                 Mode = Chat[2,string]    
-                Owner:soundPlay(3,1,"buttons/button14.wav")
+                OWNER:soundPlay(3,1,"buttons/button14.wav")
                 prnt("Mode changed: "+Mode)
             }
             else{

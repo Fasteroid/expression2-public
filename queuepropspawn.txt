@@ -1,8 +1,5 @@
 @name queuepropspawn
-@inputs 
-@outputs 
 @persist Queue:table
-@trigger 
 
 #[                                       ]#
 ##    E2 Library: QueuePropSpawn         ##
@@ -98,10 +95,8 @@ if( first() ){
     #
     function queueRead(){
         if(propCanCreate()){
-
                 local Read = Queue[1,table]
                 TMP = propSpawn(Read["model",string],Read["pos",vector],Read["ang",angle],1)
-                TMP:propStatic(1)
                 if(!TMP:isValid()){ return }
                 if(Read:exists("func")){
                     if(Read:exists("data")){
@@ -111,9 +106,7 @@ if( first() ){
                         Read["func",string](TMP)
                     }
                 }
-                
                 Queue:remove(1)
-                    
         }
     }
 }

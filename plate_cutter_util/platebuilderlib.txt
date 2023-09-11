@@ -1,0 +1,69 @@
+@name platebuilderlib
+
+#include "plate_cutter_util/load_hunterplates"
+#include "queuepropspawn"
+
+if( first() ){
+
+    #########################
+    ## 
+    #  getClosestFit( TX:number, TY:number )
+    #     Finds the biggest plate from the database that fits inside the hole.
+    #
+    function table getClosestFit(TX:number,TY:number){
+        for(I=1,PLATES:count()){
+            local Plate = PLATES[I,table]
+            if(Plate["y",number]>TY){ continue } # don't bother
+            if(Plate["x",number]>TX){ continue }
+            return Plate
+        }
+        error("CRITICAL FAILURE: Database contained no appropriate props for a "+TX+"x"+TY+" hole.")
+    }
+
+    #########################
+    ## 
+    #  build( XSize:number, YSize:number, Corner:vector, Options:optionsTable )
+    #     Spawns a plate of XSize by YSize.   
+    #
+    #  optionsTable extends table:
+    #   | "origin" = World position of corner
+    #   | "angles" = World angles of corner
+    #   | "format" = Function to format spawned props with
+    #   | "delete" = Prop to remove upon completion; may be left blank
+    #
+    function build(XSize:number,YSize:number,Corner:vector,Options:table){
+        if(XSize <= 0 | YSize <= 0){ print("warning: invalid size "+XSize+"x"+YSize+" ignored") return }
+        
+        PlateObj = getClosestFit(round(XSize),round(YSize))
+        local LTX = LTY = 0
+        local XReal = PlateObj["x",number]
+        local YReal = PlateObj["y",number]
+        local RotationAng = ang(0,PlateObj["angle",number],0)
+        
+        local World = toWorldPosAng( 
+            (Corner)*UNIT_SIZE, # local pos
+            RotationAng,                                  # local ang
+            Options["origin",vector],                     # world pos
+            Options["angles",angle]                       # world ang
+        )
+        
+        queuePropSpawn(
+            PlateObj["model",string],
+            World[1,vector] + PlateObj["offset",vector]:rotate(Options["angles",angle]) * UNIT_SIZE,
+            World[2,angle],
+            Options["format",string]
+        )
+        
+        if( XReal < XSize ){
+            build(XSize-XReal,YReal,Corner+vec(XReal,0,0),Options)    
+            LTX = 1
+        }
+        if( YReal < YSize ){
+            build(XReal,YSize-YReal,Corner+vec(0,YReal,0),Options)
+            LTY = 1
+        }
+        if( LTX & LTY ){ # degenerate case
+            build(XSize-XReal,YSize-YReal,Corner+vec(XReal,YReal,0),Options)
+        }  
+    }    
+}

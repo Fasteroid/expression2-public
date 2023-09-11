@@ -1,0 +1,13 @@
+@name Hunter Plates Loader
+@persist PLATES:table UNIT_SIZE
+
+if( first() ){
+    UNIT_SIZE = 11.866406917572 * 0.9995
+    PLATES    = table()
+    fileLoad(">e2shared/hunterplates_sorted.txt")
+}
+
+event fileLoaded(_:string,Data:string){
+    PLATES = vonDecodeTable(Data)
+    print("PLATES loaded")
+}
