@@ -13,7 +13,7 @@ if( first() ){
     
     # configurable stuff
     
-    LEGS_LERP_SPEED = 0.2
+    LEGS_LERP_SPEED = 0.15
     LEGS_SOUND_VOL  = 20
     
     # don't touch pls
@@ -117,12 +117,12 @@ if( first() ){
         
         This["oldPos",vector] = Root:pos()
         
-        local NextOrigin = Root:toWorld(vec(0,0,100))+RootVel
+        local NextOrigin = Root:toWorld(vec(0,0,10))+RootVel
         
         tracefilter_load()
         
-        local TestRanger = rangerOffset(160, NextOrigin, Root:toWorldAxis(vec(1,0,-5)))     
-        local Ranger = rangerOffset(160, This["rangerpos",vector], Root:toWorldAxis(vec(1,0,-5)))
+        local TestRanger = rangerOffset(80, NextOrigin, Root:toWorldAxis(vec(1,0,-2)))     
+        local Ranger = rangerOffset(80, This["rangerpos",vector], Root:toWorldAxis(vec(1,0,-2)))
         
         local Target = TestRanger:hit() ? (Ranger:hit() ? Ranger:pos() : TestRanger:pos()) : Root:toWorld(vec(20,0,-50))
         
