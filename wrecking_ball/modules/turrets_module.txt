@@ -1,6 +1,6 @@
 @name wreckingballturrets
 @outputs 
-@persist TURRETS_TRANSFORM_SPEED TURRETS_SPREAD_SPEED TURRETS_SPREAD_OFFSET TURRETS_SPREAD_START TURRETS_SPREAD_EXTRA TURRETS_FIRING_INTERVAL TURRETS_SECOND_BARREL_OFFSET TURRETS_GROUP_OFFSETS:array TURRETS_DEFAULT_ANGLE:angle TURRETS_DEFAULT_QUAT:quaternion
+@persist TURRETS_TRANSFORM_SPEED TURRETS_SPREAD_SPEED TURRETS_SPREAD_OFFSET TURRETS_SPREAD_START TURRETS_SPREAD_EXTRA TURRETS_FIRING_INTERVAL TURRETS_SECOND_BARREL_OFFSET TURRETS_RECOIL_RATE TURRETS_GROUP_OFFSETS:array TURRETS_DEFAULT_ANGLE:angle TURRETS_DEFAULT_QUAT:quaternion
 @persist TURRETS_TurretMounts:table TURRETS_TransformProgress TURRETS_TurretPool:array TURRETS_Firing TURRETS_FireIndex TURRETS_MountIndex TURRETS_ActiveTurretMatrix:array TURRETS_CurSpread TURRETS_TransformState TURRETS_CurWirelink:wirelink
 @persist TURRETS_MissingTurrets_ TURRETS_TransformRate_ # this is ONLY persisted to work with a timer
 @trigger
@@ -20,6 +20,7 @@ if( first() ){
     # configurable stuff
     
     TURRETS_TRANSFORM_SPEED   = 0.1
+    TURRETS_RECOIL_RATE       = 0.05
     
     TURRETS_SPREAD_SPEED      = 0.007 # how fast to spread
     TURRETS_SPREAD_START      = 0.008 # starting spread value
@@ -46,6 +47,13 @@ if( first() ){
     
     # external library interface
     
+    function number turrets_recoilCurve(X:number){
+        X = 1-X
+        local A = (X-1)
+        local B = 256/27
+        return A*A*A*X*B*5
+    }
+    
     sents_onTurretsReady("turrets_onCreated")
     function turrets_onCreated(Turrets:array){
         foreach(_:number, T:entity = Turrets){
@@ -55,6 +63,10 @@ if( first() ){
         }        
     }
     
+    function string turrets_getTurretKey(TurretNum:number){
+        return "turret"+TurretNum
+    }
+    
     function table turrets_createTurretMount(Parent:entity, LocalRotationOrigin:vector, Side:string){
         
         local LocalTurretOrigin = vec(17,0,3.25)
@@ -62,12 +74,22 @@ if( first() ){
         local OriginR = holoStructCreate("gunmount"+Side+"_cheap", Parent:toWorld(LocalRotationOrigin) )
         holoAng( OriginR, Parent:angles() )
         
-        local OriginT = holoStructCreate("gunbarrel", holoEntity(OriginR):toWorld(LocalTurretOrigin))
-        local Barrel2 = holoStructCreate("gunbarrel", holoEntity(OriginR):toWorld(LocalTurretOrigin+vec(0,0,TURRETS_SECOND_BARREL_OFFSET)))
+        local Gun2Offset = vec(0,0,TURRETS_SECOND_BARREL_OFFSET)
         
-        holoParent(Barrel2, OriginR)
+        local Gun1PosW = holoEntity(OriginR):toWorld(LocalTurretOrigin)
+        local Gun2PosW = holoEntity(OriginR):toWorld(LocalTurretOrigin+Gun2Offset)
+        
+        local OriginT = holoAlloc(Gun1PosW)
+        holoAlpha(OriginT,0)
+    
         holoParent(OriginR, Parent)
         holoParent(OriginT, OriginR)
+
+        local Gun1 = holoStructCreate("gunbarrel", Gun1PosW)
+        local Gun2 = holoStructCreate("gunbarrel", Gun2PosW)
+        
+        holoParent(Gun1, OriginT)
+        holoParent(Gun2, OriginT)
         
         local Mount = table(
             "index"  = TURRETS_MountIndex,
@@ -78,7 +100,10 @@ if( first() ){
             "t_origin_holo"  = OriginT,
             "t_origin_ent"   = holoEntity(OriginT),
             "t_origin_pos"   = LocalTurretOrigin,
-            "secondbarrel"   = Barrel2,
+            (turrets_getTurretKey(1)+"_gun_holo") = Gun1,
+            (turrets_getTurretKey(1)+"_gun_pos")  = vec(),
+            (turrets_getTurretKey(2)+"_gun_holo") = Gun2,
+            (turrets_getTurretKey(2)+"_gun_pos")  = Gun2Offset,
             "visible"        = 1
         )
         
@@ -95,13 +120,20 @@ if( first() ){
             holoAlpha(HoloID,Alpha)
         }
     }
-    
-    function string turrets_getTurretKey(TurretNum:number){
-        return "turret"+TurretNum
-    }
 
-    function turrets_processTurret(Mount:table, Turret:entity, GroupOffset:vector){
+    function turrets_processTurret(Mount:table, Turret:entity, TurretKey:string, GroupOffset:vector){
+        
         if( !Turret:isValid() ){ return } # nothing to do
+        
+        local Holo     = Mount[TurretKey+"_gun_holo",number]
+        local LocalPos = Mount[TurretKey+"_gun_pos",vector] 
+        
+        local PrevRecoil = Turret["recoil",number]
+        local NewRecoil  = max(PrevRecoil-TURRETS_RECOIL_RATE * TICKRATE_TimeScalar_, 0)
+        if(NewRecoil != PrevRecoil){
+            holoPos(Holo, Mount["t_origin_ent",entity]:toWorld(LocalPos + vec(turrets_recoilCurve(NewRecoil),0,0)))
+        }
+        Turret["recoil",number] = NewRecoil
         
         if(Turret["wbtlinked",number] & !Turret:parent():isValid()){
             
@@ -120,10 +152,11 @@ if( first() ){
             holoPos(HoloID, OldPos)
             holoAng(HoloID, OldAng)
         }
+
     }
     
     function turrets_tryAcquireTurret(Mount:table, CurTurret:entity, TurretKey:string, TurretNum:number){
-        if( CurTurret:isValid() ){ return }      # don't need to do anything
+        if( CurTurret:isValid() ){ return }          # don't need to do anything
         else { TURRETS_MissingTurrets_++ }           # detected missing turret
         if( !TURRETS_TurretPool:count() ){ return }  # can't do anything for now
         
@@ -147,16 +180,16 @@ if( first() ){
         
         if(Mount["visible",number]){
             if(TURRETS_TransformProgress == 0){
-                Mount["t_origin_holo",number]:turrets_setChildrenAlpha(0)
-                Mount["secondbarrel",number]:turrets_setChildrenAlpha(0)
                 Mount["visible",number] = 0
+                Mount[turrets_getTurretKey(1)+"_gun_holo",number]:turrets_setChildrenAlpha(0)
+                Mount[turrets_getTurretKey(2)+"_gun_holo",number]:turrets_setChildrenAlpha(0)
             }
         }
         else{
             if(TURRETS_TransformProgress > 0){
-                Mount["t_origin_holo",number]:turrets_setChildrenAlpha(255)
-                Mount["secondbarrel",number]:turrets_setChildrenAlpha(255)
-                Mount["visible",number] = 01               
+                Mount["visible",number] = 1
+                Mount[turrets_getTurretKey(1)+"_gun_holo",number]:turrets_setChildrenAlpha(255)
+                Mount[turrets_getTurretKey(2)+"_gun_holo",number]:turrets_setChildrenAlpha(255)       
             }
         }
         
@@ -168,7 +201,7 @@ if( first() ){
             
             Turret = Mount[TurretKey,entity] # we might have acquired a turret
             
-            turrets_processTurret(Mount, Turret, T_Offset)
+            turrets_processTurret(Mount, Turret, TurretKey, T_Offset)
         }
     }
 
@@ -253,7 +286,8 @@ if( clk("turrets_firetick") & TURRETS_Firing & TURRETS_MountIndex ){
         }
         
         TURRETS_CurWirelink = Turret:wirelink()
-        TURRETS_CurSpread = min(TURRETS_CurSpread + TURRETS_SPREAD_SPEED * TICKRATE_TimeScalar_, TURRETS_SPREAD_EXTRA)
+        TURRETS_CurSpread   = min(TURRETS_CurSpread + TURRETS_SPREAD_SPEED * TICKRATE_TimeScalar_, TURRETS_SPREAD_EXTRA)
+        Turret["recoil",number] = 1
         
         TURRETS_CurWirelink["Fire",number] = 1    
         TURRETS_CurWirelink["Spread",number] = max(0, TURRETS_CurSpread) + TURRETS_SPREAD_START

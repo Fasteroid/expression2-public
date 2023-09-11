@@ -1,4 +1,4 @@
-@name Wrecking Ball 1.9.0
+@name Wrecking Ball 1.9.1
 
 #[
     Note for Fasteroid/expression2-public Github browsers: 
@@ -70,7 +70,7 @@ if( first() ){
         PILE_FORCE      = 600
         PILE_FORCE_TIME = 125
         
-        MECH_HEIGHT     = 10
+        MECH_HEIGHT     = 20
         
         SLOPE_MAX_DOT   = cos(45)
         GRAPPLE_MAX_DOT = 0.9
@@ -216,7 +216,7 @@ if( first() ){
                 
                 local Accel = NewVel - OldVel
                 
-                local IsReallyOnGround = OnGround_ & (1-abs(NewVel:dot(GroundTrace_:hitNormal())) > 0) & (GroundTrace_:hitNormal():dot(vec(0,0,1)) > 0.5)
+                local IsReallyOnGround = OnGround_ & (1-abs(NewVel:dot(GroundTrace_:hitNormal())) > -50) & (GroundTrace_:hitNormal():dot(vec(0,0,1)) > 0.5)
                 
                 if( IsReallyOnGround ){
                     Can_Jump = 1
@@ -817,7 +817,7 @@ event keyPressed(Player:entity, Key:string, Down:number, KeyBind:string) {
             break
             case "jump",
                 if(Down & OnGround_ & Can_Jump){
-                    BALL:applyForce(vec(0,0,270)*BALL:mass())
+                    BALL:applyForce(vec(0,0,270 - MECH_HEIGHT*4 + GroundTrace_:distance()*Is_Hampter + !Is_Hampter*MECH_HEIGHT*4)*BALL:mass())
                     Can_Jump = 0
                 }
             break
