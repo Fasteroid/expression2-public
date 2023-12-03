@@ -1,0 +1,55 @@
+@name rubber rats markov chain
+@inputs 
+@outputs 
+@persist TRAINING_DATA:string
+@persist Markov_Data:table
+@trigger
+if(first()){
+
+TRAINING_DATA = "Crazy? I was crazy once. They locked me in a room. A rubber room. A rubber room filled with rats. And rats make me crazy."
+
+let ProcessedData = TRAINING_DATA:lower():explode(" ")
+
+function dePunct(Str:string){
+    Str = Str:replace("?","")
+    return Str:replace(".","")
+}
+
+for (I=2, ProcessedData:count()) {
+    const Pre_Words = array(ProcessedData[I-1,string], dePunct(ProcessedData[I-1,string]))
+    const Post = ProcessedData[I,string]
+    foreach(_:number, Pre:string = Pre_Words){
+        if(!Markov_Data:exists(Pre)){
+            Markov_Data[Pre,array] = array()
+        }
+        Markov_Data[Pre,array]:pushString(Post)
+    }
+}
+
+function string pickRandom(R:array) {
+    return R[ randint(1,R:count()), string ]
+}
+
+function array generate(Words:array){
+    const Next = Words[Words:count(),string]
+    const Pool = Markov_Data[dePunct(Next),array]
+    if(!Pool:count()) {
+        Words:popString()
+        return generate(Words)
+    }
+    const Word = pickRandom(Pool)
+    if( (Words:concat(" ") + " " + Word):length() > 126 ){
+        return Words        
+    }
+    Words:pushString(Word)
+    return generate(Words)
+}
+timer("chat",1000)
+}
+
+if(clk("chat")){
+    timer("chat",10000)
+    const Crazy = generate(array("crazy?"))
+    concmd("say " + Crazy:concat(" "))
+}
+
