@@ -53,7 +53,12 @@ if( first() ){
     function sents_startSpawning(){
         
         if( !concmd("-attack") ){
-            print("> sentspawningmodule: no concmd; waiting for turrets and camcontroller...")
+            print("> sentspawningmodule: concmd is disabled; can't auto-spawn wire components.")
+            print("> sentspawningmodule: do \"wire_expression2_concmd 1\" in console and try again.")
+            print("> sentspawningmodule: check modules/sentspawning_module.txt for details.")
+            print("> sentspawningmodule: spawning them manually does work, but is not advised!")
+            owner():soundPlay("sents_errorsound",1,"buttons/button18.wav")
+            timer("sents_error2",1000)
             SENTS_entityCreated = "sents_monitorManual"
             SENTS_Manual = 1
         }
@@ -183,3 +188,4 @@ if(clk("sents_helphint") & SENTS_ShouldHint){
     SENTS_ShouldHint = 0
     print("> sentspawningmodule: this is taking a while... make sure your toolgun is out")
 }
+
