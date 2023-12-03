@@ -1,0 +1,20 @@
+@name async files 2 demo
+@persist Dat:string FilesToLoad:array
+
+#include "asyncfiles2"
+# remember to grab e2shared/asyncfile.txt from the repo too!
+
+if( first() ){
+    # remember to pick a file in e2shared that actually exists
+    FilesToLoad = array("asyncfile.txt")
+    timer("load",1000)
+}
+
+if(clk("load")){
+    foreach(_:number, File:string = FilesToLoad){
+        fileLoadASync2(">e2shared/" + File, function(Name:string, Data:string) {
+            print(Name, Data)
+        }) # queue up the file with its callback 'onLoad' attached
+    }
+    print("starting file uploads...")
+}

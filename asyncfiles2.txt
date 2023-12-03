@@ -1,0 +1,55 @@
+@name asyncfiles2
+@persist ASYNCFILES_CALLBACKS:table
+@model models/bull/gates/microcontroller1.mdl
+
+#[                                              ]#
+##    E2 Library: ASyncFiles2                   ##
+##                                              ##
+##    Improved file I/O with callbacks.         ##
+##    Now with Lambdas!                         ##
+#[                                              ]#
+
+if( first() ){
+    
+    function supressInitializationWarnings(){
+        ASYNCFILES_CALLBACKS = table()
+    }
+     
+    ###############
+    ## 
+    #   fileLoadASync( Filepath:string, Callback:function = "onFileLoaded" )
+    #     Loads a file based on filepath.
+    #     Runs the set callback function when it finishes loading.
+    #
+    function fileLoadASync2( Filepath:string, Callback:function ){
+        fileLoad(Filepath)
+        ASYNCFILES_CALLBACKS[Filepath,function] = Callback
+    }
+    ##
+    #  CALLBACK EXAMPLE
+    #    FileData is the data from the file
+    #    FileName is the name of the file loaded
+    ##
+    function onFileLoaded( FileName:string, FileData:string ){
+        print("Default async load callback: "+FileName+" successfully loaded!", FileData)
+    }
+    
+    if(entity():model() == "models/bull/gates/microcontroller1.mdl"){
+        selfDestruct()
+        error("This is a library; #include it in something.")
+    }
+    
+}
+
+event fileLoaded(Name:string, Data:string){
+    print(_HUD_PRINTCONSOLE,"File '"+Name+"' successfully uploaded!")  
+    if(ASYNCFILES_CALLBACKS:exists(Name)){
+        ASYNCFILES_CALLBACKS[Name,function](Name, Data)
+    }
+}
+
+event fileErrored(Name:string, Error:number){
+    print(_HUD_PRINTCONSOLE,"WARNING: file '"+Name+"' failed to upload: " + Error)
+}
+
+
