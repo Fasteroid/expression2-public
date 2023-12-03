@@ -5,6 +5,10 @@
 # ~ manually written by YOURS TRULY!
 
 if(first()){ 
+    local Fireball_Callback = function(HoloID:number, _:number){
+        holoEntity(HoloID):setRenderMode(9)
+        holoAlpha(HoloID,254)
+    }
     registerStructure("fireball",table(
         "models" = array("hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere"),
         "positions" = array(vec(0,0,0),vec(-8,0,0),vec(-20,0,0),vec(-32,0,0),vec(-44,0,0),vec(-56,0,0),vec(0,0,0),vec(0,0,0),vec(0,0,0),vec(0,0,0),vec(0,0,0),vec(0,0,0)),
@@ -12,10 +16,6 @@ if(first()){
         "scales" = array(vec(7.01152,7.01152,7.01152),vec(6.83414,6.83414,6.83414),vec(6.51833,6.51833,6.51833),vec(6.44548,6.44548,6.44548),vec(6.2746,6.2746,6.2746),vec(6.07154,6.07154,6.07154),vec(7.15257,7.15257,7.15257),vec(7.24247,7.24247,7.24247),vec(7.18672,7.18672,7.18672),vec(7.24308,7.24308,7.24308),vec(7.29163,7.29163,7.29163),vec(7.1943,7.1943,7.1943)),
         "colors" = array(vec(255,70,0),vec(255,70,0),vec(255,70,0),vec(255,70,0),vec(255,70,0),vec(255,70,0),vec(112.5,25,0),vec(112.5,25,0),vec(112.5,25,0),vec(112.5,25,0),vec(112.5,25,0),vec(112.5,25,0)),
         "materials" = array("models/props_combine/portalball001_sheet","models/props_combine/portalball001_sheet","models/props_combine/portalball001_sheet","models/props_combine/portalball001_sheet","models/props_combine/portalball001_sheet","models/props_combine/portalball001_sheet","models/tools/camera/lightning000","models/tools/camera/lightning000","models/tools/camera/lightning000","models/tools/camera/lightning000","models/tools/camera/lightning000","models/tools/camera/lightning000"),
-        "spawnChild" = "fireball_callback"
+        "spawnChild" = Fireball_Callback
     ))
-    function fireball_callback(HoloID:number, _:number){
-        holoEntity(HoloID):setRenderMode(9)
-        holoAlpha(HoloID,254)
-    }
 }

@@ -9,15 +9,18 @@ if( first() ){
     # no warnings
     SEATROTATION_Seat = noentity()
     SEATROTATION_EyePos = vec(0.00,0.00,33.18)
+    SEATROTATION_Angle = 0
+    SEATROTATION_Angle = SEATROTATION_Angle
     
     
-    sents_onCamControllerReady("seatrotation_setupCamController")
-    function seatrotation_setupCamController(CamController:entity){
-        CamController:linkTo(SEATROTATION_Seat)
-        SEATROTATION_CamLink = CamController:wirelink()
-        SEATROTATION_CamLink["Position",vector]  = SEATROTATION_EyePos
-        SEATROTATION_CamLink["Parent",entity]    = SEATROTATION_Seat
-    }
+    sents_onCamControllerReady(
+        function(CamController:entity){
+            CamController:linkTo(SEATROTATION_Seat)
+            SEATROTATION_CamLink = CamController:wirelink()
+            SEATROTATION_CamLink["Position",vector]  = SEATROTATION_EyePos
+            SEATROTATION_CamLink["Parent",entity]    = SEATROTATION_Seat
+        }
+    )
     
     # thanks to my internship and angular dependency injection for this programming pattern!
     function seatrotation_setup(Seat:entity, RootHolo:number){

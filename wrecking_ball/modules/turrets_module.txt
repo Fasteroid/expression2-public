@@ -54,14 +54,15 @@ if( first() ){
         return A*A*A*X*B*5
     }
     
-    sents_onTurretsReady("turrets_onCreated")
-    function turrets_onCreated(Turrets:array){
-        foreach(_:number, T:entity = Turrets){
-            rangerFilter(T)
-            TURRETS_TurretPool:pushEntity(T)
-            TRACEFILTER_IGNORABLES:pushEntity(T)
-        }        
-    }
+    sents_onTurretsReady(
+        function (Turrets:array){
+            foreach(_:number, T:entity = Turrets){
+                rangerFilter(T)
+                TURRETS_TurretPool:pushEntity(T)
+                TRACEFILTER_IGNORABLES:pushEntity(T)
+            }        
+        }
+    )
     
     function string turrets_getTurretKey(TurretNum:number){
         return "turret"+TurretNum
@@ -239,6 +240,7 @@ if( first() ){
                 local T = TURRETS_ActiveTurretMatrix[ TURRETS_FireIndex+1, entity ]:wirelink()
                 T["Fire",number]   = 0
                 T["Spread",number] = TURRETS_SPREAD_EXTRA
+            if(0){T = T} # FIXME VURV
             }
             TURRETS_Firing = Firing
         }
@@ -301,3 +303,5 @@ if( clk("turrets_firetick") & TURRETS_Firing & TURRETS_MountIndex ){
 if( clk("turrets_currentoff") ){
     TURRETS_CurWirelink["Fire",number] = 0
 }
+
+if(0){TURRETS_CurWirelink = TURRETS_CurWirelink} # FIXME VURV

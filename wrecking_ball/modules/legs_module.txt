@@ -1,5 +1,5 @@
 @name wreckingballfeet
-@persist LEGS_Buffer:number LEGS_FootID:number LEGS_Soundmakers:array LEGS_Objects:table LEGS_ForceFootUpdate:number LEGS_LERP_SPEED LEGS_SOUND_VOL
+@persist LEGS_Buffer:number LEGS_FootID:number LEGS_Soundmakers:array LEGS_Objects:table LEGS_ForceFootUpdate:number LEGS_LERP_SPEED LEGS_SOUND_VOL LEGS_BallFootSolver:function
 
 #include "tinyiklib"
 
@@ -21,25 +21,6 @@ if( first() ){
     LEGS_FootID =  LEGS_Buffer = 0
     LEGS_Objects = table()
     LEGS_Soundmakers = array()
-
-    function table legs_createFoot(Root:entity){
-        LEGS_FootID++
-        local Ret = iklib_newIKLeg(38,42,Root,"legs_ballFootSolver")
-        Ret["id",number] = LEGS_FootID
-        LEGS_Objects:pushTable(Ret)
-        
-        local Decor1 = holoStructCreate("leg1",Root:pos())
-        holoAng(Decor1, Root:angles())
-        holoParent(Decor1,Ret["_h1",number])
-        Ret["leg1",number] = Decor1
-        
-        local Decor2 = holoStructCreate("leg2_cheap",Root:toWorld(vec(34,0,0)))
-        holoAng(Decor2, Root:angles())
-        holoParent(Decor2,Ret["_h2",number])
-        Ret["leg2",number] = Decor2
-        
-        return Ret
-    }
     
     function number:legs_setChildrenAlpha(Alpha:number){
         local Children = This:getChildren()
@@ -66,6 +47,7 @@ if( first() ){
     function legs_disableFeet(){
         foreach(_:number, Foot:table = LEGS_Objects){
             Foot["disabling",number] = 1
+            if(0){Foot = Foot} # FIXME VURV
         }
     }
     
@@ -108,7 +90,7 @@ if( first() ){
         LEGS_ForceFootUpdate = LEGS_FootID # each must consume
     }
     
-    function vector legs_ballFootSolver(This:table){
+    LEGS_BallFootSolver = function (This:table){
         
         local Root = This["_root",entity]
         local RootVel = (Root:pos() - This["oldPos",vector]) * 8
@@ -163,7 +145,7 @@ if( first() ){
             local A = This["lerpfrom",vector]
             local B = (This["lerpfrom",vector]+Target)*0.5 + vec(0,0,20)
             local C = Target
-            Target = mix(mix(C,B,1-Lerp),mix(B,A,1-Lerp),1-Lerp)
+            Target = lerp(lerp(C,B,Lerp),lerp(B,A,Lerp),Lerp)
             This["lerp",number] = This["lerp",number] - LEGS_LERP_SPEED * TICKRATE_TimeScalar_
             if(This["lerp",number]<=0){
                 LEGS_Buffer = 0
@@ -184,4 +166,24 @@ if( first() ){
         return Target
         
     }
+    
+    function table legs_createFoot(Root:entity){
+        LEGS_FootID++
+        local Ret = iklib_newIKLeg(38,42,Root,LEGS_BallFootSolver)
+        Ret["id",number] = LEGS_FootID
+        LEGS_Objects:pushTable(Ret)
+        
+        local Decor1 = holoStructCreate("leg1",Root:pos())
+        holoAng(Decor1, Root:angles())
+        holoParent(Decor1,Ret["_h1",number])
+        Ret["leg1",number] = Decor1
+        
+        local Decor2 = holoStructCreate("leg2_cheap",Root:toWorld(vec(34,0,0)))
+        holoAng(Decor2, Root:angles())
+        holoParent(Decor2,Ret["_h2",number])
+        Ret["leg2",number] = Decor2
+        
+        return Ret
+    }
+
 }

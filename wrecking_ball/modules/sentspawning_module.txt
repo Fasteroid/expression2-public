@@ -1,7 +1,8 @@
 @name sentspawningmodule
-@persist SENTS_tick:string SENTS_entityCreated:string SENTS_Turrets:array SENTS_CamController:entity SENTS_TurretCallback:string SENTS_CamControlCallback:string
+@persist SENTS_tick:function SENTS_entityCreated:function SENTS_Turrets:array SENTS_CamController:entity SENTS_TurretCallback:function SENTS_CamControlCallback:function
 @persist SENTS_ShouldHint SENTS_Manual
 @persist SENTS_SETUP_TURRETS:string SENTS_SETUP_CAMCONTROLLER:string
+@persist [SENTS_Null_EntityCreated, SENTS_Null_Tick, SENTS_MonitorManual, SENTS_Turrets1, SENTS_Turrets2, SENTS_Turrets3, SENTS_CamController1, SENTS_CamController2, SENTS_RunCallbacks]:function
 
 if( first() ){
     
@@ -32,14 +33,21 @@ if( first() ){
     SENTS_Turrets = array()
     SENTS_ShouldHint = 1
     
+    SENTS_Null_EntityCreated = function(_:entity){}
+    SENTS_Null_Tick          = function(){}
+    
+    SENTS_entityCreated = SENTS_Null_EntityCreated
+    SENTS_tick          = SENTS_Null_Tick
+    
     function sents_uninitialized_warnings(){
         SENTS_CamController = noentity()
+        SENTS_MonitorManual = SENTS_Turrets1 = SENTS_Turrets2 = SENTS_Turrets3 = SENTS_CamController1 = SENTS_CamController2 = SENTS_RunCallbacks = SENTS_Null_Tick
     }
     
-    function sents_onCamControllerReady(Callback:string){
+    function sents_onCamControllerReady(Callback:function){
         SENTS_CamControlCallback = Callback
     }
-    function sents_onTurretsReady(Callback:string){
+    function sents_onTurretsReady(Callback:function){
         SENTS_TurretCallback = Callback
     }
     
@@ -59,38 +67,38 @@ if( first() ){
             print("> sentspawningmodule: spawning them manually does work, but is not advised!")
             owner():soundPlay("sents_errorsound",1,"buttons/button18.wav")
             timer("sents_error2",1000)
-            SENTS_entityCreated = "sents_monitorManual"
+            SENTS_entityCreated = SENTS_MonitorManual
             SENTS_Manual = 1
         }
         else{
             print("> sentspawningmodule: setting up...")
-            SENTS_tick          = "sents_turrets_1"
-            SENTS_entityCreated = ""
+            SENTS_tick          = SENTS_Turrets1
+            SENTS_entityCreated = SENTS_Null_EntityCreated
             SENTS_Manual = 0
             timer("sents_helphint",5000)
         }
 
     }
     
-    function sents_turrets_1(){
+    SENTS_Turrets1 = function(){
         if( !owner():keyAttack1() & owner():weapon():type() == "gmod_tool" ){
-            SENTS_tick          = "sents_turrets_2"
-            SENTS_entityCreated = ""
+            SENTS_tick          = SENTS_Turrets2
+            SENTS_entityCreated = SENTS_Null_EntityCreated
             
             SENTS_ShouldHint = 0
             
             concmd(SENTS_SETUP_TURRETS)
         }
     }
-    function sents_turrets_2(){
+    SENTS_Turrets2 = function(){
         if( owner():tool() == "wire_turret" & !owner():keyAttack1() & owner():aimEntity():type() != "gmod_wire_turret" ){
-            SENTS_tick          = ""
-            SENTS_entityCreated = "sents_turrets_3"
+            SENTS_tick          = SENTS_Null_Tick
+            SENTS_entityCreated = SENTS_Turrets3
             
             concmd("+attack")
         }
     }
-    function sents_turrets_3(Ent:entity){
+    SENTS_Turrets3 = function(Ent:entity){
         
         if( 
             Ent:type() != "gmod_wire_turret" |
@@ -103,15 +111,15 @@ if( first() ){
         SENTS_Turrets:pushEntity(Ent)
         if(!SENTS_Manual){ 
             if(SENTS_Turrets:count() < 4){
-                SENTS_tick          = "sents_turrets_2"
-                SENTS_entityCreated = ""
+                SENTS_tick          = SENTS_Turrets2
+                SENTS_entityCreated = SENTS_Null_EntityCreated
                 
                 concmd("-attack")
             }
             else{
                 print("> sentspawningmodule: made turrets...")
-                SENTS_tick          = "sents_camcontroller_1"
-                SENTS_entityCreated = ""            
+                SENTS_tick          = SENTS_CamController1
+                SENTS_entityCreated = SENTS_Null_EntityCreated           
                 
                 concmd("-attack;" + SENTS_SETUP_CAMCONTROLLER)
             }
@@ -124,15 +132,15 @@ if( first() ){
         
     }
     
-    function sents_camcontroller_1(){
+    SENTS_CamController1 = function(){
         if( owner():tool() == "wire_cam" & !owner():keyAttack1() ){
-            SENTS_tick          = ""
-            SENTS_entityCreated = "sents_camcontroller_2"
+            SENTS_tick          = SENTS_Null_Tick
+            SENTS_entityCreated = SENTS_CamController2
             
             concmd("+attack")
         }        
     }
-    function sents_camcontroller_2(Ent:entity){
+    SENTS_CamController2 = function(Ent:entity){
         
         if(
             Ent:type() != "gmod_wire_cameracontroller" |
@@ -144,8 +152,8 @@ if( first() ){
         sents_resetFetched(Ent)
         SENTS_CamController = Ent
         if(!SENTS_Manual){ 
-            SENTS_tick          = "sents_run_callbacks"
-            SENTS_entityCreated = ""          
+            SENTS_tick          = SENTS_RunCallbacks
+            SENTS_entityCreated = SENTS_Null_EntityCreated       
             
             print("> sentspawningmodule: made cam controller...")
                 
@@ -156,32 +164,28 @@ if( first() ){
         } 
     }
     
-    function sents_monitorManual(E:entity){
-        sents_turrets_3(E)
-        sents_camcontroller_2(E)
+    SENTS_MonitorManual = function(E:entity){
+        SENTS_Turrets3(E)
+        SENTS_CamController2(E)
     }
     
-    function sents_run_callbacks(){
+    SENTS_RunCallbacks = function(){
         print("> sentspawningmodule: done!")
         concmd("wire_turret_automatic 1")
         SENTS_TurretCallback(SENTS_Turrets)
         SENTS_CamControlCallback(SENTS_CamController)
-        SENTS_tick = ""
+        SENTS_tick = SENTS_Null_Tick
     }
     
 }
 
 
 event tick(){
-    if( SENTS_tick != "" ){
-        SENTS_tick()
-    }
+    SENTS_tick()
 }
 
 event entityCreated(Ent:entity) {
-    if( SENTS_entityCreated != "" ){
-        SENTS_entityCreated(Ent)
-    }    
+    SENTS_entityCreated(Ent)  
 }
 
 if(clk("sents_helphint") & SENTS_ShouldHint){

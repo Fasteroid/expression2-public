@@ -196,15 +196,11 @@ if( first() ){
         Driver_ = noentity()
         GroundTrace_ = noranger()
         Keys_ = table()
-        AimPos_ = vec()
-        Tilt_ = ang()
+        AimPos_ = Pile_Dir = Pile_Axis = vec()
+        Tilt_ = Pile_Initial_Ang = ang()
         Ball_Action = Action_NONE
         Pile_Prop = noentity()
       }
-        
-    ##### function stubs #####
-    
-        function changeMechForm(){}
         
     ##### misc #####
     
@@ -376,31 +372,6 @@ if( first() ){
                 }
             }
         }
-    
-    
-      # piledrive funcs
-        function tryPiledrive(){
-            if( Pile_Prop:isValid() ){ return }
-            if( Ball_Action != Action_NONE ){ return }
-            if( GroundTrace_:distance() < PILE_MIN_HEIGHT ){ return }
-            
-            if(Is_Hampter){ changeMechForm() }
-            
-            clearFireball()
-            
-            Pile_Active = 1
-            Pile_Progress = 0
-            
-            local Ang = Driver_:eyeAnglesVehicle():setPitch(0)
-            Pile_Dir         = Ang:forward()
-            Pile_Axis        = Ang:right()
-            Ball_Action      = Pile_SPOOL
-            Pile_Initial_Ang = BALL:angles()
-            
-            BALL:soundPlay("pile-spoolup",1.5,"weapons/physcannon/physcannon_claws_close.wav")
-            BALL:propFreeze(1)
-            return
-        }
 
     ##### mode functions #####
     
@@ -428,8 +399,9 @@ if( first() ){
             
             OnGround_ = (GroundTrace_:distance() < 20+RADIUS)
 
+            local DeltaTemp = Transform_Progress
             Transform_Progress = max(0, Transform_Progress - TRANSFORM_RATE * TICKRATE_TimeScalar_)
-            if( $Transform_Progress < 0 & Transform_Progress == 0 ){
+            if( (Transform_Progress - DeltaTemp) < 0 & Transform_Progress == 0 ){
                 begin_mode_ball()
             }
             
@@ -517,8 +489,9 @@ if( first() ){
                 break
                 case Grapple_LOCK,
                     local CurrentLen = (BALL:pos() - GRAPPLE_PHYSOBJ:pos()):length()
-                    Rope_Len = max(Rope_Len, GRAPPLE_MIN_DIST )
-                    if( $Rope_Len < -GRAPPLE_STEP_SIZE & Rope_Len > GRAPPLE_MIN_DIST ){
+                    local DeltaTemp = Rope_Len
+                    Rope_Len = max(Rope_Len, GRAPPLE_MIN_DIST)
+                    if( (Rope_Len - DeltaTemp) < -GRAPPLE_STEP_SIZE & Rope_Len > GRAPPLE_MIN_DIST ){
                         
                         local Vel = BALL:vel()
                         local MinusDist = Vel:dot( (BALL:pos() - GRAPPLE_PHYSOBJ:pos()):normalized() ) * tickInterval()
@@ -639,8 +612,9 @@ if( first() ){
         }
         function mode_hampter(){
             
+            local DeltaTemp = Transform_Progress
             Transform_Progress = min(1, Transform_Progress + TRANSFORM_RATE * TICKRATE_TimeScalar_)
-            if( $Transform_Progress > 0 & Transform_Progress == 1 ){
+            if( (Transform_Progress-DeltaTemp) > 0 & Transform_Progress == 1 ){
                 begin_mode_hampter()
             }
             
@@ -728,6 +702,29 @@ if( first() ){
                 end_mode_hampter()
             }
         }
+    }
+    
+    function tryPiledrive(){
+        if( Pile_Prop:isValid() ){ return }
+        if( Ball_Action != Action_NONE ){ return }
+        if( GroundTrace_:distance() < PILE_MIN_HEIGHT ){ return }
+        
+        if(Is_Hampter){ changeMechForm() }
+        
+        clearFireball()
+        
+        Pile_Active = 1
+        Pile_Progress = 0
+        
+        local Ang = Driver_:eyeAnglesVehicle():setPitch(0)
+        Pile_Dir         = Ang:forward()
+        Pile_Axis        = Ang:right()
+        Ball_Action      = Pile_SPOOL
+        Pile_Initial_Ang = BALL:angles()
+        
+        BALL:soundPlay("pile-spoolup",1.5,"weapons/physcannon/physcannon_claws_close.wav")
+        BALL:propFreeze(1)
+        return
     }
         
 }

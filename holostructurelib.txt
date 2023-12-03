@@ -34,7 +34,7 @@ if( first() ){
     #     | ["materials",array] -> hologram materials
     #     |
     #     | OPTIONAL:
-    #     | ["spawnChild",string] -> callback function for spawning child holos; the following are passed:
+    #     | ["spawnChild",function] -> callback function for spawning child holos; the following are passed:
     #     | | HoloID:number -> the actual holo id
     #     | | Index:number  -> index of child on the template
     #   
@@ -139,7 +139,7 @@ event tick(){
                 holoMaterial(H,Materials[Progress,string])
                 holoParent(H,N)
                 if( Template:exists("spawnChild") ){
-                    Template["spawnChild",string](H, Progress)
+                    Template["spawnChild",function](H, Progress)
                 }
             SpawnStruct["children",array]:pushNumber(H)
         }
