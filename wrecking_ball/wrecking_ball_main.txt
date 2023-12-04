@@ -1,4 +1,4 @@
-@name Wrecking Ball 1.9.1
+@name Wrecking Ball 1.9.2
 
 #[
     Note for Fasteroid/expression2-public Github browsers: 
@@ -124,30 +124,35 @@ if( first() ){
         holoColor(GRAPPLE_ROOT_HOLO,vec(255,0,0))
         holoParent(GRAPPLE_ROOT_HOLO, ROOT_HOLO)
         GRAPPLE_ROOT_HOLO_ENT = holoEntity(GRAPPLE_ROOT_HOLO)
+            
+        # the grappling hook can be despawned by the engine if attached to an entity that gets deleted.
+        # the "at-risk" entities are spawned within this function so we can respawn them if that happens.
+        function spawnGrapple(){
+            local Origin = BALL:pos()
+            
+            GRAPPLE_HOLO = holoAlloc(Origin+vec(RADIUS,0,0),ang())
+            GRAPPLE_HOLO_ENT = holoEntity(GRAPPLE_HOLO)
+            
+            holoMaterial(GRAPPLE_HOLO,"metal4")
+            holoScale(GRAPPLE_HOLO,vec(1.25))
+            holoModel(GRAPPLE_HOLO,"torus2")
+            holoClip(GRAPPLE_HOLO,1,vec(3,0,0),vec(-1,0,0),0)
+            holoClipEnabled(GRAPPLE_HOLO,1,1)
+            
+            local GrappleOtherHolo = holoAlloc(Origin+vec(RADIUS,0,0),ang(0,0,90))
+            holoMaterial(GrappleOtherHolo,"metal4")
+            holoScale(GrappleOtherHolo,vec(1.25))
+            holoParent(GrappleOtherHolo,GRAPPLE_HOLO)
+            holoModel(GrappleOtherHolo,"torus2")
+            holoClip(GrappleOtherHolo,1,vec(3,0,0),vec(-1,0,0),0)
+            holoClipEnabled(GrappleOtherHolo,1,1)
         
-        # TODO: better grapple model when holo limit raised
-        
-        GRAPPLE_HOLO = holoAlloc(Origin+vec(RADIUS,0,0),ang())
-        GRAPPLE_HOLO_ENT = holoEntity(GRAPPLE_HOLO)
-        
-        holoMaterial(GRAPPLE_HOLO,"metal4")
-        holoScale(GRAPPLE_HOLO,vec(1.25))
-        holoModel(GRAPPLE_HOLO,"torus2")
-        holoClip(GRAPPLE_HOLO,1,vec(3,0,0),vec(-1,0,0),0)
-        holoClipEnabled(GRAPPLE_HOLO,1,1)
-        
-        local GrappleOtherHolo = holoAlloc(Origin+vec(RADIUS,0,0),ang(0,0,90))
-        holoMaterial(GrappleOtherHolo,"metal4")
-        holoScale(GrappleOtherHolo,vec(1.25))
-        holoParent(GrappleOtherHolo,GRAPPLE_HOLO)
-        holoModel(GrappleOtherHolo,"torus2")
-        holoClip(GrappleOtherHolo,1,vec(3,0,0),vec(-1,0,0),0)
-        holoClipEnabled(GrappleOtherHolo,1,1)
-        
-        GRAPPLE_PHYSOBJ = propSpawn("models/hunter/plates/plate.mdl",GRAPPLE_HOLO_ENT:pos(),1)
-        GRAPPLE_PHYSOBJ:setAlpha(0)
-        GRAPPLE_PHYSOBJ:parentTo(GRAPPLE_HOLO_ENT)
-        GRAPPLE_PHYSOBJ:propNotSolid(1)
+            GRAPPLE_PHYSOBJ = propSpawn("models/hunter/plates/plate.mdl",GRAPPLE_HOLO_ENT:pos(),1)
+            GRAPPLE_PHYSOBJ:setAlpha(0)
+            GRAPPLE_PHYSOBJ:parentTo(GRAPPLE_HOLO_ENT)
+            GRAPPLE_PHYSOBJ:propNotSolid(1)
+        }
+        spawnGrapple()
         
         GRAPPLE_ORIGIN = propSpawn("models/hunter/plates/plate.mdl",BALL:pos(),1)
         GRAPPLE_ORIGIN:setAlpha(0)
@@ -737,6 +742,12 @@ event tick(){
     if( opcounter() > softQuota() ){ # don't quota
         tickrate_dropTick()
         exit() 
+    }
+    
+    if(!GRAPPLE_PHYSOBJ:isValid()){ # oh no
+        BALL:soundPlay("grapple_deleted",1,"weapons/fx/rics/ric"+randint(1,5)+".wav")
+        spawnGrapple()
+        resetGrapple(ang())
     }
     
     Driver_ = SEAT:driver()
