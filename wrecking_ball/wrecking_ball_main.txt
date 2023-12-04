@@ -759,6 +759,7 @@ event tick(){
     }
     
     # for some reason, Driver_:eye() is unstable here
+    tracefilter_load()
     AimPos_ = rangerOffset(9999,SEAT:toWorld(CAMERA_POS),Driver_:eyeAnglesVehicle():forward()):position()
 
     Keys_ = table(
