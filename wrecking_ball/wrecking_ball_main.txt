@@ -1,4 +1,4 @@
-@name Wrecking Ball 1.9.2
+@name Wrecking Ball 1.9.3
 
 #[
     Note for Fasteroid/expression2-public Github browsers: 
@@ -14,7 +14,7 @@
 @persist MECH_HEIGHT GRAPPLE_MAX_DOT SLOPE_MAX_DOT
 
 # holos
-@persist ROOT_HOLO ROOT_HOLO_ENT:entity SEAT_ROOT_HOLO SEAT_ROOT_HOLO_ENT:entity GRAPPLE_ROOT_HOLO GRAPPLE_ROOT_HOLO_ENT:entity GRAPPLE_HOLO GRAPPLE_HOLO_ENT:entity
+@persist ROOT_HOLO ROOT_HOLO_ENT:entity SEAT_ROOT_HOLO SEAT_ROOT_HOLO_ENT:entity GRAPPLE_ROOT_HOLO GRAPPLE_ROOT_HOLO_ENT:entity GRAPPLE_HOLO GRAPPLE_HOLO_ENT:entity GRAPPLE_OTHER_HOLO_ENT:entity
 @persist FIREBALL_ROOT FIREBALL_ROOT_ENT:entity
 
 # enums
@@ -27,7 +27,7 @@
 @persist Grapple_Vel:vector Rope_Len Grapple_Hit_Entity:entity Grapple_Out
 @persist Pile_Active Pile_Dir:vector Pile_Axis:vector Pile_Initial_Ang:angle Pile_Progress Pile_Target_Pos:vector Pile_Prop:entity Pile_Desired
 @persist Leg_Deploy_Desired
-@persist Is_Fireball Fireball_Current_Opacity Fireball_Sound_CD Fireball_Cache
+@persist Is_Fireball Fireball_Current_Opacity Fireball_Sound_CD Fireball_Cache Fireball_Wind_Vol Fireball_Wind_Dir Fireball_Wind_Pitch Fireball_Wind_Pitch_Target
 
 # updated every tick
 @persist GroundTrace_:ranger OnGround_ Driver_:entity Keys_:table Speed_ AimPos_:vector Tilt_:angle
@@ -60,13 +60,13 @@ if( first() ){
         
         GRAPPLE_MIN_DIST  = 300
         GRAPPLE_STEP_SIZE = 2
-        GRAPPLE_MAX_DIST  = 2000
-        FIREBALL_TIMEOUT  = 4000
+        GRAPPLE_MAX_DIST  = 1150
+        FIREBALL_TIMEOUT  = 2000
         
         PILE_SPOOL_RATE = 0.02
-        PILE_SPOOL_STEP = 5
+        PILE_SPOOL_STEP = 3.5
         PILE_DROP_STEP  = 100
-        PILE_MIN_HEIGHT = 150
+        PILE_MIN_HEIGHT = 140
         PILE_FORCE      = 600
         PILE_FORCE_TIME = 125
         
@@ -97,7 +97,7 @@ if( first() ){
         
         BALL:setMass(320)
         
-        BALL:soundPlay("gyroscopic-harness",0,"npc/scanner/cbot_fly_loop.wav")
+        BALL:soundPlay("gyroscopic-harness",0,"ambient/machines/combine_shield_loop3.wav")
         BALL:setMaterial("metal6")
         
         SEAT_HEIGHT = RADIUS - 20
@@ -111,13 +111,16 @@ if( first() ){
         FIREBALL_ROOT = holoStructCreate("fireball",Origin)
         holoParent(FIREBALL_ROOT, ROOT_HOLO)
         FIREBALL_ROOT_ENT = holoEntity(FIREBALL_ROOT)
-        FIREBALL_ROOT_ENT:soundPlay("fireball",0,"vehicles/fast_windloop1.wav")
+        FIREBALL_ROOT_ENT:soundPlay("fireball",0,"ambient/ambience/wind_light02_loop.wav")
+        soundPitch("fireball",220)
         soundVolume("fireball",0)
         
         SEAT_ROOT_HOLO = holoAlloc(Origin)
         SEAT_ROOT_HOLO_ENT = holoEntity(SEAT_ROOT_HOLO)
         holoParent(SEAT_ROOT_HOLO, ROOT_HOLO)
         seatrotation_setup(SEAT, SEAT_ROOT_HOLO)
+        SEAT_ROOT_HOLO_ENT:soundPlay("rolling",0,"physics/metal/metal_box_scrape_rough_loop1.wav")
+        soundPitch("rolling",80)
         
         
         GRAPPLE_ROOT_HOLO = holoAlloc(Origin)
@@ -146,11 +149,14 @@ if( first() ){
             holoModel(GrappleOtherHolo,"torus2")
             holoClip(GrappleOtherHolo,1,vec(3,0,0),vec(-1,0,0),0)
             holoClipEnabled(GrappleOtherHolo,1,1)
+            GRAPPLE_OTHER_HOLO_ENT = holoEntity(GrappleOtherHolo)
         
             GRAPPLE_PHYSOBJ = propSpawn("models/hunter/plates/plate.mdl",GRAPPLE_HOLO_ENT:pos(),1)
             GRAPPLE_PHYSOBJ:setAlpha(0)
             GRAPPLE_PHYSOBJ:parentTo(GRAPPLE_HOLO_ENT)
             GRAPPLE_PHYSOBJ:propNotSolid(1)
+            
+            TRACEFILTER_IGNORABLES:pushEntity(GRAPPLE_PHYSOBJ)
         }
         spawnGrapple()
         
@@ -184,11 +190,11 @@ if( first() ){
         TRACEFILTER_IGNORABLES = TRACEFILTER_IGNORABLES:add(array(
             BALL, 
             SEAT, 
-            GRAPPLE_PHYSOBJ, 
             GRAPPLE_ORIGIN
         ))
         
         Can_Jump = 1
+        Fireball_Wind_Pitch = 100
         
         sents_startSpawning()
         
@@ -196,7 +202,7 @@ if( first() ){
       function uninitialized(){
         Transform_Progress = Is_Hampter = Pile_Progress = Grapple_Out = OnGround_ = 
         Speed_ = Pile_Active = Is_Fireball = Fireball_Current_Opacity = Pile_Desired = 
-        Fireball_Cache = 0
+        Fireball_Cache = Fireball_Wind_Dir = Fireball_Wind_Vol = 0
         
         Driver_ = noentity()
         GroundTrace_ = noranger()
@@ -293,7 +299,7 @@ if( first() ){
         }
         
         function animateFireballOpacity(){
-            local Diff = clamp((Is_Fireball==1)*290 - Fireball_Current_Opacity,-20,20) * TICKRATE_TimeScalar_
+            local Diff = clamp((Is_Fireball)*290 - Fireball_Current_Opacity,-20,20) * TICKRATE_TimeScalar_
             Fireball_Current_Opacity = Fireball_Current_Opacity + Diff
             setFireballOpacity(Fireball_Current_Opacity)
         }
@@ -301,16 +307,17 @@ if( first() ){
         function clearFireball(){
             if(!Is_Fireball){ return }
             Fireball_Sound_CD = 0
+            Fireball_Wind_Dir = -0.2
             Is_Fireball = 0
-            soundVolume("fireball",0)
             soundVolume("fireball-metal",0)
         }
         
         function playFireball(){
             if(!Fireball_Sound_CD){
-                soundVolume("fireball",100)
-                timer("fireballsound2",300)
+                timer("fireballsound2",100)
+                timer("fireballturbulence",10)
                 Fireball_Sound_CD = 1
+                Fireball_Wind_Dir = 0.05
             }
         }
         
@@ -351,6 +358,8 @@ if( first() ){
             local TraceDir = Ang:forward()
             
             GRAPPLE_HOLO_ENT:soundPlay("grapple-fire",0,"weapons/tripwire/ropeshoot.wav")
+            GRAPPLE_OTHER_HOLO_ENT:soundPlay("grapple-launch",1,"weapons/airboat/airboat_gun_lastshot"+randint(1,2)+".wav")
+            soundPitch("grapple-launch",160)
             holoAng(GRAPPLE_ROOT_HOLO,Ang)
             holoUnparent(GRAPPLE_HOLO)
             holoPos(GRAPPLE_HOLO, GRAPPLE_ROOT_HOLO_ENT:toWorld(vec(RADIUS,0,0)))
@@ -413,9 +422,9 @@ if( first() ){
         function end_mode_ball(){
             
             BALL:soundPlay("ball-open",0.15,"doors/door_chainlink_move1.wav")
-            ROOT_HOLO_ENT:soundPlay("ball-open-2",1,"physics/metal/metal_sheet_impact_hard7.wav")
-            soundPitch("ball-open-2", 150)
-            # print("ball end")
+            ROOT_HOLO_ENT:soundPlay("ball-open-2",1,"doors/latchunlocked1.wav")
+            soundPitch("ball-open-2", 90)
+            soundVolume("rolling",0)
             soundVolume("gyroscopic-harness",0)
             
             resetGrapple(ang())
@@ -439,7 +448,8 @@ if( first() ){
             }
             
             soundVolume("gyroscopic-harness",Speed_/1000)
-            soundPitch("gyroscopic-harness",Speed_/7)
+            soundPitch("gyroscopic-harness",clamp(Speed_/6,0,80))
+            soundVolume("rolling",OnGround_*Speed_/1000)
             
             local RotationDir = -BALL:toLocalAxis( BALL:vel():setZ(0):toAngle():right() )
             local RotationSpeed_ = Speed_ * 175 / (RADIUS * _PI)
@@ -454,11 +464,11 @@ if( first() ){
                 ForceVec = ForceVec:rotate(ang(Tilt_[1], 0, -Tilt_[2])):normalized()
                 ## print(ForceVec,OldForceVec)
                     
-                local AccelTime = 18
-                local TopSpeed  = 500
+                local AccelTime = 16
+                local TopSpeed  = 450
                 
                 if( Ball_Action == Grapple_LOCK ){
-                    AccelTime+=!OnGround_*15
+                    AccelTime += !OnGround_*45
                     AccelTime = AccelTime * 2
                     TopSpeed = TopSpeed * 2.5
                     if( Speed_ > FIREBALL_VEL ){
@@ -537,6 +547,8 @@ if( first() ){
                 break
                 case Pile_SPOOL,
                     reelGrapple()
+            
+                    Is_Fireball = 1
                     Pile_Progress = min(1, Pile_Progress + PILE_SPOOL_RATE * TICKRATE_TimeScalar_)
                     
                     tracefilter_load()
@@ -557,6 +569,7 @@ if( first() ){
 
                     BALL:setPos( StepTrace:pos() )
                     BALL:setAng( Pile_Initial_Ang:rotateAroundAxis(Pile_Axis,360*4*Pile_Progress) )
+ 
                     soundPitch("pile-spoolup",30+70*Pile_Progress)
                     if( Pile_Progress == 1 ){ 
                         Ball_Action = Pile_DROP
@@ -584,21 +597,36 @@ if( first() ){
                         GRAPPLE_ROOT_HOLO_ENT:soundPlay("pile-sfx4",1.5,"weapons/mortar/mortar_explode"+randint(1,3)+".wav")
                         soundPitch("pile-sfx4",random(160,170))
                         
+                        # do the impact shockwave thing
                         Pile_Prop = propSpawn("models/hunter/plates/plate8x8.mdl",GroundTrace_:position()-vec(0,0,RADIUS+1.55),0)
                         foreach(_:number, K:entity = TRACEFILTER_IGNORABLES){
                             K:noCollide(Pile_Prop)
                         }
-                        
                         Pile_Prop:setAlpha(0)
                         Pile_Prop:tickrate_applyForce( vec(0,0,200)*Pile_Prop:mass() )
 
                         timer("pilepurge",PILE_FORCE_TIME)
                         
                         Pile_Target_Pos = GroundTrace_:position()
+                        
+                        # little explosion effect with weakest explosion prop
+                        local RandRot = random(0,360)
+                        for(T=0, 2){
+                            Boom = propSpawn(
+                                "models/props_junk/propane_tank001a.mdl",
+                                Pile_Target_Pos + vec(
+                                    sin(T*120 + RandRot)*0.5,
+                                    cos(T*120 + RandRot)*0.5,
+                                    -1.2)
+                                *RADIUS, 
+                            1)
+                            Boom:propBreak()
+                        }
+                        
                         timer("pileend",0)
                         Is_Fireball = 0
                     }
-                    else{
+                    else {
                         Is_Fireball = 1
                         Pile_Target_Pos = Pile_Target_Pos + vec(0,0,-1) * Dist
                         BALL:tickrate_applyForce( ((Pile_Target_Pos - BALL:pos())*10 - BALL:vel()) * BALL:mass() )
@@ -613,6 +641,11 @@ if( first() ){
                 if(Ball_Action == Pile_DROP){
                     Ang = ang(90,curtime()*500,0)
                 }
+                elseif(Ball_Action == Pile_SPOOL){
+                    Ang = ang(-90,curtime()*500,0)
+                    # next line needed to cancel out rotation from being parented to the ball while it spins
+                    Ang = Ang:rotateAroundAxis(Pile_Axis,-360*4*(PILE_SPOOL_RATE * TICKRATE_TimeScalar_))
+                }
                 else{
                     local Axis = BALL:vel()
                     Ang = Axis:toAngle():rotateAroundAxis(Axis,curtime()*500)
@@ -620,6 +653,10 @@ if( first() ){
                     Ang = Ang:rotateAroundAxis(AngVelVec,-AngVelVec:length()*tickInterval())
                 }
                 holoAng(FIREBALL_ROOT,Ang)
+                
+                local FireballWindShift = clamp(Fireball_Wind_Pitch_Target - Fireball_Wind_Pitch, -5, 5)
+                Fireball_Wind_Pitch = Fireball_Wind_Pitch + FireballWindShift
+                soundPitch("fireball",Fireball_Wind_Pitch * 1.5)
             }
                 
             
@@ -627,9 +664,13 @@ if( first() ){
     
       # hampter: 1
         function end_mode_hampter(){
-            BALL:soundPlay("ball-open",1,"doors/door_metal_medium_open1.wav")
-            ROOT_HOLO_ENT:soundPlay("ball-open-2",1,"physics/metal/paintcan_impact_hard2.wav")
-            soundPitch("ball-open", 120)
+            BALL:soundPlay("ball-close",1,"doors/door_metal_thin_close2.wav")
+            soundPitch("ball-close",random(100,120))
+            ROOT_HOLO_ENT:soundPlay("ball-close-2",1,"doors/vent_open"+(1+randint(0,1)*2)+".wav")
+            soundVolume("ball-close-2",0.6)
+            soundPitch("ball-close-2", random(120,140))
+            SEAT:soundPlay("ball-close-3",1,"physics/metal/metal_canister_impact_soft"+randint(1,2)+".wav")
+            soundPitch("ball-close-3",90)
             legs_disableSoundMakers()
             legs_disableFeet()
             # print("hampter end")
@@ -744,7 +785,7 @@ event tick(){
         exit() 
     }
     
-    if(!GRAPPLE_PHYSOBJ:isValid()){ # oh no
+    if(!GRAPPLE_PHYSOBJ:isValid() & propCanCreate()){ # oh no
         BALL:soundPlay("grapple_deleted",1,"weapons/fx/rics/ric"+randint(1,5)+".wav")
         spawnGrapple()
         resetGrapple(ang())
@@ -754,6 +795,7 @@ event tick(){
     holoPos( SEAT_ROOT_HOLO, ROOT_HOLO_ENT:toWorld(vec(0,0,SEAT_HEIGHT * Transform_Progress )))
     Speed_ = BALL:vel():setZ(0):length()
     
+    tracefilter_load()
     GroundTrace_ = doGroundTrace(!Pile_Active)
 
     checkLandingConditions()
@@ -787,6 +829,9 @@ event tick(){
     else { # BALL
         mode_ball()
     }
+    
+    Fireball_Wind_Vol = clamp(Fireball_Wind_Vol + Fireball_Wind_Dir, 0, 1)
+    soundVolume("fireball",Fireball_Wind_Vol)
     
     if( Pile_Prop:isValid() ){
         Pile_Prop:perfectAngForce(ang(0,0,0))
@@ -829,7 +874,7 @@ event keyPressed(Player:entity, Key:string, Down:number, KeyBind:string) {
             break
             case "jump",
                 if(Down & OnGround_ & Can_Jump){
-                    BALL:applyForce(vec(0,0,270 - MECH_HEIGHT*4 + GroundTrace_:distance()*Is_Hampter + !Is_Hampter*MECH_HEIGHT*4)*BALL:mass())
+                    BALL:applyForce(vec(0,0,235 - MECH_HEIGHT*4 + GroundTrace_:distance()*Is_Hampter + !Is_Hampter*MECH_HEIGHT*4)*BALL:mass())
                     Can_Jump = 0
                 }
             break
@@ -882,4 +927,9 @@ if(clk("fireballsound3") & Fireball_Sound_CD){
 
 if(clk("fireballsound4") & Fireball_Sound_CD){
     soundVolume("fireball-metal",0)
+}
+
+if(clk("fireballturbulence") & Is_Fireball){
+    Fireball_Wind_Pitch_Target = randint(80,120)
+    timer("fireballturbulence",random(300,600))
 }

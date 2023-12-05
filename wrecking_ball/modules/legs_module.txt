@@ -81,8 +81,9 @@ if( first() ){
     }
     
     function legs_handleSoundMakers(This:table, Target:vector, Root:entity, Ranger:ranger){
-        if(!This["soundmaker",entity]:isValid()){
-            local P = propSpawn("models/props_c17/canister02a.mdl",Target+vec(0,0,100),0)
+        if(!This["soundmaker",entity]:isValid() & propCanCreate()){
+            local P = propSpawn("models/props_trainstation/TrackSign10.mdl",Target+vec(0,0,100),0)
+            if(!P:isValid()){ return }
             TRACEFILTER_IGNORABLES:pushEntity(P)
             P:setAlpha(0)
             P:makeSpherical(5)

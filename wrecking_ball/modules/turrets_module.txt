@@ -1,7 +1,8 @@
 @name wreckingballturrets
 @outputs 
-@persist TURRETS_TRANSFORM_SPEED TURRETS_SPREAD_SPEED TURRETS_SPREAD_OFFSET TURRETS_SPREAD_START TURRETS_SPREAD_EXTRA TURRETS_FIRING_INTERVAL TURRETS_SECOND_BARREL_OFFSET TURRETS_RECOIL_RATE TURRETS_GROUP_OFFSETS:array TURRETS_DEFAULT_ANGLE:angle TURRETS_DEFAULT_QUAT:quaternion
-@persist TURRETS_TurretMounts:table TURRETS_TransformProgress TURRETS_TurretPool:array TURRETS_Firing TURRETS_FireIndex TURRETS_MountIndex TURRETS_ActiveTurretMatrix:array TURRETS_CurSpread TURRETS_TransformState TURRETS_CurWirelink:wirelink
+@persist TURRETS_TRANSFORM_SPEED TURRETS_SPREAD_SPEED TURRETS_SPREAD_OFFSET TURRETS_SPREAD_START TURRETS_SPREAD_EXTRA TURRETS_FIRING_INTERVAL TURRETS_SECOND_BARREL_OFFSET TURRETS_RECOIL_RATE TURRETS_GROUP_OFFSETS:array TURRETS_DEFAULT_ANGLE:angle TURRETS_DEFAULT_QUAT:quaternion 
+@persist TURRETS_SOUNDS:array TURRETS_SOUNDATTACHMENTS:array
+@persist TURRETS_TurretMounts:table TURRETS_TransformProgress TURRETS_TurretPool:array TURRETS_Firing TURRETS_FireIndex TURRETS_MountIndex TURRETS_ActiveTurretMatrix:array TURRETS_CurSpread TURRETS_TransformState TURRETS_CurWirelink:wirelink TURRETS_SoundClk
 @persist TURRETS_MissingTurrets_ TURRETS_TransformRate_ # this is ONLY persisted to work with a timer
 @trigger
 
@@ -44,6 +45,10 @@ if( first() ){
     TURRETS_ActiveTurretMatrix = array()
     
     TURRETS_CurWirelink        = nowirelink()
+    
+    TURRETS_SOUNDS             = array("npc/stalker/stalker_footstep_left1.wav","npc/stalker/stalker_footstep_left2.wav","npc/stalker/stalker_footstep_right1.wav","npc/stalker/stalker_footstep_right2.wav")
+    TURRETS_SoundClk           = 0
+    TURRETS_SOUNDATTACHMENTS   = array("r_origin_ent","t_origin_ent")
     
     # external library interface
     
@@ -250,20 +255,32 @@ if( first() ){
 
 event tick(){
     
+    local Delta = TURRETS_TransformProgress
+    TURRETS_TransformProgress = clamp(TURRETS_TransformProgress + TURRETS_TRANSFORM_SPEED * TICKRATE_TimeScalar_ * TURRETS_TransformState, 0, 1)
+    
+    local SoundClk = floor(TURRETS_TransformProgress * 2)
+    local PlaySound_ = 0
+    if(TURRETS_SoundClk != SoundClk){
+        TURRETS_SoundClk = SoundClk
+        PlaySound_ = SoundClk
+    }
+    
+    TURRETS_TransformRate_ = TURRETS_TransformProgress - Delta
+    
     TURRETS_MissingTurrets_ = 0
-    foreach(_:number, Mount:table = TURRETS_TurretMounts){
+    foreach(N:number, Mount:table = TURRETS_TurretMounts){
         turrets_processTurretMount(Mount)
+        if(PlaySound_){
+            local Att = TURRETS_SOUNDATTACHMENTS[PlaySound_, string]
+            local Snd = TURRETS_SOUNDS[randint(1,TURRETS_SOUNDS:count()), string]
+            Mount[Att,entity]:soundPlay("turret_"+N+"_"+PlaySound_,0.5,Snd)
+        }
     }
     
     if( !TURRETS_Firing ){
         TURRETS_CurSpread = max(TURRETS_SPREAD_OFFSET, TURRETS_CurSpread - TURRETS_SPREAD_SPEED * TICKRATE_TimeScalar_)
     }
 
-    local Delta = TURRETS_TransformProgress
-    TURRETS_TransformProgress = clamp(TURRETS_TransformProgress + TURRETS_TRANSFORM_SPEED * TICKRATE_TimeScalar_ * TURRETS_TransformState, 0, 1)
-    
-    TURRETS_TransformRate_ = TURRETS_TransformProgress - Delta
-    
     # TURRETS_TransformRate_ = $TURRETS_TransformProgress -- broken on old compiler??
     
 }
