@@ -1,4 +1,4 @@
-@name Wrecking Ball 1.9.3
+@name Wrecking Ball 1.9.4
 
 #[
     Note for Fasteroid/expression2-public Github browsers: 
@@ -881,6 +881,9 @@ event keyPressed(Player:entity, Key:string, Down:number, KeyBind:string) {
             case "duck",
                 Pile_Desired = Down
                 if(Down){ seatrotation_setThirdPerson(Is_Hampter) }
+            break
+            case "speed",
+                if(Down){ changeMechForm() }
             break
         }
     
