@@ -1,4 +1,4 @@
-@name Wrecking Ball 1.10.0
+@name Wrecking Ball 1.10.1
 
 #[
     Note for Fasteroid/expression2-public Github browsers: 
@@ -452,10 +452,10 @@ if( first() ){
             soundVolume("rolling",OnGround_*Speed_/1000)
             
             local RotationDir = -BALL:toLocalAxis( BALL:vel():setZ(0):toAngle():right() )
-            local RotationSpeed_ = Speed_ * 180 / (RADIUS * _PI)
-            #if( Speed_ > 70 ){
-            BALL:applyTorque( ( -BALL:angVelVector() + RotationDir * RotationSpeed_ ) * 175 * BALL:inertia() * 0.25 )    
-            #}
+            local RotationSpeed_ = Speed_ * 170 / (RADIUS * _PI)
+
+            BALL:applyTorque( ( -BALL:angVelVector() + RotationDir * RotationSpeed_ ) * 175 * BALL:inertia() * 0.25 * min(1,Speed_/70) )    
+
             
             if( !Driver_:isValid() ){ return }
 
@@ -499,7 +499,7 @@ if( first() ){
                 
                 #local StopDrag = 
                 
-                BALL:tickrate_applyForce( (ForceVec*TopSpeed*vec(1,1,OnGround_*0.5) - BALL:vel()*vec(1,1,0)*1.1) * BALL:mass() / AccelTime )
+                BALL:tickrate_applyForce( (ForceVec*TopSpeed*vec(1,1,OnGround_*0.5) - BALL:vel()*vec(1,1,0)*1.0) * BALL:mass() / AccelTime )
             }
                 
             if( !Grapple_Out ){
