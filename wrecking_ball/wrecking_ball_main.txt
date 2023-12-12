@@ -1,4 +1,4 @@
-@name Wrecking Ball 1.9.4
+@name Wrecking Ball 1.10.0
 
 #[
     Note for Fasteroid/expression2-public Github browsers: 
@@ -55,10 +55,10 @@ if( first() ){
       # configurables
         TRANSFORM_RATE = 0.1
         GRAPPLE_SPEED  = 100
-        FIREBALL_VEL   = 650
+        FIREBALL_VEL   = 610
         CAMERA_POS     = vec(0.00,0.00,33.18)
         
-        GRAPPLE_MIN_DIST  = 300
+        GRAPPLE_MIN_DIST  = 200
         GRAPPLE_STEP_SIZE = 2
         GRAPPLE_MAX_DIST  = 1150
         FIREBALL_TIMEOUT  = 2000
@@ -92,7 +92,7 @@ if( first() ){
         BALL:propPhysicalMaterial("Metal_barrel")
         local Size = BALL:boxSize()
         
-        RADIUS = max(Size[1], Size[2], Size[3]) / 2
+        RADIUS = max(Size[1], Size[2], Size[3]) / 2.02
         BALL:makeSpherical( RADIUS )
         
         BALL:setMass(320)
@@ -118,7 +118,7 @@ if( first() ){
         SEAT_ROOT_HOLO = holoAlloc(Origin)
         SEAT_ROOT_HOLO_ENT = holoEntity(SEAT_ROOT_HOLO)
         holoParent(SEAT_ROOT_HOLO, ROOT_HOLO)
-        seatrotation_setup(SEAT, SEAT_ROOT_HOLO)
+        seatrotation_setup(SEAT, SEAT_ROOT_HOLO, RADIUS)
         SEAT_ROOT_HOLO_ENT:soundPlay("rolling",0,"physics/metal/metal_box_scrape_rough_loop1.wav")
         soundPitch("rolling",80)
         
@@ -420,7 +420,6 @@ if( first() ){
     
       # ball: 0
         function end_mode_ball(){
-            
             BALL:soundPlay("ball-open",0.15,"doors/door_chainlink_move1.wav")
             ROOT_HOLO_ENT:soundPlay("ball-open-2",1,"doors/latchunlocked1.wav")
             soundPitch("ball-open-2", 90)
@@ -430,11 +429,12 @@ if( first() ){
             resetGrapple(ang())
             clearFireball()
             
-            Is_Fireball = 0
+            seatrotation_setThirdPerson(0)
             
+            Is_Fireball = 0
         }
         function begin_mode_ball(){
-            # print("ball begin")
+            # probably unused forever
         }
         function mode_ball(){
             
@@ -452,19 +452,19 @@ if( first() ){
             soundVolume("rolling",OnGround_*Speed_/1000)
             
             local RotationDir = -BALL:toLocalAxis( BALL:vel():setZ(0):toAngle():right() )
-            local RotationSpeed_ = Speed_ * 175 / (RADIUS * _PI)
-            if( Speed_ > 50 ){
-                BALL:applyTorque( ( -BALL:angVelVector() + RotationDir * RotationSpeed_ ) * 175 * BALL:inertia() * 0.25 )    
-            }
+            local RotationSpeed_ = Speed_ * 180 / (RADIUS * _PI)
+            #if( Speed_ > 70 ){
+            BALL:applyTorque( ( -BALL:angVelVector() + RotationDir * RotationSpeed_ ) * 175 * BALL:inertia() * 0.25 )    
+            #}
             
             if( !Driver_:isValid() ){ return }
 
             if( !Pile_Active ){
                 local ForceVec = (vec( Keys_["ws",number], Keys_["ad",number], 0 ):rotate( Driver_:eyeAnglesVehicle() ):setZ(0))
-                ForceVec = ForceVec:rotate(ang(Tilt_[1], 0, -Tilt_[2])):normalized()
+                ForceVec = ForceVec:rotate(ang(Tilt_[1], 0, -Tilt_[2])):normalized() * vec(1,1,0.5)
                 ## print(ForceVec,OldForceVec)
                     
-                local AccelTime = 16
+                local AccelTime = 12
                 local TopSpeed  = 450
                 
                 if( Ball_Action == Grapple_LOCK ){
@@ -497,7 +497,9 @@ if( first() ){
                 # stupid conversion factor, I have no idea where this comes from
                 TopSpeed = (TopSpeed + 115) / 0.962857
                 
-                BALL:tickrate_applyForce( (ForceVec*TopSpeed*vec(1,1,OnGround_*0.5) - BALL:vel()*vec(1,1,0)) * BALL:mass() / AccelTime )
+                #local StopDrag = 
+                
+                BALL:tickrate_applyForce( (ForceVec*TopSpeed*vec(1,1,OnGround_*0.5) - BALL:vel()*vec(1,1,0)*1.1) * BALL:mass() / AccelTime )
             }
                 
             if( !Grapple_Out ){
@@ -532,7 +534,7 @@ if( first() ){
                 break
                 case Grapple_LOCK,
                     local CurrentLen = (BALL:pos() - GRAPPLE_PHYSOBJ:pos()):length()
-                    Rope_Len = max(Rope_Len, GRAPPLE_MIN_DIST )
+                    Rope_Len = max(CurrentLen, GRAPPLE_MIN_DIST)
                     if( $Rope_Len < -GRAPPLE_STEP_SIZE & Rope_Len > GRAPPLE_MIN_DIST ){
                         
                         local Vel = BALL:vel()
@@ -542,7 +544,7 @@ if( first() ){
                         BALL:propSetVelocity(Vel)
                     }
                     else{
-                        rope(1,BALL,vec(),GRAPPLE_PHYSOBJ,vec(),max(GRAPPLE_MIN_DIST-CurrentLen,0)+0.01,0,"cable/cable2",0)
+                        #rope(1,BALL,vec(),GRAPPLE_PHYSOBJ,vec(),max(GRAPPLE_MIN_DIST-CurrentLen,0)+0.01,0,"cable/cable2",0)
                     }
                 break
                 case Pile_SPOOL,
@@ -673,13 +675,11 @@ if( first() ){
             soundPitch("ball-close-3",90)
             legs_disableSoundMakers()
             legs_disableFeet()
-            # print("hampter end")
+            seatrotation_setThirdPerson(1)
             TURRETS_TransformState = -1
         }
         function begin_mode_hampter(){
-            # print("hampter begin")
             holoAng(ROOT_HOLO, Tilt_ + ang(0,SEATROTATION_Angle+90,0))
-            Is_Fireball = 0
             Leg_Deploy_Desired = 1
             TURRETS_TransformState = 1
         }
@@ -820,7 +820,7 @@ event tick(){
         "ad" = Driver_:keyLeft() - Driver_:keyRight()
     )
     
-    seatrotation_setThirdPerson(!Is_Hampter)
+    # seatrotation_setThirdPerson(!Is_Hampter)
     turrets_setFiring( Driver_:keyAttack1() )
     
     if( Is_Hampter ){ # HAMPTER
@@ -880,7 +880,7 @@ event keyPressed(Player:entity, Key:string, Down:number, KeyBind:string) {
             break
             case "duck",
                 Pile_Desired = Down
-                if(Down){ seatrotation_setThirdPerson(Is_Hampter) }
+                #if(Down){ seatrotation_setThirdPerson(Is_Hampter) }
             break
             case "speed",
                 if(Down){ changeMechForm() }

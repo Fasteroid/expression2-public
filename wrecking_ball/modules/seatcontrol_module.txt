@@ -1,6 +1,6 @@
 @name seatrotationcontrol
 @persist SEATROTATION_Seat:entity SEATROTATION_RootHolo:number
-@persist SEATROTATION_CamLink:wirelink SEATROTATION_ThirdPerson SEATROTATION_Angle SEATROTATION_EyePos:vector
+@persist SEATROTATION_CamLink:wirelink SEATROTATION_ThirdPerson SEATROTATION_Angle SEATROTATION_HampterEyePos:vector SEATROTATION_BallEyePos:vector
 
 #include "wrecking_ball/modules/sentspawning_module"
 
@@ -8,30 +8,33 @@ if( first() ){
     
     # no warnings
     SEATROTATION_Seat = noentity()
-    SEATROTATION_EyePos = vec(0.00,0.00,33.18)
+    SEATROTATION_HampterEyePos = vec(0.00,0.00,33.18)
+    SEATROTATION_BallModeCameraPos = vec()
     
     
     sents_onCamControllerReady("seatrotation_setupCamController")
     function seatrotation_setupCamController(CamController:entity){
         CamController:linkTo(SEATROTATION_Seat)
         SEATROTATION_CamLink = CamController:wirelink()
-        SEATROTATION_CamLink["Position",vector]  = SEATROTATION_EyePos
-        SEATROTATION_CamLink["Parent",entity]    = SEATROTATION_Seat
+        SEATROTATION_CamLink["Position",vector] = SEATROTATION_HampterEyePos
+        SEATROTATION_CamLink["Parent",entity]   = SEATROTATION_Seat
     }
     
     # thanks to my internship and angular dependency injection for this programming pattern!
-    function seatrotation_setup(Seat:entity, RootHolo:number){
+    function seatrotation_setup(Seat:entity, RootHolo:number, Radius:number){
         SEATROTATION_Seat = Seat
         SEATROTATION_RootHolo = RootHolo
+        SEATROTATION_BallEyePos = SEATROTATION_HampterEyePos + vec(0,0,Radius)
     }
     function seatrotation_setThirdPerson(Mode:number){
         SEATROTATION_ThirdPerson = Mode ? 1 : 0
+        SEATROTATION_CamLink["Position",vector] = Mode ? SEATROTATION_BallEyePos : SEATROTATION_HampterEyePos
     }
 
 }
 
 event tick(){
-    #print(ops())
+
     local On = SEATROTATION_Seat:driver():isValid()
     
     SEATROTATION_CamLink["Activated",number] = On
