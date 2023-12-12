@@ -1,0 +1,21 @@
+@name holo structure: fireball_debut
+#include "holostructurelib"
+
+# ~ #include this in your e2 to use with holostructurelib
+# ~ manually written by YOURS TRULY!
+
+if(first()){ 
+    registerStructure("fireball",table(
+      "models" = array("hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere","hq_icosphere"),
+      "positions" = array(vec(0,0,0),vec(0,0,0),vec(-8,0,0),vec(-8,0,0),vec(-20,0,0),vec(-20,0,0),vec(-32,0,0),vec(-32,0,0),vec(-44,0,0),vec(-44,0,0),vec(-56,0,0),vec(-56,0,0),vec(-68,0,0),vec(-68,0,0),vec(-80,0,0),vec(-80,0,0),vec(0,0,0),vec(0,0,0),vec(0,0,0),vec(0,0,0),vec(0,0,0),vec(0,0,0),vec(0,0,0),vec(0,0,0),vec(0,0,0),vec(0,0,0),vec(0,0,0),vec(0,0,0)),
+      "angles" = array(ang(60,90,90),ang(120,90,90),ang(180,90,90),ang(240,90,90),ang(300,90,90),ang(360,90,90),ang(420,90,90),ang(480,90,90),ang(540,90,90),ang(600,90,90),ang(660,90,90),ang(720,90,90),ang(780,90,90),ang(840,90,90),ang(900,90,90),ang(960,90,90),ang(30,90,70),ang(60,90,70),ang(90,90,70),ang(120,90,70),ang(150,90,70),ang(180,90,70),ang(210,90,70),ang(240,90,70),ang(270,90,70),ang(300,90,70),ang(330,90,70),ang(360,90,70)),
+      "scales" = array(vec(7.12657,7.12657,7.12657),vec(7.09197,7.09197,7.09197),vec(7.06585,7.06585,7.06585),vec(7.00073,7.00073,7.00073),vec(6.95363,6.95363,6.95363),vec(6.8925,6.8925,6.8925),vec(6.76606,6.76606,6.76606),vec(6.84123,6.84123,6.84123),vec(6.74709,6.74709,6.74709),vec(6.70057,6.70057,6.70057),vec(6.66713,6.66713,6.66713),vec(6.65257,6.65257,6.65257),vec(6.45628,6.45628,6.45628),vec(6.49021,6.49021,6.49021),vec(6.3069,6.3069,6.3069),vec(6.40557,6.40557,6.40557),vec(7.11121,7.11121,7.11121),vec(7.2932,7.2932,7.2932),vec(7.17871,7.17871,7.17871),vec(7.22888,7.22888,7.22888),vec(7.21086,7.21086,7.21086),vec(7.23417,7.23417,7.23417),vec(7.16819,7.16819,7.16819),vec(7.19824,7.19824,7.19824),vec(7.11037,7.11037,7.11037),vec(7.19915,7.19915,7.19915),vec(7.10166,7.10166,7.10166),vec(7.2327,7.2327,7.2327)),
+      "colors" = array(vec(255,70,0),vec(255,70,0),vec(255,70,0),vec(255,70,0),vec(255,70,0),vec(255,70,0),vec(255,70,0),vec(255,70,0),vec(255,70,0),vec(255,70,0),vec(255,70,0),vec(255,70,0),vec(255,70,0),vec(255,70,0),vec(255,70,0),vec(255,70,0),vec(135,30,0),vec(135,30,0),vec(135,30,0),vec(135,30,0),vec(135,30,0),vec(135,30,0),vec(135,30,0),vec(135,30,0),vec(135,30,0),vec(135,30,0),vec(135,30,0),vec(135,30,0)),
+      "materials" = array("models/props_combine/portalball001_sheet","models/props_combine/portalball001_sheet","models/props_combine/portalball001_sheet","models/props_combine/portalball001_sheet","models/props_combine/portalball001_sheet","models/props_combine/portalball001_sheet","models/props_combine/portalball001_sheet","models/props_combine/portalball001_sheet","models/props_combine/portalball001_sheet","models/props_combine/portalball001_sheet","models/props_combine/portalball001_sheet","models/props_combine/portalball001_sheet","models/props_combine/portalball001_sheet","models/props_combine/portalball001_sheet","models/props_combine/portalball001_sheet","models/props_combine/portalball001_sheet","models/tools/camera/lightning000","models/tools/camera/lightning000","models/tools/camera/lightning000","models/tools/camera/lightning000","models/tools/camera/lightning000","models/tools/camera/lightning000","models/tools/camera/lightning000","models/tools/camera/lightning000","models/tools/camera/lightning000","models/tools/camera/lightning000","models/tools/camera/lightning000","models/tools/camera/lightning000"),
+      "spawnChild" = "fireball_callback"
+    ))
+    function fireball_callback(HoloID:number, _:number){
+        holoEntity(HoloID):setRenderMode(9)
+        holoAlpha(HoloID,254)
+    }
+}
