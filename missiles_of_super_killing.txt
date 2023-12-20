@@ -1,0 +1,47 @@
+@name missiles of super killing
+@inputs 
+@outputs 
+@persist SPAWN_INTERVAL HEIGHT_OFFSET MODEL:string Bombs:array
+@trigger
+
+# made for Omni
+# very evil
+
+if( first() ){
+    SPAWN_INTERVAL = 250
+    MODEL          = "models/props_phx/ww2bomb.mdl"
+    HEIGHT_OFFSET  = 100
+    
+    timer("evil", SPAWN_INTERVAL)
+    
+    function entity:turnTowards(Ang:angle){
+        local Torque = This:toLocalAxis(rotationVector(quat(Ang)/quat(This)))
+        This:applyTorque((Torque*300-This:angVelVector()*20)*This:inertia())
+    }
+    Bombs = array()
+}
+
+
+if( clk("evil") ){
+    timer("evil", SPAWN_INTERVAL)
+    local Owner = owner()
+    if( Owner:weapon():type() == "weapon_crowbar" & Owner:keyAttack2() ){
+        local Bomb = propSpawn(MODEL, Owner:shootPos() + vec(0,0,HEIGHT_OFFSET), (randvec()+vec(0,0,2)):toAngle(), 0)
+        Bomb["target",vector] = Owner:aimPos()
+        Bombs:pushEntity(Bomb)
+        Bomb:setTrails(10,0,1,"trails/laser",vec(255),255)
+    }
+}
+
+event tick(){
+    for(I=Bombs:count(), 1, -1){
+        local Bomb = Bombs[I,entity]
+        if(!Bomb:isValid()){ 
+            Bombs:remove(I)
+            continue
+        }
+        Dir = Bomb["target",vector] - Bomb:pos()
+        Bomb:turnTowards(Dir:toAngle())
+        Bomb:applyForce(Bomb:forward() * Bomb:mass() * 1000 - 0.1 * Bomb:vel():normalized() * Bomb:vel():dot(Bomb:forward()))
+    }
+}
