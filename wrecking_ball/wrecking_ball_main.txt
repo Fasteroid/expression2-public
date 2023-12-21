@@ -92,7 +92,9 @@ if( first() ){
         local Size = BALL:boxSize()
         
         RADIUS = max(Size[1], Size[2], Size[3]) / 2.02
-        BALL:makeSpherical( RADIUS )
+        #ifdef e:makeSpherical(n)
+            BALL:makeSpherical( RADIUS )
+        #endif
         
         BALL:setMass(320)
         

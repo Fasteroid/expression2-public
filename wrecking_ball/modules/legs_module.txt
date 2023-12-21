@@ -86,7 +86,10 @@ if( first() ){
             if(!P:isValid()){ return }
             TRACEFILTER_IGNORABLES:pushEntity(P)
             P:setAlpha(0)
-            P:makeSpherical(5)
+            #ifdef e:makeSpherical(n)
+				P:makeSpherical(5)
+			#endif
+            
             P:noCollide(Root:parent())
             P["root",entity] = Root
             LEGS_Soundmakers:pushEntity(P)
