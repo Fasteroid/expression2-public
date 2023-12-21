@@ -1,6 +1,6 @@
 @name seatrotationcontrol
 @persist SEATROTATION_Seat:entity SEATROTATION_RootHolo:number
-@persist SEATROTATION_CamLink:wirelink SEATROTATION_ThirdPerson SEATROTATION_Angle SEATROTATION_HampterEyePos:vector SEATROTATION_BallEyePos:vector
+@persist SEATROTATION_CamLink:wirelink SEATROTATION_ThirdPerson SEATROTATION_Angle SEATROTATION_HampterEyePos:vector SEATROTATION_BallEyePos:vector SEATROTATION_CROSSHAIR:number SEATROTATION_CamPos:vector
 
 #include "wrecking_ball/modules/sentspawning_module"
 
@@ -9,7 +9,9 @@ if( first() ){
     # no warnings
     SEATROTATION_Seat = noentity()
     SEATROTATION_HampterEyePos = vec(0.00,0.00,33.18)
-    SEATROTATION_BallModeCameraPos = vec()
+    SEATROTATION_Angle = 0
+    SEATROTATION_Angle = SEATROTATION_Angle
+    SEATROTATION_CamPos = vec()
     
     
     sents_onCamControllerReady("seatrotation_setupCamController")
@@ -21,14 +23,22 @@ if( first() ){
     }
     
     # thanks to my internship and angular dependency injection for this programming pattern!
-    function seatrotation_setup(Seat:entity, RootHolo:number, Radius:number){
+    function seatrotation_setup(Seat:entity, RootHolo:number, Radius:number, Crosshair:number){
         SEATROTATION_Seat = Seat
         SEATROTATION_RootHolo = RootHolo
         SEATROTATION_BallEyePos = SEATROTATION_HampterEyePos + vec(0,0,Radius)
+        SEATROTATION_CROSSHAIR = Crosshair
     }
     function seatrotation_setThirdPerson(Mode:number){
-        SEATROTATION_ThirdPerson = Mode ? 1 : 0
-        SEATROTATION_CamLink["Position",vector] = Mode ? SEATROTATION_BallEyePos : SEATROTATION_HampterEyePos
+        SEATROTATION_ThirdPerson = Mode ? 1 : 0       
+        SEATROTATION_CamPos = Mode ? SEATROTATION_BallEyePos : SEATROTATION_HampterEyePos
+        
+        SEATROTATION_CamLink["Position",vector] = SEATROTATION_CamPos
+        
+        local Dist = SEATROTATION_ThirdPerson * 195 + 5
+        SEATROTATION_CamLink["Distance",number] = Dist
+        holoPos(SEATROTATION_CROSSHAIR, SEATROTATION_Seat:toWorld(SEATROTATION_CamPos))
+        holoScale(SEATROTATION_CROSSHAIR, vec(0.0007) * Dist)
     }
 
 }
@@ -37,8 +47,14 @@ event tick(){
 
     local On = SEATROTATION_Seat:driver():isValid()
     
+    if( changed(On) & On ){
+        holoVisible(SEATROTATION_CROSSHAIR, players(), 0)
+        if( On ){
+            holoVisible(SEATROTATION_CROSSHAIR, SEATROTATION_Seat:driver(), 1)
+        }
+    }
+    
     SEATROTATION_CamLink["Activated",number] = On
-    SEATROTATION_CamLink["Distance",number]  = SEATROTATION_ThirdPerson * 200
     
     if( On ){
         local Yaw1 = SEATROTATION_Seat:angles():yaw() + 90
@@ -47,7 +63,6 @@ event tick(){
         if( Diff > 15 ){
             holoAng(SEATROTATION_RootHolo, ang(0,Yaw2,0))
             SEATROTATION_Angle = Yaw2
-            #SEATROTATION_Seat:setAng( ang(0,Yaw2-90,0) )
         }
         else {
             holoAng(SEATROTATION_RootHolo,holoEntity(SEATROTATION_RootHolo):angles()*ang(0,1,0))

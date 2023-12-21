@@ -1,4 +1,4 @@
-@name Wrecking Ball 1.10.1
+@name Wrecking Ball 1.11.0
 
 #[
     Note for Fasteroid/expression2-public Github browsers: 
@@ -8,14 +8,14 @@
 ]#
 
 # constants
-@persist SEAT_HEIGHT CAMERA_POS:vector SEAT:entity BALL:entity TRANSFORM_RATE
+@persist SEAT_HEIGHT SEAT:entity BALL:entity TRANSFORM_RATE
 @persist GRAPPLE_SPEED RADIUS FIREBALL_VEL GRAPPLE_MIN_DIST GRAPPLE_STEP_SIZE GRAPPLE_MAX_DIST GRAPPLE_PHYSOBJ:entity FIREBALL_TIMEOUT GRAPPLE_ORIGIN:entity
 @persist PILE_SPOOL_RATE PILE_SPOOL_STEP PILE_DROP_STEP PILE_MIN_HEIGHT PILE_FORCE PILE_FORCE_TIME
 @persist MECH_HEIGHT GRAPPLE_MAX_DOT SLOPE_MAX_DOT
 
 # holos
 @persist ROOT_HOLO ROOT_HOLO_ENT:entity SEAT_ROOT_HOLO SEAT_ROOT_HOLO_ENT:entity GRAPPLE_ROOT_HOLO GRAPPLE_ROOT_HOLO_ENT:entity GRAPPLE_HOLO GRAPPLE_HOLO_ENT:entity GRAPPLE_OTHER_HOLO_ENT:entity
-@persist FIREBALL_ROOT FIREBALL_ROOT_ENT:entity
+@persist FIREBALL_ROOT FIREBALL_ROOT_ENT:entity CROSSHAIR
 
 # enums
 @persist Action_NONE
@@ -39,7 +39,7 @@
 #include "wrecking_ball/modules/tracefilter_module"
 #include "wrecking_ball/modules/tickrate_module"
 
-#include "wrecking_ball/models/fireball_cheap"
+#include "e2shared/vrmodels/fireball"
 
 
 # sombra is in my walls (help)
@@ -56,7 +56,6 @@ if( first() ){
         TRANSFORM_RATE = 0.1
         GRAPPLE_SPEED  = 100
         FIREBALL_VEL   = 610
-        CAMERA_POS     = vec(0.00,0.00,33.18)
         
         GRAPPLE_MIN_DIST  = 200
         GRAPPLE_STEP_SIZE = 2
@@ -108,6 +107,11 @@ if( first() ){
         ROOT_HOLO_ENT = holoEntity(ROOT_HOLO)
         holoParent(ROOT_HOLO, BALL)
         
+        CROSSHAIR = holoAlloc(Origin)
+        holoModel(CROSSHAIR,"hq_sphere")
+        holoScale(CROSSHAIR,vec(0.1))
+        holoMaterial(CROSSHAIR,"lights/white")
+        
         FIREBALL_ROOT = holoStructCreate("fireball",Origin)
         holoParent(FIREBALL_ROOT, ROOT_HOLO)
         FIREBALL_ROOT_ENT = holoEntity(FIREBALL_ROOT)
@@ -117,11 +121,11 @@ if( first() ){
         
         SEAT_ROOT_HOLO = holoAlloc(Origin)
         SEAT_ROOT_HOLO_ENT = holoEntity(SEAT_ROOT_HOLO)
+        holoParent(CROSSHAIR, SEAT_ROOT_HOLO)
         holoParent(SEAT_ROOT_HOLO, ROOT_HOLO)
-        seatrotation_setup(SEAT, SEAT_ROOT_HOLO, RADIUS)
+        seatrotation_setup(SEAT, SEAT_ROOT_HOLO, RADIUS, CROSSHAIR)
         SEAT_ROOT_HOLO_ENT:soundPlay("rolling",0,"physics/metal/metal_box_scrape_rough_loop1.wav")
         soundPitch("rolling",80)
-        
         
         GRAPPLE_ROOT_HOLO = holoAlloc(Origin)
         holoColor(GRAPPLE_ROOT_HOLO,vec(255,0,0))
@@ -813,7 +817,7 @@ event tick(){
     
     # for some reason, Driver_:eye() is unstable here
     tracefilter_load()
-    AimPos_ = rangerOffset(9999,SEAT:toWorld(CAMERA_POS),Driver_:eyeAnglesVehicle():forward()):position()
+    AimPos_ = rangerOffset(9999,SEAT:toWorld(SEATROTATION_CamPos),Driver_:eyeAnglesVehicle():forward()):position()
 
     Keys_ = table(
         "ws" = Driver_:keyForward() - Driver_:keyBack(),
