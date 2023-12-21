@@ -1,4 +1,4 @@
-@name Wrecking Ball 1.11.0
+@name Wrecking Ball 1.11.1
 
 #[
     Note for Fasteroid/expression2-public Github browsers: 
@@ -39,7 +39,7 @@
 #include "wrecking_ball/modules/tracefilter_module"
 #include "wrecking_ball/modules/tickrate_module"
 
-#include "e2shared/vrmodels/fireball"
+#include "wrecking_ball/models/fireball_cheap"
 
 
 # sombra is in my walls (help)
