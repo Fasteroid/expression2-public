@@ -23,6 +23,12 @@ if(first()){
     soundVolume(1,0)
     soundPitch(1,120)
     
+    # we must now sacrifice a hologram to the holoParentAttachment blood gods
+    holoCreate(0)
+    holoParentAttachment(0,owner(),"chest")
+    holoVisible(0,players(),0)
+    # I will probably open an issue about this later
+    
     runOnTick(1)
     
     function elytraWinglet(ID,Origin:vector,Polarity){
@@ -105,15 +111,17 @@ if(first()){
     elytraWinglet(1,entity():pos(),1)
     elytraWinglet(14,entity():pos(),-1)
     
+    AttachPos = owner():attachmentPos("chest")
     AttachAng = owner():attachmentAng("chest")
     
-    holoPos(1,owner():attachmentPos("chest") + AttachAng:forward()*-8 + AttachAng:right()*5 )
-    holoAng(1,owner():attachmentAng("chest"))
-    holoParentAttachment(1,owner(),"chest")
+    holoPos(1,AttachPos + AttachAng:forward()*-8 + AttachAng:right()*5 )
+    holoAng(1,AttachAng)
     
-    holoPos(14,owner():attachmentPos("chest") + AttachAng:forward()*-8 + AttachAng:right()*-5 )
-    holoAng(14,owner():attachmentAng("chest"))
+    holoPos(14,AttachPos + AttachAng:forward()*-8 + AttachAng:right()*-5 )
+    holoAng(14,AttachAng)
+    
     holoParentAttachment(14,owner(),"chest")
+    holoParentAttachment(1,owner(),"chest")
     
     function vector vector:pitch(N){
         Y=ang(0,This:toAngle():yaw(),0)
@@ -239,3 +247,4 @@ if(Gibs){
 #
 ##   Break Concrete Gibs
 ###
+
