@@ -1,7 +1,7 @@
 README
 
 To use this yourself, extract the contents of EZ-INSTALL.zip into the root expression2 folder (garrysmod/data/expression2/) and merge any folders it requests to merge.
-Once completed, spawn wrecking_ball_main.txt in the world.  If you have concmd enabled (wire_expression2_concmd 1), the E2 will automatically spawn the required wire components.
+Once completed, spawn wrecking_ball_main.txt in the world.  If you have concmd enabled (wire_expression2_concmd 1) and no whitelist set (wire_expression2_concmd_whitelist ""), the E2 will automatically spawn the required wire components.
 
 Cheers.
 - Fast
