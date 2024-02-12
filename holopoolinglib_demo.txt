@@ -1,0 +1,44 @@
+@name holopooling stress tester
+@persist POWER
+
+#include "holopoolinglib"
+
+if( first() ){
+    holopooling_register("points",
+        function(ID:number){
+            holoModel(ID,"icosphere")
+            holoColor(ID,vec(255,40,10))
+            holoScale(ID,vec(0.5))
+            holoMaterial(ID,"pac/default")
+        },
+        function(ID:number){
+            holoAlpha(ID,255)
+        },
+        function(ID:number){
+            holoAlpha(ID,0)
+        }
+    )
+}
+
+
+event tick(){
+    
+    local XMax = round( sin( curtime()*200 ) * 2 + 2 )
+    local YMax = round( cos( curtime()*100 ) * 2 + 2 )
+    
+    #print(XMax, YMax)
+    
+    local Origin = entity():pos()
+    
+    holopooling_start("points")
+    for(X=-XMax, XMax){
+        for(Y=-YMax, YMax){
+
+            local H = holopooling_get("points")
+            holoPos(H,Origin + vec(X*15,Y*15,10))
+
+        }   
+    }
+    holopooling_end("points")
+    
+}

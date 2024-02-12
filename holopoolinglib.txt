@@ -1,0 +1,119 @@
+@name holopoolinglib
+@persist HOLOPOOLING_POOLS:table
+@model models/bull/gates/microcontroller1.mdl
+
+#[                                     ]#
+##    E2 Library: holopoolinglib       ##
+##                                     ##
+##    Helps you manage pools of        ##
+##    pre-instanced holograms, of      ##
+##    which may not all be used        ##
+##    at all times.                    ##
+##                                     ##
+##    Can be useful for visualizing    ##
+##    of certain algorithms and        ##
+##    functions.                       ##
+#[                                     ]#
+
+#include "betterhololib"
+
+if( first() ){
+    
+    HOLOPOOLING_POOLS = table()
+    
+    ###############
+    ## 
+    #   holopooling_register( Name:string, Spawn:function, Revive:function, Kill:function )
+    #     Creates a new pool of holograms called [Name]
+    #     
+    #     Spawn(ID: number):  Called to format a new hologram when it's allocated to the pool
+    #     Revive(ID: number): Called to quickly recomission a pool hologram that went unused last cycle
+    #     Kill(ID: number):   Called to quickly decomission a pool hologram that wasn't used this cycle
+    #
+    function holopooling_register(Name:string, Spawn:function, Revive:function, Kill:function){
+        HOLOPOOLING_POOLS[Name,table] = table(
+            "spawn"  = Spawn,
+            "revive" = Revive,
+            "kill"   = Kill,
+            
+            "dead"    = array(),
+            "waiting" = array(),
+            "used"    = array()
+        )
+    }
+    
+    ###############
+    ## 
+    #   holopooling_start( Name:string )
+    #     Call to indicate the start of a cycle.
+    #
+    #     This will mark all pool holograms used last cycle to be decomissioned
+    #     if they have not been used at the end of this cycle.
+    #
+    function holopooling_start(Name:string){
+        local Instance = HOLOPOOLING_POOLS[Name,table]
+        local Used     = Instance["used",array]
+        local Waiting  = Instance["waiting",array]
+        for(_=1, Used:count()){
+            Waiting:pushNumber( Used:popNumber() )
+        }
+    }
+    
+    ###############
+    ## 
+    #   holopooling_get( Name:string )
+    #     Gets a hologram out of the pool and marks it as "used" for this cycle.
+    #
+    function number holopooling_get(Name:string){
+        
+        local Instance = HOLOPOOLING_POOLS[Name,table]
+        local Dead     = Instance["dead",array]
+        local Waiting  = Instance["waiting",array]
+        local New = -1
+        
+        if(Waiting:count()){ # don't need to re-initialize
+            New = Waiting:popNumber()
+        }
+        elseif(Dead:count()){ # need to re-initialize a dead holo
+            New = Dead:popNumber()
+            Instance["revive",function](New)
+        }
+        elseif(holoCanCreate()) { # need completely new holo
+            New = holoAlloc()
+            Instance["spawn",function](New)
+        }
+        else {
+            return 0 # not yet
+        }
+        
+        Instance["used",array]:pushNumber(New) # push it to used
+        return New
+        
+    }
+    
+    ###############
+    ## 
+    #   holopooling_end( Name:string )
+    #     Call to indicate the end of a cycle.
+    #
+    #     This will decomission the leftover holograms from this cycle.
+    #     Don't forget to call this, or you'll end up with zombie holograms!
+    #
+    function holopooling_end(Name:string){
+        local Instance = HOLOPOOLING_POOLS[Name,table]
+        local Waiting  = Instance["waiting",array]
+        local Dead     = Instance["dead",array]
+        local Kill     = Instance["kill",function]
+        for(_=1, Waiting:count()){
+            local Holo = Waiting:popNumber()
+            Kill(Holo)
+            Dead:pushNumber(Holo)
+        }
+    }
+    
+    if(entity():model() == "models/bull/gates/microcontroller1.mdl"){
+        selfDestruct()
+        error("This is a library; #include it in something.")
+    }
+    
+}
