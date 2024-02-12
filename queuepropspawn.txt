@@ -32,19 +32,17 @@ if( first() ){
     
     ###############
     ## 
-    #   queuePropSpawn( MDL:string, POS:vector, ANG:angle, CALLBACK:function = "onPropSpawn" )
+    #   queuePropSpawn( MDL:string, POS:vector, ANG:angle, CALLBACK:function )
     #     Queues a prop spawn for a frozen prop with the provided model, position, and angle.
     #     Calls the provided callback with the spawned entity when the prop spawns.
     #
-    function queuePropSpawn(MDL:string,POS:vector,ANG:angle,CALLBACK:string){
-        
-        if(CALLBACK==""){ CALLBACK = "onPropSpawn" }
+    function queuePropSpawn(MDL:string,POS:vector,ANG:angle,CALLBACK:function){
         
         local MiniTable = table()
         MiniTable["model",string] = MDL
         MiniTable["pos",vector] = POS
         MiniTable["ang",angle] = ANG
-        MiniTable["func",string] = CALLBACK
+        MiniTable["func",function] = CALLBACK
         
         Queue:pushTable(MiniTable)
     
@@ -59,20 +57,19 @@ if( first() ){
     
     ###############
     ## 
-    #   queuePropSpawn( MDL:string, POS:vector, ANG:angle, CALLBACK:function = "onPropSpawnData", DATA:table )
+    #   queuePropSpawn( MDL:string, POS:vector, ANG:angle, CALLBACK:function, DATA:table )
     #     Queues a prop spawn for a frozen prop with the provided model, position, and angle.
     #     Calls the provided callback with the spawned entity and provided DATA when the prop spawns.
     #
     #     DATA is used to pass additional properties into the callback function where needed, such as colors.
     #
-    function queuePropSpawn(MDL:string,POS:vector,ANG:angle,CALLBACK:string,DATA:table){
+    function queuePropSpawn(MDL:string,POS:vector,ANG:angle,CALLBACK:function,DATA:table){
         
-        if(CALLBACK==""){ CALLBACK = "onPropSpawnData" }
         local MiniTable = table()
         MiniTable["model",string] = MDL
         MiniTable["pos",vector] = POS
         MiniTable["ang",angle] = ANG
-        MiniTable["func",string] = CALLBACK
+        MiniTable["func",function] = CALLBACK
         MiniTable["data",table] = DATA      
         Queue:pushTable(MiniTable)
     
@@ -93,26 +90,28 @@ if( first() ){
     #   queueRead()
     #     Processes queued prop spawns
     #
-    function queueRead(){
+    function number queueRead(){
         if(propCanCreate()){
-                local Read = Queue[1,table]
-                TMP = propSpawn(Read["model",string],Read["pos",vector],Read["ang",angle],1)
-                if(!TMP:isValid()){ return }
-                if(Read:exists("func")){
-                    if(Read:exists("data")){
-                        Read["func",string](TMP,Read["data",table])
-                    }
-                    else{
-                        Read["func",string](TMP)
-                    }
+            local Read = Queue[1,table]
+            TMP = propSpawn(Read["model",string],Read["pos",vector],Read["ang",angle],1)
+            if(!TMP:isValid()){ return 0 }
+            if(Read:exists("func")){
+                if(Read:exists("data")){
+                    Read["func",function](TMP,Read["data",table])
                 }
-                Queue:remove(1)
+                else{
+                    Read["func",function](TMP)
+                }
+            }
+            Queue:remove(1)
+            return 1
         }
+        return 0
     }
 }
 
 event tick(){
-    if(Queue:exists(1)){
-        queueRead()
+    while(Queue:exists(1)){
+        if(!queueRead()){ break }
     }
 }
