@@ -1,4 +1,4 @@
-@name Wrecking Ball 1.11.2
+@name Wrecking Ball 1.11.3
 
 #[
     Note for Fasteroid/expression2-public Github browsers: 
@@ -159,7 +159,7 @@ if( first() ){
         
             GRAPPLE_PHYSOBJ = propSpawn("models/hunter/plates/plate.mdl",GRAPPLE_HOLO_ENT:pos(),1)
             GRAPPLE_PHYSOBJ:setAlpha(0)
-            GRAPPLE_PHYSOBJ:parentTo(GRAPPLE_HOLO_ENT)
+            # GRAPPLE_PHYSOBJ:parentTo(GRAPPLE_HOLO_ENT) # what???
             GRAPPLE_PHYSOBJ:propNotSolid(1)
             
             TRACEFILTER_IGNORABLES:pushEntity(GRAPPLE_PHYSOBJ)
@@ -370,6 +370,8 @@ if( first() ){
             holoUnparent(GRAPPLE_HOLO)
             holoPos(GRAPPLE_HOLO, GRAPPLE_ROOT_HOLO_ENT:toWorld(vec(RADIUS,0,0)))
             GRAPPLE_PHYSOBJ:setPos(GRAPPLE_HOLO_ENT:pos())
+            
+            print(GRAPPLE_PHYSOBJ:pos(), GRAPPLE_HOLO_ENT:pos())
             
             Grapple_Vel = TraceDir * GRAPPLE_SPEED * TICKRATE_TimeScalar_
         }
@@ -942,3 +944,4 @@ if(clk("fireballturbulence") & Is_Fireball){
     Fireball_Wind_Pitch_Target = randint(80,120)
     timer("fireballturbulence",random(300,600))
 }
+
