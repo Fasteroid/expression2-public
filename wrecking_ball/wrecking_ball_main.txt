@@ -1,4 +1,4 @@
-@name Wrecking Ball 1.11.3
+@name Wrecking Ball 1.11.4
 
 #[
     Note for Fasteroid/expression2-public Github browsers: 
@@ -371,7 +371,7 @@ if( first() ){
             holoPos(GRAPPLE_HOLO, GRAPPLE_ROOT_HOLO_ENT:toWorld(vec(RADIUS,0,0)))
             GRAPPLE_PHYSOBJ:setPos(GRAPPLE_HOLO_ENT:pos())
             
-            print(GRAPPLE_PHYSOBJ:pos(), GRAPPLE_HOLO_ENT:pos())
+            # print(GRAPPLE_PHYSOBJ:pos(), GRAPPLE_HOLO_ENT:pos())
             
             Grapple_Vel = TraceDir * GRAPPLE_SPEED * TICKRATE_TimeScalar_
         }
@@ -418,6 +418,8 @@ if( first() ){
             Pile_Axis        = Ang:right()
             Ball_Action      = Pile_SPOOL
             Pile_Initial_Ang = BALL:angles()
+            
+            holoUnparent(ROOT_HOLO)
             
             BALL:soundPlay("pile-spoolup",1.5,"weapons/physcannon/physcannon_claws_close.wav")
             BALL:propFreeze(1)
@@ -579,9 +581,13 @@ if( first() ){
 
                     BALL:setPos( StepTrace:pos() )
                     BALL:setAng( Pile_Initial_Ang:rotateAroundAxis(Pile_Axis,360*4*Pile_Progress) )
+                    holoPos(ROOT_HOLO, (StepTrace:pos() - TraceStart) * 8 + TraceStart)
  
                     soundPitch("pile-spoolup",30+70*Pile_Progress)
-                    if( Pile_Progress == 1 ){ 
+                    if( Pile_Progress == 1 ){
+                        holoPos( ROOT_HOLO, BALL:pos() )
+                        holoAng( ROOT_HOLO, BALL:angles() )
+                        holoParent( ROOT_HOLO, BALL )
                         Ball_Action = Pile_DROP
                         Pile_Target_Pos = BALL:pos()
                         BALL:soundPlay("pile-drop",1,"npc/scanner/scanner_nearmiss2.wav")
@@ -654,7 +660,7 @@ if( first() ){
                 elseif(Ball_Action == Pile_SPOOL){
                     Ang = ang(-90,curtime()*500,0)
                     # next line needed to cancel out rotation from being parented to the ball while it spins
-                    Ang = Ang:rotateAroundAxis(Pile_Axis,-360*4*(PILE_SPOOL_RATE * TICKRATE_TimeScalar_))
+                    # Ang = Ang:rotateAroundAxis(Pile_Axis,-360*4*(PILE_SPOOL_RATE * TICKRATE_TimeScalar_))
                 }
                 else{
                     local Axis = BALL:vel()
