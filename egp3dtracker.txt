@@ -10,7 +10,7 @@
 ##    Link EGP to an EGP HUD to demo this E2      ##
 #[                                                ]#
 
-if( first() ){
+if( first() & !Entity:isValid() ){
     Entity = entity() # set the default entity for this example to be the E2 chip 
 }
 
@@ -19,7 +19,7 @@ if( first() ){
     
 if( ~EGP | ~Entity | first() ){ # if setup hasn't been run yet...
     
-    EGP:egp3DTracker( 1, Entity:pos() ) # place a 3d tracker at the entity's position
+    EGP:egp3DTracker( 1, vec() ) # place a 3d tracker with no offset
     EGP:egpParent( 1, Entity ) # parent the tracker to the entity
     
     EGP:egpCircle( 2, vec2(0,0), vec2(5,5) ) # create a circle at (0,0) (centered on the tracker)
