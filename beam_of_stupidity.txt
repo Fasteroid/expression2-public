@@ -64,7 +64,7 @@ if( first() ){
     
 while( SpawnedCount < NUM_OF_PARTICLES & propCanCreate() ){
 
-    NextParticle = propSpawn("models/props_junk/PopCan01a.mdl",entity():pos()+vec(0,0,SpawnedCount*0.01),1)
+    NextParticle = propSpawn("models/expression 2/cpu_microchip_nano.mdl",entity():pos()+vec(0,0,SpawnedCount*0.01),1)
     
     if( NextParticle:isValid() ){
     
@@ -128,9 +128,3 @@ else{
     stopbeam()
 }
     
-
-
-if( clk("evillaugh") ){
-    timer("evillaugh",random(4000,5000))
-    owner():soundPlay( "evil", 0, "vo/ravenholm/madlaugh0"+randint(1,4)+".wav" )
-}
