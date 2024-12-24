@@ -1,0 +1,38 @@
+@name exploding babies
+
+# this is an example of how to do simple object-oriented programming with e2's new lambda functions
+
+if( first() ){
+    
+    # baby constructor
+    function entity spawnBaby(){
+        local Baby = propSpawn("models/props_c17/doll01.mdl", entity():toWorld( vec(0,0,20) ), 0)
+        
+        # baby explode function
+        Baby["explode", function] = function(){
+            local Bomb = propSpawn("models/props_c17/oildrum001_explosive.mdl", Baby:pos(), 1)
+            Bomb:propBreak()
+            Baby:propDelete()
+        }
+        
+        # baby can explode
+        Baby["canExplode",number] = 1
+        
+        return Baby
+    }
+    
+}
+
+event playerUse(Player:entity, Entity:entity) {
+    
+    # press e on this chip to spawn a baby
+    if( Entity == entity() ){
+        local Baby = spawnBaby()
+        Baby:soundPlay(Baby:id(), 0.5, "ambient/creatures/teddy.wav")
+    }
+    
+    # if the used entity can explode, explode it
+    if( Entity["canExplode",number] ){
+        Entity["explode",function]()
+    }
+}
