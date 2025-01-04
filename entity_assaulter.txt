@@ -1,0 +1,130 @@
+@name entity assaulter
+@persist CLASS:string MODEL:string
+@persist EntRefs:table Clip:table Live:table EmptySound:number Seed:number
+@trigger
+
+function recall_internal(E:entity){}
+    
+CLASS  = "prop_physics"
+MODEL  = ""
+
+function number shouldFire(){
+    return ( owner():weapon():type() == "weapon_crowbar" ) & owner():keyAttack2()
+}
+
+function claim(E:entity){
+    E:deparent()
+    E:constraintBreak()
+}
+
+function fire(E:entity){
+    E:deparent()
+    E:propFreeze(0)
+    E:setPos( entity():toWorld(vec(0,0,100)) )
+    E:applyForce( (owner():aimPos() - E:pos()) * E:mass() * 200 )
+    E:soundPlay(E:id(),0.5,"weapons/iceaxe/iceaxe_swing1.wav")
+    soundPitch(E:id(),randint(90,100))
+    E["fired",number] = curtime()
+}
+
+function recall(E:entity){
+    E:setPos( entity():toWorld(vec(0,0,100)) )
+    #E:setAng( entity():angles() )
+    E:parentTo( entity() )
+}
+
+function tick(E:entity){
+    if(E["fired",number] < (curtime() - 5)){
+        recall_internal(E)
+    }
+}
+
+if( first() ){
+    
+    Seed = random()
+    
+    function recall_internal(E:entity){
+        local ID = E:id() + ""
+        Clip[ID, entity] = E
+        Live:remove(ID)
+        recall(E)
+    }
+    
+    function fire_internal(E:entity){
+        local ID = E:id() + ""
+        Clip:remove(ID)
+        Live[ID,entity] = E
+        fire(E)
+    }
+    
+    function table entRef(E:entity){
+        return table(
+            "e" = E,
+            "id" = E:id()
+        )
+    }
+    
+    function free(ID:string){
+        Clip:remove(ID)
+        Live:remove(ID)        
+    }
+    
+    timer("find", 0.25, 0, function(){
+        
+        local NewEntRefs = table()
+        
+        foreach(K:number, V:table = EntRefs){
+            if(V["e",entity]:isValidPhysics()){
+                NewEntRefs:pushTable(V)
+            }
+            else {
+                free(V["id",number] + "")
+            }
+        }
+        
+        findIncludePlayerProps(owner())
+        if( MODEL != "" ){ findAllowModel(MODEL) }
+        findByClass(CLASS)
+        
+        local Find = findToArray()
+        
+        foreach(K, V:entity = Find){
+            if( (V["claimed", number] != Seed) & V:isValidPhysics() ){
+                local Ref = entRef(V)
+                print("alloc", V:id())
+                EntRefs:pushTable(Ref)
+                V["claimed", number] = Seed
+                claim(V)
+                recall_internal(V)
+            }
+        }
+        
+        EntRefs = NewEntRefs
+        
+    })
+    
+}
+
+
+event tick(){
+    
+    if( shouldFire() ){
+        local NextID = Clip:keys()[1, string]
+        local Next = Clip[NextID,entity]
+        if( !Next:isValid() ){
+            free(NextID + "")
+            if(!EmptySound){
+                entity():soundPlay("empty",0.16,"weapons/pistol/pistol_empty.wav")
+                EmptySound = 1
+                timer(0.17,function(){EmptySound = 0})
+            }
+            exit()
+        }
+        fire_internal(Next)
+    }
+    
+    foreach(K, V:entity = Live:values()){
+        tick(V)
+    }
+    
+}
