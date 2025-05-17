@@ -1,0 +1,62 @@
+@name basic bitch grappling hook
+@inputs  Active:number
+@outputs 
+@persist END:entity ENDPOINT_MODEL:string START_ANGLE:angle SPEED:number
+@persist Anchored:number
+@trigger Active
+
+if( first() ){
+    propSpawnUndo(0)
+    
+    SPEED          = 20
+    ENDPOINT_MODEL = "models/props_junk/Shovel01a.mdl"
+    START_ANGLE    = ang(180,0,0)
+    
+    Anchored = 0
+}
+
+function spawnGrapple(){
+    END = propSpawn(ENDPOINT_MODEL, entity():pos(), entity():toWorld(START_ANGLE), 1)
+    END:parentTo( entity() )
+}
+
+
+event tick(){
+    if( !END:isValid() ){
+        spawnGrapple()
+        exit()
+    }
+
+    if( Active & !Anchored ){
+        
+        local Delta = END:up() * -SPEED
+        
+        rangerFilter( array(END, entity()) )
+        local Trace = rangerOffset(END:pos(), END:pos() + Delta)
+        
+        if( Trace:hit() ){
+            Anchored = 1
+            END:soundPlay("stick", 0.5, "physics/metal/weapon_impact_hard"+randint(1, 3)+".wav")
+            rope(1,END,vec(),entity(),vec(),0,1,"cables/cable",0)
+        }
+
+        END:setPos( Trace:position() )
+
+    }
+}
+
+
+if( ~Active & Active ){
+    END:deparent()
+}
+
+if( ~Active & !Active ){
+    # do this next frame because we might have setpos already this frame
+    timer("parent", 0.001, 1, function(){     
+        END:setPos( entity():pos() )
+        END:setAng( entity():toWorld(START_ANGLE) )
+        END:parentTo( entity() )
+        END:constraintBreak()
+        Anchored = 0
+    })
+}
