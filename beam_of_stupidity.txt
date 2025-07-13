@@ -14,10 +14,10 @@ if( first() ){
     
     NUM_OF_PARTICLES = 32
     BEAM_SOUNDS = array(
-        "Town.d1_town_04_spin_loop",
+        "d3_citadel.zapper_loop",
         "Phx.Alien1",
         "Phx.Alien1",
-        "Phx.Alien1"
+        "citadel_ep01.Core_NearPlayer_Unstable_Loop"
     )
     
     enableConstraintUndo(0)
@@ -27,8 +27,8 @@ if( first() ){
     rangerHitEntities(0)
     
     function stopbeam(){
-        stoptimer("evillaugh")
         if(Beam_State){
+            soundStop("kaboom")
             foreach(N,K:entity = Particles){
                 T = (N-1)/(SpawnedCount-1)
                 soundVolume("stupid"+N,0)
@@ -36,6 +36,7 @@ if( first() ){
                 K:propFreeze(1)
                 K:setPos( entity():pos()+vec(0,0,N*0.1) )
                 K:removeTrails()
+                holoAlpha(N, 0)
             }
             Beam_State = 0
         }
@@ -46,6 +47,7 @@ if( first() ){
         Beam_State = 1
         Particles[NUM_OF_PARTICLES,entity]:propFreeze(1)
         Particles[1,entity]:propFreeze(1)
+        owner():soundPlay("kaboom",1,"HeadcrabCanister.Explosion")
         foreach(N,K:entity = Particles){
             soundVolume("stupid"+N,100)
             soundVolume("idiots"+N,100)
@@ -54,35 +56,42 @@ if( first() ){
                 K:propFreeze(0)
                 K:setPos( mix(BeamEnd,BeamStart,T) )
                 K:setTrails(150,0,0.5,"trails/laser",vec(100*(N%2),120*((N+1)%2),255),255)
+                holoAlpha(N, 255)
             }
         }
-        timer("evillaugh",random(4000,6000))
     }
+    
+    rangerPersist(1)
     
 }
 
     
 while( SpawnedCount < NUM_OF_PARTICLES & propCanCreate() ){
 
-    NextParticle = propSpawn("models/expression 2/cpu_microchip_nano.mdl",entity():pos()+vec(0,0,SpawnedCount*0.01),1)
+    NextParticle = propSpawn("models/props_wasteland/controlroom_filecabinet001a.mdl",entity():pos()+vec(0,0,SpawnedCount*0.01),1)
+    NextParticle:propPhysicalMaterial("Metalvehicle")
     
     if( NextParticle:isValid() ){
     
         holoCreate(SpawnedCount,NextParticle:pos())
-        holoModel(SpawnedCount,"models/buildables/breadmonster_sapper_placed.mdl")
-        holoScale(SpawnedCount,vec())
-        holoAlpha(SpawnedCount,0)
+        holoModel(SpawnedCount,"models/props_foliage/tree_cliff_02a.mdl")
+        holoScale(SpawnedCount,vec(0.25))
+        holoMaterial(SpawnedCount,"models/alyx/emptool_glow")
         holoParent(SpawnedCount,NextParticle)
+        holoAlpha(SpawnedCount, 0)
         
         NextParticle:setMass(50000)
         NextParticle:setAlpha(0)
+        NextParticle:propDrag(0)
         
         local Sound = BEAM_SOUNDS[(SpawnedCount % BEAM_SOUNDS:count()) + 1, string]
         
         NextParticle:soundPlay("stupid"+(SpawnedCount+1),0,"synth/saw_inverted_440.wav")
         holoEntity(SpawnedCount):soundPlay("idiots"+(SpawnedCount+1),0,Sound)
         soundPitch("stupid"+(SpawnedCount+1),15)
-        soundPitch("idiots"+(SpawnedCount+1),140)
+        soundPitch("idiots"+(SpawnedCount+1),100)
+        soundVolume("stupid"+(SpawnedCount+1),0)
+        soundVolume("idiots"+(SpawnedCount+1),0)
             
         Particles:pushEntity(NextParticle)
         if(LastParticle:isValid()){
@@ -104,15 +113,20 @@ if( owner():isAlive() & owner():weapon():type() == "weapon_physcannon" & Spawned
     BeamEnd   = rangerOffset(99999,owner():shootPos(),owner():eye()):pos()
     BeamStart = owner():shootPos() + owner():eye()*80 + vec(0,-30,-30):rotate(owner():eyeAngles()) + owner():vel()/7
     
+    local ChangedAtk2 = changed( owner():keyAttack2() )
+    
     if( owner():keyAttack2() ){
         Particles[SpawnedCount,entity]:setPos( BeamEnd )
         Particles[1,entity]:setPos( BeamStart )
         foreach(N,K:entity = Particles){
-            K:applyForce(randvec()*5000000)
+            if( !ChangedAtk2 & (random() > 0.95) ) {
+                local Trace = rangerOffset(64, K:pos(), randvec())
+                K:setPos(Trace:position())    
+            }
         }
     }
     
-    if( changed( owner():keyAttack2() ) ){
+    if( ChangedAtk2 ){
         
         if( owner():keyAttack2() ){
             startbeam(BeamStart, BeamEnd)
