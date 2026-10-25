@@ -5,12 +5,16 @@ SpawnedCount = Particles:count()
 
 if( first() ){
     
-    print("--= beam of stupidity =--")
-    print("       - by Fasteroid -")
-    print(" ")
-    print("     - INSTRUCTIONS -")
-    print("  1. Equip Gravity Gun")
-    print("  2. Hold right mouse ;)")
+    local Self = entity()
+    if( !Self["startup",number] ){
+        print("--= beam of stupidity =--")
+        print("       - by Fasteroid -")
+        print(" ")
+        print("     - INSTRUCTIONS -")
+        print("  1. Equip Gravity Gun")
+        print("  2. Hold right mouse ;)")
+        Self["startup",number] = 1
+    }
     
     NUM_OF_PARTICLES = 32
     BEAM_SOUNDS = array(
@@ -119,6 +123,7 @@ if( owner():isAlive() & owner():weapon():type() == "weapon_physcannon" & Spawned
         Particles[SpawnedCount,entity]:setPos( BeamEnd )
         Particles[1,entity]:setPos( BeamStart )
         foreach(N,K:entity = Particles){
+            if(!K:isValid()){ reset() }
             if( !ChangedAtk2 & (random() > 0.95) ) {
                 local Trace = rangerOffset(64, K:pos(), randvec())
                 K:setPos(Trace:position())    
