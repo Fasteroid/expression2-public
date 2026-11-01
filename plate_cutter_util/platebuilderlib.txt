@@ -51,7 +51,7 @@ if( first() ){
             PlateObj["model",string],
             World[1,vector] + PlateObj["offset",vector]:rotate(Options["angles",angle]) * UNIT_SIZE,
             World[2,angle],
-            Options["format",string]
+            Options["format",function]
         )
         
         if( XReal < XSize ){

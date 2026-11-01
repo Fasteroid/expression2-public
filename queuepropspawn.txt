@@ -8,7 +8,6 @@
 ##    with function callbacks.           ##
 #[                                       ]#             
 
-if( first() ){
     
     function supressInitializationWarnings(){
         Queue = table()
@@ -108,7 +107,7 @@ if( first() ){
         }
         return 0
     }
-}
+
 
 event tick(){
     while(Queue:exists(1)){

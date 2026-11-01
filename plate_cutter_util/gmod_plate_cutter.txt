@@ -5,6 +5,7 @@
 @persist ModeState ModePersist:table PropData:table
 @persist ShouldDelete
 @persist [FlatMin,FlatSize,Forward,Up,SpawnComplement,WorldPos,SpawnPos]:vector Valid TileAng:angle
+@persist ApplyPropData:function
 @model models/hunter/blocks/cube025x025x025.mdl
 
 #[
@@ -196,7 +197,7 @@ if( first() ){
         #PropData["render",number] = E:getRenderMode() BOOO, THERE'S NO FUNCTION FOR THIS!
     }
     
-    function applyPropData(E:entity){
+     ApplyPropData = function(E:entity){
         if(STATIC_PROPS){ E:propStatic(1) }
         E:setMaterial( PropData["mat",string] )
         E:setColor( PropData["color",vector] )
@@ -261,13 +262,13 @@ if( first() ){
                 build(SpawnPos[1],FlatSize[2],vec(),table(
                     "origin" = Origin,
                     "angles" = Entity:angles(),
-                    "format" = "applyPropData"
+                    "format" = ApplyPropData
                 ))
     
                 build(FlatSize[1]-SpawnPos[1],FlatSize[2],vec(),table(
                     "origin" = Entity:toWorld(FlatMin+vec(SpawnPos[1],0,0)*UNIT_SIZE + Entity:getBadHeightFix()),
                     "angles" = Entity:angles(),
-                    "format" = "applyPropData"
+                    "format" = ApplyPropData
                 ))
             }
             elseif(Ang == 90 | Ang == 270){
@@ -280,13 +281,13 @@ if( first() ){
                 build(FlatSize[1],SpawnPos[2],vec(),table(
                     "origin" = Origin,
                     "angles" = Entity:angles(),
-                    "format" = "applyPropData"
+                    "format" = ApplyPropData
                 ))
     
                 build(FlatSize[1],FlatSize[2]-SpawnPos[2],vec(),table(
                     "origin" = Entity:toWorld(FlatMin+vec(0,SpawnPos[2],0)*UNIT_SIZE + Entity:getBadHeightFix()),
                     "angles" = Entity:angles(),
-                    "format" = "applyPropData"
+                    "format" = ApplyPropData
                 ))
             } 
             holoEntity(0):soundPlay(1,1,"buttons/weapon_confirm.wav")
@@ -430,7 +431,7 @@ if( first() ){
                             "origin" = Origin,
                             "angles" = Entity:angles(),
                             "delete" = Entity,
-                            "format" = "applyPropData"
+                            "format" = ApplyPropData
                         ))
                     }
                 }
@@ -545,7 +546,7 @@ if( first() ){
                     build(Size[1],Size[2],vec(),table(
                         "origin" = Origin,
                         "angles" = Entity:angles(),
-                        "format" = "applyPropData"
+                        "format" = ApplyPropData
                     ))
                     holoEntity(0):soundPlay(1,1,"doors/door_metal_medium_open1.wav")
                     soundPitch(1,130)
